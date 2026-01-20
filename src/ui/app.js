@@ -40,6 +40,7 @@ const {
   removeRemote,
   renameRemote,
   setRemoteUrl,
+  getRepoStats,
 } = require("../helpers/git");
 
 const {
@@ -177,6 +178,7 @@ async function startApp() {
       { name: "  ara", value: "search" },
       { name: "  cherry-pick", value: "cherry" },
       { name: "  remote", value: "remote" },
+      { name: "  stats", value: "stats" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -240,6 +242,9 @@ async function startApp() {
         break;
       case "remote":
         await viewRemote();
+        break;
+      case "stats":
+        await viewStats();
         break;
       case "undo":
         await viewUndo();
@@ -1827,6 +1832,52 @@ async function viewRemote() {
         break;
     }
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════
+
+async function viewStats() {
+  clear();
+  header();
+  section("stats");
+
+  const spin = ora({ text: c.muted(" hesaplanıyor..."), spinner: "dots" }).start();
+
+  try {
+    const stats = await getRepoStats();
+    spin.stop();
+
+    console.log(c.muted("  genel\n"));
+    console.log(`  ${c.primary(stats.totalCommits)} commit`);
+    console.log(`  ${c.primary(stats.branches)} branch`);
+    console.log(`  ${c.primary(stats.remoteBranches)} remote branch`);
+    console.log(`  ${c.primary(stats.tags)} tag\n`);
+
+    if (stats.firstCommit) {
+      console.log(c.muted("  tarih\n"));
+      console.log(`  ilk: ${c.white(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR"))}`);
+      console.log(`  son: ${c.white(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR"))}\n`);
+    }
+
+    const authors = Object.entries(stats.authors)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (authors.length > 0) {
+      console.log(c.muted("  katkıda bulunanlar\n"));
+      authors.forEach(([name, count]) => {
+        const bar = "█".repeat(Math.min(Math.round(count / stats.totalCommits * 20), 20));
+        console.log(`  ${c.white(name.padEnd(20))} ${c.primary(bar)} ${count}`);
+      });
+      console.log("");
+    }
+  } catch (err) {
+    spin.fail(c.error(" " + err.message));
+  }
+
+  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -350,6 +350,36 @@ async function setRemoteUrl(name, url) {
   return await git.raw(["remote", "set-url", name, url]);
 }
 
+/**
+ * Get repository stats
+ */
+async function getRepoStats() {
+  const log = await git.log(["--all"]);
+  const branches = await git.branch(["-a"]);
+  const tags = await git.tags();
+  
+  // Count commits by author
+  const authorStats = {};
+  log.all.forEach(commit => {
+    const author = commit.author_name;
+    authorStats[author] = (authorStats[author] || 0) + 1;
+  });
+
+  // Get first and last commit dates
+  const firstCommit = log.all.length > 0 ? log.all[log.all.length - 1] : null;
+  const lastCommit = log.all.length > 0 ? log.all[0] : null;
+
+  return {
+    totalCommits: log.all.length,
+    branches: branches.all.filter(b => !b.startsWith("remotes/")).length,
+    remoteBranches: branches.all.filter(b => b.startsWith("remotes/")).length,
+    tags: tags.all.length,
+    authors: authorStats,
+    firstCommit,
+    lastCommit,
+  };
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -397,4 +427,5 @@ module.exports = {
   removeRemote,
   renameRemote,
   setRemoteUrl,
+  getRepoStats,
 };
