@@ -76,16 +76,19 @@ function clear() {
 }
 
 function header() {
-  const w = Math.min(getWidth() - 4, 60);
+  const banner = `
+  ███████╗ ██████╗██╗  ██╗██████╗  █████╗ 
+  ██╔════╝██╔════╝██║ ██╔╝██╔══██╗██╔══██╗
+  █████╗  ██║     █████╔╝ ██████╔╝███████║
+  ██╔══╝  ██║     ██╔═██╗ ██╔══██╗██╔══██║
+  ███████╗╚██████╗██║  ██╗██║  ██║██║  ██║
+  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝`;
+  console.log(c.white(banner));
   console.log("");
-  console.log(c.muted("  " + "─".repeat(w)));
-  console.log(c.title("  ECKRA") + c.muted("  ·  git + ai"));
-  console.log(c.muted("  " + "─".repeat(w)));
 }
 
 async function statusBar() {
   const status = await getGitStatus();
-  const lm = await checkLMStudioConnection();
 
   const branch = status.current || "master";
   const staged = status.staged.length;
@@ -94,12 +97,9 @@ async function statusBar() {
 
   const branchStr = c.primary(branch);
   const statsStr = `${c.success("+" + staged)} ${c.warning("~" + modified)} ${c.muted("?" + untracked)}`;
-  const aiStr = lm.connected ? c.success("ai") : c.muted("ai");
 
   console.log("");
-  console.log(
-    `  ${branchStr}  ${c.muted("|")}  ${statsStr}  ${c.muted("|")}  ${aiStr}`,
-  );
+  console.log(`  ${branchStr}  ${c.muted("|")}  ${statsStr}`);
   console.log("");
 }
 
@@ -285,11 +285,13 @@ async function viewStage() {
 
   if (action === "back") return;
 
+  let staged = false;
+
   if (action === "all") {
     const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
     await stageAll();
     spin.succeed(c.success(" staged"));
-    await sleep(600);
+    staged = true;
   } else {
     const { selected } = await inquirer.prompt([
       {
@@ -308,7 +310,26 @@ async function viewStage() {
     if (selected.length > 0) {
       await stageFiles(selected);
       console.log(c.success(`\n  ✓ ${selected.length} staged`));
-      await sleep(600);
+      staged = true;
+    }
+  }
+
+  // Stage sonrası akıllı yönlendirme
+  if (staged) {
+    const { next } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "next",
+        message: c.muted("devam?"),
+        choices: [
+          { name: c.success("  commit yap"), value: "commit" },
+          { name: c.muted("  ana menü"), value: "menu" },
+        ],
+      },
+    ]);
+
+    if (next === "commit") {
+      await viewCommit();
     }
   }
 }
@@ -493,7 +514,9 @@ async function viewPush() {
     }
 
     await pushToRemote();
-    spin.succeed(c.success(" pushed"));
+    spin.succeed(c.success(" pushed ✓"));
+    await sleep(800);
+    return; // Ana menüye dön
   } catch (err) {
     spin.fail(c.error(" " + err.message));
 
@@ -531,7 +554,22 @@ async function viewPull() {
     spin.succeed(c.success(" pulled"));
 
     if (result.summary?.changes > 0) {
-      console.log(c.muted(`  ${result.summary.changes} dosya`));
+      console.log(c.muted(`  ${result.summary.changes} dosya güncellendi`));
+
+      // Pull sonrası status göster seçeneği
+      const { showStatus } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "showStatus",
+          message: c.muted("durumu göster?"),
+          default: true,
+        },
+      ]);
+
+      if (showStatus) {
+        await viewStatus();
+        return;
+      }
     }
   } catch (err) {
     spin.fail(c.error(" " + err.message));
@@ -614,7 +652,19 @@ async function viewBranch() {
           try {
             await switchBranch(target);
             console.log(c.success(`  ✓ ${target}`));
-            await sleep(600);
+
+            // Branch değiştirdikten sonra pull öner
+            const { doPull } = await inquirer.prompt([
+              {
+                type: "confirm",
+                name: "doPull",
+                message: c.muted("pull yap?"),
+                default: false,
+              },
+            ]);
+            if (doPull) {
+              await viewPull();
+            }
           } catch (err) {
             console.log(c.error("  " + err.message));
             await pause();
