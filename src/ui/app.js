@@ -166,6 +166,7 @@ async function startApp() {
       { name: "  diff", value: "diff" },
       { name: "  tag", value: "tag" },
       { name: "  gitignore", value: "gitignore" },
+      { name: c.success("  hızlı işlem"), value: "quick" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -217,6 +218,9 @@ async function startApp() {
         break;
       case "gitignore":
         await viewGitignore();
+        break;
+      case "quick":
+        await viewQuickActions();
         break;
       case "undo":
         await viewUndo();
@@ -1374,6 +1378,158 @@ async function viewGitignore() {
       console.log(c.success(`\n  ✓ ${files.length} dosya eklendi`));
     }
     await pause();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QUICK ACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+async function viewQuickActions() {
+  clear();
+  header();
+  section("hızlı işlem");
+
+  const status = await getGitStatus();
+  const hasChanges = status.modified.length + status.not_added.length > 0;
+  const hasStaged = status.staged.length > 0;
+
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: c.muted("›"),
+      choices: [
+        { 
+          name: c.success("  ⚡ stage + commit + push"), 
+          value: "all",
+          disabled: !hasChanges && !hasStaged,
+        },
+        { 
+          name: "  📦 stage all + commit", 
+          value: "stage-commit",
+          disabled: !hasChanges && !hasStaged,
+        },
+        { 
+          name: "  🔄 pull + push", 
+          value: "sync",
+        },
+        { 
+          name: "  🧹 discard all changes", 
+          value: "discard",
+          disabled: !hasChanges,
+        },
+        { type: "separator", line: " " },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "all") {
+    // Stage all
+    if (hasChanges) {
+      const spin1 = ora({ text: c.muted(" staging..."), spinner: "dots" }).start();
+      await stageAll();
+      spin1.succeed(c.success(" staged"));
+    }
+
+    // Get commit message
+    const lm = await checkLMStudioConnection();
+    let message;
+
+    if (lm.connected) {
+      const spin2 = ora({ text: c.muted(" ai..."), spinner: "dots" }).start();
+      try {
+        const diff = await getStagedDiff();
+        const newStatus = await getGitStatus();
+        const suggestions = await generateCommitSuggestions(diff, newStatus.staged, 1);
+        spin2.stop();
+        
+        const { useAi } = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "useAi",
+            message: c.white(suggestions[0]) + c.muted(" kullan?"),
+            default: true,
+          },
+        ]);
+        
+        message = useAi ? suggestions[0] : null;
+      } catch {
+        spin2.fail(c.muted(" ai hatası"));
+      }
+    }
+
+    if (!message) {
+      const { custom } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "custom",
+          message: c.muted("mesaj:"),
+          validate: v => v.length > 0,
+        },
+      ]);
+      message = custom;
+    }
+
+    // Commit
+    const spin3 = ora({ text: c.muted(" committing..."), spinner: "dots" }).start();
+    await createCommit(message);
+    spin3.succeed(c.success(" committed"));
+
+    // Push
+    const spin4 = ora({ text: c.muted(" pushing..."), spinner: "dots" }).start();
+    try {
+      await pushToRemote();
+      spin4.succeed(c.success(" pushed ✓"));
+    } catch (err) {
+      spin4.fail(c.error(" " + err.message));
+    }
+    await pause();
+  }
+
+  if (action === "stage-commit") {
+    if (hasChanges) {
+      await stageAll();
+    }
+    await viewCommit();
+  }
+
+  if (action === "sync") {
+    const spin1 = ora({ text: c.muted(" pulling..."), spinner: "dots" }).start();
+    try {
+      await pullFromRemote();
+      spin1.succeed(c.success(" pulled"));
+      
+      const spin2 = ora({ text: c.muted(" pushing..."), spinner: "dots" }).start();
+      await pushToRemote();
+      spin2.succeed(c.success(" pushed ✓"));
+    } catch (err) {
+      spin1.fail(c.error(" " + err.message));
+    }
+    await pause();
+  }
+
+  if (action === "discard") {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: c.error("tüm değişiklikler silinecek, emin misin?"),
+        default: false,
+      },
+    ]);
+
+    if (confirm) {
+      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+      const simpleGit = require("simple-git")();
+      await simpleGit.checkout(["--", "."]);
+      await simpleGit.clean("fd");
+      spin.succeed(c.success(" temizlendi"));
+      await pause();
+    }
   }
 }
 
