@@ -1,6 +1,8 @@
 const chalk = require("chalk");
 const inquirer = require("inquirer");
 const ora = require("ora");
+const fs = require("fs");
+const path = require("path");
 
 const {
   getGitStatus,
@@ -163,6 +165,7 @@ async function startApp() {
       { name: "  stash", value: "stash" },
       { name: "  diff", value: "diff" },
       { name: "  tag", value: "tag" },
+      { name: "  gitignore", value: "gitignore" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -211,6 +214,9 @@ async function startApp() {
         break;
       case "tag":
         await viewTag();
+        break;
+      case "gitignore":
+        await viewGitignore();
         break;
       case "undo":
         await viewUndo();
@@ -1249,6 +1255,125 @@ async function viewTag() {
         inMenu = false;
         break;
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GITIGNORE
+// ═══════════════════════════════════════════════════════════════
+
+const GITIGNORE_TEMPLATES = {
+  node: ["node_modules/", "npm-debug.log", ".env", "dist/", "coverage/"],
+  python: ["__pycache__/", "*.pyc", ".env", "venv/", ".pytest_cache/"],
+  java: ["*.class", "*.jar", "target/", ".idea/", "*.log"],
+  general: [".DS_Store", "Thumbs.db", "*.log", ".env", ".env.local"],
+};
+
+async function viewGitignore() {
+  clear();
+  header();
+  section("gitignore");
+
+  const gitignorePath = path.join(process.cwd(), ".gitignore");
+  let currentContent = "";
+  
+  if (fs.existsSync(gitignorePath)) {
+    currentContent = fs.readFileSync(gitignorePath, "utf-8");
+    const lines = currentContent.split("\n").filter(l => l.trim() && !l.startsWith("#"));
+    console.log(c.muted("  mevcut kurallar:"));
+    lines.slice(0, 10).forEach(l => console.log(c.white("  " + l)));
+    if (lines.length > 10) console.log(c.muted(`  ... +${lines.length - 10} daha`));
+    console.log("");
+  } else {
+    console.log(c.muted("  .gitignore yok\n"));
+  }
+
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: c.muted("›"),
+      choices: [
+        { name: c.success("  şablon ekle"), value: "template" },
+        { name: "  manuel ekle", value: "manual" },
+        { name: "  untracked dosya ekle", value: "untracked" },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "template") {
+    const { template } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "template",
+        message: c.muted("şablon:"),
+        choices: [
+          { name: "  Node.js", value: "node" },
+          { name: "  Python", value: "python" },
+          { name: "  Java", value: "java" },
+          { name: "  Genel", value: "general" },
+        ],
+      },
+    ]);
+
+    const patterns = GITIGNORE_TEMPLATES[template];
+    const newPatterns = patterns.filter(p => !currentContent.includes(p));
+    
+    if (newPatterns.length === 0) {
+      console.log(c.muted("\n  tüm kurallar zaten mevcut"));
+      await pause();
+      return;
+    }
+
+    const toAdd = `\n# ${template}\n${newPatterns.join("\n")}\n`;
+    fs.appendFileSync(gitignorePath, toAdd);
+    console.log(c.success(`\n  ✓ ${newPatterns.length} kural eklendi`));
+    await pause();
+  }
+
+  if (action === "manual") {
+    const { pattern } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "pattern",
+        message: c.muted("pattern:"),
+        validate: v => v.length > 0,
+      },
+    ]);
+
+    fs.appendFileSync(gitignorePath, `\n${pattern}`);
+    console.log(c.success("\n  ✓ eklendi"));
+    await pause();
+  }
+
+  if (action === "untracked") {
+    const status = await getGitStatus();
+    const untracked = status.not_added;
+
+    if (untracked.length === 0) {
+      console.log(c.muted("\n  untracked dosya yok"));
+      await pause();
+      return;
+    }
+
+    const { files } = await inquirer.prompt([
+      {
+        type: "checkbox",
+        name: "files",
+        message: c.muted("ignore et:"),
+        choices: untracked.map(f => ({ name: c.muted("  " + f), value: f })),
+        pageSize: Math.max(getHeight() - 8, 10),
+      },
+    ]);
+
+    if (files.length > 0) {
+      fs.appendFileSync(gitignorePath, `\n${files.join("\n")}`);
+      console.log(c.success(`\n  ✓ ${files.length} dosya eklendi`));
+    }
+    await pause();
   }
 }
 
