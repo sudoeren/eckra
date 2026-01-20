@@ -22,6 +22,8 @@ const {
   popStash,
   listStashes,
   addRemote,
+  undoLastCommit,
+  getLastCommit,
 } = require("../helpers/git");
 
 const {
@@ -152,6 +154,7 @@ async function startApp() {
       { name: "  branch", value: "branch" },
       { name: "  log", value: "log" },
       { name: "  stash", value: "stash" },
+      { name: c.warning("  undo"), value: "undo" },
       { type: "separator", line: c.muted("  " + line()) },
       { name: c.muted("  ayarlar"), value: "settings" },
       { name: c.muted("  çıkış"), value: "exit" },
@@ -192,6 +195,9 @@ async function startApp() {
         break;
       case "stash":
         await viewStash();
+        break;
+      case "undo":
+        await viewUndo();
         break;
       case "settings":
         await viewSettings();
@@ -929,6 +935,50 @@ function timeAgo(date) {
   if (sec < 86400) return Math.floor(sec / 3600) + "sa";
   if (sec < 604800) return Math.floor(sec / 86400) + "g";
   return Math.floor(sec / 604800) + "h";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UNDO
+// ═══════════════════════════════════════════════════════════════
+
+async function viewUndo() {
+  clear();
+  header();
+  section("undo");
+
+  try {
+    const lastCommit = await getLastCommit();
+    
+    if (!lastCommit) {
+      console.log(c.muted("  commit yok\n"));
+      await pause();
+      return;
+    }
+
+    console.log(c.muted("  son commit:"));
+    console.log(c.white(`  ${lastCommit.hash.substring(0, 7)} `) + c.muted(lastCommit.message));
+    console.log(c.muted(`  ${lastCommit.author_name} · ${timeAgo(new Date(lastCommit.date))}\n`));
+
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: c.warning("geri al? (değişiklikler korunur)"),
+        default: false,
+      },
+    ]);
+
+    if (confirm) {
+      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+      await undoLastCommit();
+      spin.succeed(c.success(" geri alındı"));
+      console.log(c.muted("  değişiklikler staged olarak kaldı\n"));
+      await pause();
+    }
+  } catch (err) {
+    console.log(c.error("  " + err.message));
+    await pause();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

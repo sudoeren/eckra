@@ -247,6 +247,21 @@ async function fetchRemote(remote = "origin") {
   return await git.fetch(remote);
 }
 
+/**
+ * Undo last commit (soft reset - keeps changes staged)
+ */
+async function undoLastCommit() {
+  return await git.reset(["--soft", "HEAD~1"]);
+}
+
+/**
+ * Get last commit info
+ */
+async function getLastCommit() {
+  const log = await git.log(["-1"]);
+  return log.latest;
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -280,4 +295,6 @@ module.exports = {
   initRepo,
   addRemote,
   fetchRemote,
+  undoLastCommit,
+  getLastCommit,
 };
