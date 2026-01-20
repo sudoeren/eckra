@@ -402,6 +402,37 @@ async function dropLastCommit() {
   return await git.reset(["--hard", "HEAD~1"]);
 }
 
+/**
+ * Get conflicted files with content
+ */
+async function getConflictDetails() {
+  const status = await git.status();
+  return status.conflicted;
+}
+
+/**
+ * Accept ours version for a file
+ */
+async function acceptOurs(file) {
+  await git.checkout(["--ours", file]);
+  await git.add(file);
+}
+
+/**
+ * Accept theirs version for a file
+ */
+async function acceptTheirs(file) {
+  await git.checkout(["--theirs", file]);
+  await git.add(file);
+}
+
+/**
+ * Abort merge
+ */
+async function abortMerge() {
+  return await git.merge(["--abort"]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -453,4 +484,8 @@ module.exports = {
   squashCommits,
   rewordLastCommit,
   dropLastCommit,
+  getConflictDetails,
+  acceptOurs,
+  acceptTheirs,
+  abortMerge,
 };

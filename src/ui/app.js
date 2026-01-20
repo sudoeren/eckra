@@ -44,6 +44,10 @@ const {
   squashCommits,
   rewordLastCommit,
   dropLastCommit,
+  getConflictDetails,
+  acceptOurs,
+  acceptTheirs,
+  abortMerge,
 } = require("../helpers/git");
 
 const {
@@ -183,6 +187,7 @@ async function startApp() {
       { name: "  remote", value: "remote" },
       { name: "  stats", value: "stats" },
       { name: "  rebase", value: "rebase" },
+      { name: "  conflict", value: "conflict" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -252,6 +257,9 @@ async function startApp() {
         break;
       case "rebase":
         await viewRebase();
+        break;
+      case "conflict":
+        await viewConflict();
         break;
       case "undo":
         await viewUndo();
@@ -1991,6 +1999,128 @@ async function viewRebase() {
         spin.succeed(c.success(" commit silindi"));
       } catch (err) {
         spin.fail(c.error(" " + err.message));
+      }
+      await pause();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFLICT
+// ═══════════════════════════════════════════════════════════════
+
+async function viewConflict() {
+  clear();
+  header();
+  section("conflict");
+
+  const conflicts = await getConflictDetails();
+
+  if (conflicts.length === 0) {
+    console.log(c.success("  ✓ çakışma yok\n"));
+    await pause();
+    return;
+  }
+
+  console.log(c.error(`  ${conflicts.length} dosyada çakışma:\n`));
+  conflicts.forEach(f => console.log(c.warning("  ⚠ " + f)));
+  console.log("");
+
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: c.muted("›"),
+      choices: [
+        { name: c.success("  dosya seç ve çöz"), value: "resolve" },
+        { name: "  tümünü ours (bizim) yap", value: "ours-all" },
+        { name: "  tümünü theirs (onların) yap", value: "theirs-all" },
+        { name: c.error("  merge iptal"), value: "abort" },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "resolve") {
+    const { file } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "file",
+        message: c.muted("dosya:"),
+        choices: conflicts,
+      },
+    ]);
+
+    const { resolution } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "resolution",
+        message: c.muted("çözüm:"),
+        choices: [
+          { name: c.success("  ours (bizim versiyonu kullan)"), value: "ours" },
+          { name: c.primary("  theirs (onların versiyonunu kullan)"), value: "theirs" },
+        ],
+      },
+    ]);
+
+    try {
+      if (resolution === "ours") {
+        await acceptOurs(file);
+      } else {
+        await acceptTheirs(file);
+      }
+      console.log(c.success(`\n  ✓ ${file} çözüldü`));
+      await sleep(600);
+    } catch (err) {
+      console.log(c.error("  " + err.message));
+      await pause();
+    }
+  }
+
+  if (action === "ours-all") {
+    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+    try {
+      for (const file of conflicts) {
+        await acceptOurs(file);
+      }
+      spin.succeed(c.success(` ${conflicts.length} dosya çözüldü (ours)`));
+    } catch (err) {
+      spin.fail(c.error(" " + err.message));
+    }
+    await pause();
+  }
+
+  if (action === "theirs-all") {
+    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+    try {
+      for (const file of conflicts) {
+        await acceptTheirs(file);
+      }
+      spin.succeed(c.success(` ${conflicts.length} dosya çözüldü (theirs)`));
+    } catch (err) {
+      spin.fail(c.error(" " + err.message));
+    }
+    await pause();
+  }
+
+  if (action === "abort") {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: c.error("merge iptal edilsin mi?"),
+        default: false,
+      },
+    ]);
+
+    if (confirm) {
+      try {
+        await abortMerge();
+        console.log(c.success("\n  ✓ merge iptal edildi"));
+      } catch (err) {
+        console.log(c.error("  " + err.message));
       }
       await pause();
     }
