@@ -300,6 +300,20 @@ async function pushTags() {
   return await git.pushTags();
 }
 
+/**
+ * Search commits by message
+ */
+async function searchCommits(query, count = 20) {
+  return await git.log(["--grep=" + query, "-n", count.toString(), "--all"]);
+}
+
+/**
+ * Search commits by author
+ */
+async function searchCommitsByAuthor(author, count = 20) {
+  return await git.log(["--author=" + author, "-n", count.toString()]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -340,4 +354,6 @@ module.exports = {
   createTag,
   deleteTag,
   pushTags,
+  searchCommits,
+  searchCommitsByAuthor,
 };

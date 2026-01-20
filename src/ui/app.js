@@ -33,6 +33,8 @@ const {
   createTag,
   deleteTag,
   pushTags,
+  searchCommits,
+  searchCommitsByAuthor,
 } = require("../helpers/git");
 
 const {
@@ -167,6 +169,7 @@ async function startApp() {
       { name: "  tag", value: "tag" },
       { name: "  gitignore", value: "gitignore" },
       { name: c.success("  hızlı işlem"), value: "quick" },
+      { name: "  ara", value: "search" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -221,6 +224,9 @@ async function startApp() {
         break;
       case "quick":
         await viewQuickActions();
+        break;
+      case "search":
+        await viewSearch();
         break;
       case "undo":
         await viewUndo();
@@ -1531,6 +1537,75 @@ async function viewQuickActions() {
       await pause();
     }
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════
+
+async function viewSearch() {
+  clear();
+  header();
+  section("ara");
+
+  const { type } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "type",
+      message: c.muted("›"),
+      choices: [
+        { name: "  mesajda ara", value: "message" },
+        { name: "  yazara göre", value: "author" },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (type === "back") return;
+
+  const { query } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "query",
+      message: c.muted(type === "message" ? "aranacak:" : "yazar:"),
+      validate: v => v.length > 0,
+    },
+  ]);
+
+  const spin = ora({ text: c.muted(" arıyor..."), spinner: "dots" }).start();
+
+  try {
+    let results;
+    if (type === "message") {
+      results = await searchCommits(query);
+    } else {
+      results = await searchCommitsByAuthor(query);
+    }
+
+    spin.stop();
+    clear();
+    header();
+    section("sonuçlar");
+
+    if (results.all.length === 0) {
+      console.log(c.muted("  sonuç bulunamadı\n"));
+    } else {
+      console.log(c.muted(`  ${results.all.length} sonuç\n`));
+      
+      results.all.forEach((commit) => {
+        const hash = c.primary(commit.hash.substring(0, 7));
+        const msg = truncate(commit.message, getWidth() - 20);
+        const author = c.muted(commit.author_name);
+        const time = c.muted(timeAgo(new Date(commit.date)));
+        console.log(`  ${hash} ${msg}`);
+        console.log(`         ${author} · ${time}\n`);
+      });
+    }
+  } catch (err) {
+    spin.fail(c.error(" " + err.message));
+  }
+
+  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
