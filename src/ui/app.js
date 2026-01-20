@@ -48,6 +48,8 @@ const {
   acceptOurs,
   acceptTheirs,
   abortMerge,
+  getBlame,
+  getTrackedFiles,
 } = require("../helpers/git");
 
 const {
@@ -188,6 +190,7 @@ async function startApp() {
       { name: "  stats", value: "stats" },
       { name: "  rebase", value: "rebase" },
       { name: "  conflict", value: "conflict" },
+      { name: "  blame", value: "blame" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -260,6 +263,9 @@ async function startApp() {
         break;
       case "conflict":
         await viewConflict();
+        break;
+      case "blame":
+        await viewBlame();
         break;
       case "undo":
         await viewUndo();
@@ -2125,6 +2131,70 @@ async function viewConflict() {
       await pause();
     }
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BLAME
+// ═══════════════════════════════════════════════════════════════
+
+async function viewBlame() {
+  clear();
+  header();
+  section("blame");
+
+  const spin = ora({ text: c.muted(" dosyalar yükleniyor..."), spinner: "dots" }).start();
+  
+  try {
+    const files = await getTrackedFiles();
+    spin.stop();
+
+    if (files.length === 0) {
+      console.log(c.muted("  dosya yok\n"));
+      await pause();
+      return;
+    }
+
+    const { file } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "file",
+        message: c.muted("dosya seç:"),
+        choices: [...files.slice(0, 50), ...(files.length > 50 ? [c.muted(`... +${files.length - 50} dosya`)] : [])],
+        pageSize: Math.max(getHeight() - 8, 15),
+      },
+    ]);
+
+    if (file.startsWith("...")) return;
+
+    const blameSpin = ora({ text: c.muted(" blame yükleniyor..."), spinner: "dots" }).start();
+    const blame = await getBlame(file);
+    blameSpin.stop();
+
+    clear();
+    header();
+    section(`blame: ${file}`);
+
+    const lineCount = Math.min(blame.length, getHeight() - 10);
+    
+    blame.slice(0, lineCount).forEach((b, i) => {
+      const lineNum = c.muted(String(i + 1).padStart(4));
+      const hash = c.primary(b.hash.substring(0, 7));
+      const author = c.muted(truncate(b.author || "", 12).padEnd(12));
+      const code = truncate(b.line || "", getWidth() - 35);
+      console.log(`${lineNum} ${hash} ${author} ${code}`);
+    });
+
+    if (blame.length > lineCount) {
+      console.log(c.muted(`\n  ... +${blame.length - lineCount} satır daha`));
+    }
+
+    console.log("");
+  } catch (err) {
+    spin.stop();
+    console.log(c.error("  " + err.message));
+  }
+
+  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════

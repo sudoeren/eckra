@@ -433,6 +433,43 @@ async function abortMerge() {
   return await git.merge(["--abort"]);
 }
 
+/**
+ * Get blame for a file
+ */
+async function getBlame(file) {
+  const result = await git.raw(["blame", "--line-porcelain", file]);
+  const lines = result.split("\n");
+  const blameData = [];
+  let current = {};
+
+  for (const line of lines) {
+    if (line.match(/^[0-9a-f]{40}/)) {
+      if (current.hash) blameData.push(current);
+      current = { hash: line.substring(0, 40) };
+    } else if (line.startsWith("author ")) {
+      current.author = line.substring(7);
+    } else if (line.startsWith("author-time ")) {
+      current.time = parseInt(line.substring(12)) * 1000;
+    } else if (line.startsWith("summary ")) {
+      current.summary = line.substring(8);
+    } else if (line.startsWith("\t")) {
+      current.line = line.substring(1);
+      blameData.push(current);
+      current = {};
+    }
+  }
+
+  return blameData;
+}
+
+/**
+ * Get tracked files
+ */
+async function getTrackedFiles() {
+  const result = await git.raw(["ls-files"]);
+  return result.split("\n").filter(f => f.length > 0);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -488,4 +525,6 @@ module.exports = {
   acceptOurs,
   acceptTheirs,
   abortMerge,
+  getBlame,
+  getTrackedFiles,
 };
