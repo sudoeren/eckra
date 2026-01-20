@@ -262,6 +262,13 @@ async function getLastCommit() {
   return log.latest;
 }
 
+/**
+ * Amend last commit with new message
+ */
+async function amendCommit(message) {
+  return await git.commit(message, ["--amend"]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -297,4 +304,5 @@ module.exports = {
   fetchRemote,
   undoLastCommit,
   getLastCommit,
+  amendCommit,
 };

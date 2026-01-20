@@ -24,6 +24,7 @@ const {
   addRemote,
   undoLastCommit,
   getLastCommit,
+  amendCommit,
 } = require("../helpers/git");
 
 const {
@@ -155,6 +156,7 @@ async function startApp() {
       { name: "  log", value: "log" },
       { name: "  stash", value: "stash" },
       { name: c.warning("  undo"), value: "undo" },
+      { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
       { name: c.muted("  ayarlar"), value: "settings" },
       { name: c.muted("  çıkış"), value: "exit" },
@@ -198,6 +200,9 @@ async function startApp() {
         break;
       case "undo":
         await viewUndo();
+        break;
+      case "amend":
+        await viewAmend();
         break;
       case "settings":
         await viewSettings();
@@ -973,6 +978,52 @@ async function viewUndo() {
       await undoLastCommit();
       spin.succeed(c.success(" geri alındı"));
       console.log(c.muted("  değişiklikler staged olarak kaldı\n"));
+      await pause();
+    }
+  } catch (err) {
+    console.log(c.error("  " + err.message));
+    await pause();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AMEND
+// ═══════════════════════════════════════════════════════════════
+
+async function viewAmend() {
+  clear();
+  header();
+  section("amend");
+
+  try {
+    const lastCommit = await getLastCommit();
+    
+    if (!lastCommit) {
+      console.log(c.muted("  commit yok\n"));
+      await pause();
+      return;
+    }
+
+    console.log(c.muted("  mevcut mesaj:"));
+    console.log(c.white(`  "${lastCommit.message}"\n`));
+
+    const { newMessage } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "newMessage",
+        message: c.muted("yeni mesaj:"),
+        default: lastCommit.message,
+        validate: (v) => v.length > 0,
+      },
+    ]);
+
+    if (newMessage !== lastCommit.message) {
+      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+      await amendCommit(newMessage);
+      spin.succeed(c.success(" güncellendi"));
+      await sleep(600);
+    } else {
+      console.log(c.muted("\n  değişiklik yok"));
       await pause();
     }
   } catch (err) {
