@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const CONFIG_DIR = path.join(os.homedir(), ".gitai");
+const CONFIG_DIR = path.join(os.homedir(), ".eckra");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 
 const DEFAULT_CONFIG = {

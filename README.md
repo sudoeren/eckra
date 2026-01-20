@@ -1,14 +1,14 @@
-# Git AI - AI-Powered Git Management CLI
+# Eckra - AI-Powered Git Management CLI
 
 <div align="center">
 
 ```
-   ██████╗ ██╗████████╗     █████╗ ██╗
-  ██╔════╝ ██║╚══██╔══╝    ██╔══██╗██║
-  ██║  ███╗██║   ██║       ███████║██║
-  ██║   ██║██║   ██║       ██╔══██║██║
-  ╚██████╔╝██║   ██║       ██║  ██║██║
-   ╚═════╝ ╚═╝   ╚═╝       ╚═╝  ╚═╝╚═╝
+  ███████╗ ██████╗██╗  ██╗██████╗  █████╗
+  ██╔════╝██╔════╝██║ ██╔╝██╔══██╗██╔══██╗
+  █████╗  ██║     █████╔╝ ██████╔╝███████║
+  ██╔══╝  ██║     ██╔═██╗ ██╔══██╗██╔══██║
+  ███████╗╚██████╗██║  ██╗██║  ██║██║  ██║
+  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
 ```
 
 **LM Studio entegrasyonu ile akıllı commit mesajları üreten Git yönetim aracı**
@@ -33,7 +33,7 @@
 ### Global Kurulum (Önerilen)
 
 ```bash
-npm install -g git-commit-ai
+npm install -g eckra
 ```
 
 ### Yerel Kurulum
@@ -41,7 +41,7 @@ npm install -g git-commit-ai
 ```bash
 # Repoyu klonla
 git clone <repo-url>
-cd git-commit-ai
+cd eckra
 
 # Bağımlılıkları yükle
 npm install
@@ -56,40 +56,40 @@ npm link
 
 ```bash
 # Ana menüyü başlat
-gitai
+eckra
 
 # veya
-gitai start
+eckra start
 ```
 
 ### Komutlar
 
 ```bash
 # Durum görüntüle
-gitai status
+eckra status
 
 # AI destekli commit
-gitai commit
-gitai c
+eckra commit
+eckra c
 
 # Manuel commit mesajı ile
-gitai commit -m "feat: yeni özellik eklendi"
+eckra commit -m "feat: yeni özellik eklendi"
 
 # Push
-gitai push
-gitai p
+eckra push
+eckra p
 
 # Branch yönetimi
-gitai branch
-gitai b
+eckra branch
+eckra b
 
 # Commit geçmişi
-gitai log
-gitai l
-gitai log -n 20  # Son 20 commit
+eckra log
+eckra l
+eckra log -n 20  # Son 20 commit
 
 # Ayarlar
-gitai config
+eckra config
 ```
 
 ## ⚙️ LM Studio Yapılandırması
@@ -101,11 +101,11 @@ gitai config
 3. "Local Server" sekmesine gidin
 4. Server'ı başlatın (varsayılan port: 1234)
 
-### 2. Git AI Ayarları
+### 2. Eckra Ayarları
 
 ```bash
 # Ayarlar menüsünü aç
-gitai config
+eckra config
 ```
 
 Varsayılan ayarlar:
@@ -121,8 +121,8 @@ Varsayılan ayarlar:
 # Değişiklik yap
 echo "yeni kod" >> dosya.js
 
-# Git AI'ı başlat
-gitai
+# Eckra'yı başlat
+eckra
 
 # Menüden:
 # 1. ➕ Dosya Ekle (Stage) → Tüm dosyaları stage'e al
@@ -133,7 +133,7 @@ gitai
 ### Senaryo 2: Branch ile Çalışma
 
 ```bash
-gitai branch
+eckra branch
 
 # Menüden:
 # 1. ➕ Yeni branch oluştur → "feature/yeni-ozellik"
@@ -145,7 +145,7 @@ gitai branch
 ### Senaryo 3: Stash Kullanımı
 
 ```bash
-gitai
+eckra
 
 # Menüden:
 # 1. 📦 Stash Yönetimi → Değişiklikleri stash'e al
@@ -198,7 +198,7 @@ gitai
 2. Server'ın başlatıldığını kontrol edin
 3. Port numarasını doğrulayın:
    ```bash
-   gitai config
+   eckra config
    # → LM Studio URL değiştir
    ```
 
@@ -224,7 +224,7 @@ git clone <url>
 ## 📁 Proje Yapısı
 
 ```
-git-commit-ai/
+eckra/
 ├── src/
 │   ├── index.js          # Ana CLI giriş noktası
 │   ├── helpers/
@@ -247,7 +247,7 @@ git-commit-ai/
 
 1. Fork yapın
 2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit yapın (`gitai commit` kullanın! 😉)
+3. Commit yapın (`eckra commit` kullanın! 😉)
 4. Push yapın (`git push origin feature/amazing-feature`)
 5. Pull Request açın
 

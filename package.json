@@ -1,11 +1,10 @@
 {
-  "name": "git-commit-ai",
+  "name": "eckra",
   "version": "1.0.0",
   "description": "AI-powered Git management CLI with LM Studio integration for smart commit messages",
   "main": "src/index.js",
   "bin": {
-    "gitai": "./src/index.js",
-    "git-ai": "./src/index.js"
+    "eckra": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
