@@ -1,0 +1,41 @@
+{
+  "name": "git-commit-ai",
+  "version": "1.0.0",
+  "description": "AI-powered Git management CLI with LM Studio integration for smart commit messages",
+  "main": "src/index.js",
+  "bin": {
+    "gitai": "./src/index.js",
+    "git-ai": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "git",
+    "cli",
+    "ai",
+    "commit",
+    "lm-studio",
+    "version-control"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
+    "simple-git": "^3.21.0",
+    "axios": "^1.6.2",
+    "boxen": "^5.1.2",
+    "cli-table3": "^0.6.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
