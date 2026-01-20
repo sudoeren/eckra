@@ -41,6 +41,9 @@ const {
   renameRemote,
   setRemoteUrl,
   getRepoStats,
+  squashCommits,
+  rewordLastCommit,
+  dropLastCommit,
 } = require("../helpers/git");
 
 const {
@@ -179,6 +182,7 @@ async function startApp() {
       { name: "  cherry-pick", value: "cherry" },
       { name: "  remote", value: "remote" },
       { name: "  stats", value: "stats" },
+      { name: "  rebase", value: "rebase" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -245,6 +249,9 @@ async function startApp() {
         break;
       case "stats":
         await viewStats();
+        break;
+      case "rebase":
+        await viewRebase();
         break;
       case "undo":
         await viewUndo();
@@ -1878,6 +1885,116 @@ async function viewStats() {
   }
 
   await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REBASE (Interactive)
+// ═══════════════════════════════════════════════════════════════
+
+async function viewRebase() {
+  clear();
+  header();
+  section("rebase");
+
+  const log = await getCommitLog(10);
+
+  if (log.all.length < 2) {
+    console.log(c.muted("  yeterli commit yok\n"));
+    await pause();
+    return;
+  }
+
+  console.log(c.muted("  son commitler:\n"));
+  log.all.slice(0, 5).forEach((commit, i) => {
+    console.log(`  ${c.primary(commit.hash.substring(0, 7))} ${truncate(commit.message, 40)}`);
+  });
+  console.log("");
+
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: c.muted("›"),
+      choices: [
+        { name: c.warning("  squash (birleştir)"), value: "squash" },
+        { name: c.error("  drop (sil)"), value: "drop" },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "squash") {
+    const { count } = await inquirer.prompt([
+      {
+        type: "number",
+        name: "count",
+        message: c.muted("kaç commit birleştirilsin?"),
+        default: 2,
+        validate: v => v >= 2 && v <= log.all.length,
+      },
+    ]);
+
+    console.log(c.muted("\n  birleştirilecek commitler:"));
+    log.all.slice(0, count).forEach(cmt => {
+      console.log(c.muted(`  - ${cmt.message}`));
+    });
+
+    const { message } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "message",
+        message: c.muted("yeni mesaj:"),
+        validate: v => v.length > 0,
+      },
+    ]);
+
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: c.warning("squash uygulansın mı?"),
+        default: false,
+      },
+    ]);
+
+    if (confirm) {
+      const spin = ora({ text: c.muted(" squashing..."), spinner: "dots" }).start();
+      try {
+        await squashCommits(count, message);
+        spin.succeed(c.success(" squash tamamlandı"));
+      } catch (err) {
+        spin.fail(c.error(" " + err.message));
+      }
+      await pause();
+    }
+  }
+
+  if (action === "drop") {
+    console.log(c.error("\n  ⚠ son commit silinecek:"));
+    console.log(c.white(`  ${log.all[0].message}\n`));
+
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: c.error("geri alınamaz! emin misin?"),
+        default: false,
+      },
+    ]);
+
+    if (confirm) {
+      const spin = ora({ text: c.muted(" dropping..."), spinner: "dots" }).start();
+      try {
+        await dropLastCommit();
+        spin.succeed(c.success(" commit silindi"));
+      } catch (err) {
+        spin.fail(c.error(" " + err.message));
+      }
+      await pause();
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

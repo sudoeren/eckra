@@ -380,6 +380,28 @@ async function getRepoStats() {
   };
 }
 
+/**
+ * Squash last N commits
+ */
+async function squashCommits(count, message) {
+  await git.reset(["--soft", `HEAD~${count}`]);
+  return await git.commit(message);
+}
+
+/**
+ * Reword a commit (only works for last commit)
+ */
+async function rewordLastCommit(message) {
+  return await git.commit(message, ["--amend", "-m", message]);
+}
+
+/**
+ * Drop last commit (hard reset)
+ */
+async function dropLastCommit() {
+  return await git.reset(["--hard", "HEAD~1"]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -428,4 +450,7 @@ module.exports = {
   renameRemote,
   setRemoteUrl,
   getRepoStats,
+  squashCommits,
+  rewordLastCommit,
+  dropLastCommit,
 };
