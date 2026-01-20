@@ -1030,7 +1030,7 @@ async function viewUndo() {
 
   try {
     const lastCommit = await getLastCommit();
-    
+
     if (!lastCommit) {
       console.log(c.muted("  commit yok\n"));
       await pause();
@@ -1038,8 +1038,15 @@ async function viewUndo() {
     }
 
     console.log(c.muted("  son commit:"));
-    console.log(c.white(`  ${lastCommit.hash.substring(0, 7)} `) + c.muted(lastCommit.message));
-    console.log(c.muted(`  ${lastCommit.author_name} · ${timeAgo(new Date(lastCommit.date))}\n`));
+    console.log(
+      c.white(`  ${lastCommit.hash.substring(0, 7)} `) +
+        c.muted(lastCommit.message),
+    );
+    console.log(
+      c.muted(
+        `  ${lastCommit.author_name} · ${timeAgo(new Date(lastCommit.date))}\n`,
+      ),
+    );
 
     const { confirm } = await inquirer.prompt([
       {
@@ -1074,7 +1081,7 @@ async function viewAmend() {
 
   try {
     const lastCommit = await getLastCommit();
-    
+
     if (!lastCommit) {
       console.log(c.muted("  commit yok\n"));
       await pause();
@@ -1115,10 +1122,10 @@ async function viewAmend() {
 
 function formatDiff(diff) {
   if (!diff) return c.muted("  değişiklik yok");
-  
+
   const lines = diff.split("\n");
   let output = [];
-  
+
   for (const line of lines) {
     if (line.startsWith("+") && !line.startsWith("+++")) {
       output.push(c.success("  " + line));
@@ -1132,7 +1139,7 @@ function formatDiff(diff) {
       output.push(c.white("  " + line));
     }
   }
-  
+
   return output.join("\n");
 }
 
@@ -1143,7 +1150,7 @@ async function viewDiff() {
 
   const status = await getGitStatus();
   const allFiles = [...status.staged, ...status.modified, ...status.not_added];
-  
+
   if (allFiles.length === 0) {
     console.log(c.muted("  değişiklik yok\n"));
     await pause();
@@ -1156,8 +1163,15 @@ async function viewDiff() {
       name: "type",
       message: c.muted("›"),
       choices: [
-        { name: c.success("  staged") + c.muted(` (${status.staged.length})`), value: "staged" },
-        { name: c.warning("  unstaged") + c.muted(` (${status.modified.length})`), value: "unstaged" },
+        {
+          name: c.success("  staged") + c.muted(` (${status.staged.length})`),
+          value: "staged",
+        },
+        {
+          name:
+            c.warning("  unstaged") + c.muted(` (${status.modified.length})`),
+          value: "unstaged",
+        },
         { name: "  dosya seç", value: "file" },
         { name: c.muted("  geri"), value: "back" },
       ],
@@ -1167,7 +1181,7 @@ async function viewDiff() {
   if (type === "back") return;
 
   let diff;
-  
+
   if (type === "staged") {
     diff = await getStagedDiff();
   } else if (type === "unstaged") {
@@ -1189,7 +1203,7 @@ async function viewDiff() {
   clear();
   header();
   section("diff");
-  
+
   console.log(formatDiff(diff));
   console.log("");
   await pause();
@@ -1208,7 +1222,7 @@ async function viewTag() {
     section("tag");
 
     const tags = await listTags();
-    
+
     if (tags.all.length > 0) {
       tags.all.forEach((t) => console.log(c.primary("  🏷  " + t)));
       console.log("");
@@ -1241,7 +1255,7 @@ async function viewTag() {
             validate: (v) => v.length > 0,
           },
         ]);
-        
+
         const { withMessage } = await inquirer.prompt([
           {
             type: "confirm",
@@ -1274,7 +1288,10 @@ async function viewTag() {
         break;
 
       case "push":
-        const spin = ora({ text: c.muted(" pushing tags..."), spinner: "dots" }).start();
+        const spin = ora({
+          text: c.muted(" pushing tags..."),
+          spinner: "dots",
+        }).start();
         try {
           await pushTags();
           spin.succeed(c.success(" tags pushed"));
@@ -1333,13 +1350,16 @@ async function viewGitignore() {
 
   const gitignorePath = path.join(process.cwd(), ".gitignore");
   let currentContent = "";
-  
+
   if (fs.existsSync(gitignorePath)) {
     currentContent = fs.readFileSync(gitignorePath, "utf-8");
-    const lines = currentContent.split("\n").filter(l => l.trim() && !l.startsWith("#"));
+    const lines = currentContent
+      .split("\n")
+      .filter((l) => l.trim() && !l.startsWith("#"));
     console.log(c.muted("  mevcut kurallar:"));
-    lines.slice(0, 10).forEach(l => console.log(c.white("  " + l)));
-    if (lines.length > 10) console.log(c.muted(`  ... +${lines.length - 10} daha`));
+    lines.slice(0, 10).forEach((l) => console.log(c.white("  " + l)));
+    if (lines.length > 10)
+      console.log(c.muted(`  ... +${lines.length - 10} daha`));
     console.log("");
   } else {
     console.log(c.muted("  .gitignore yok\n"));
@@ -1377,8 +1397,8 @@ async function viewGitignore() {
     ]);
 
     const patterns = GITIGNORE_TEMPLATES[template];
-    const newPatterns = patterns.filter(p => !currentContent.includes(p));
-    
+    const newPatterns = patterns.filter((p) => !currentContent.includes(p));
+
     if (newPatterns.length === 0) {
       console.log(c.muted("\n  tüm kurallar zaten mevcut"));
       await pause();
@@ -1397,7 +1417,7 @@ async function viewGitignore() {
         type: "input",
         name: "pattern",
         message: c.muted("pattern:"),
-        validate: v => v.length > 0,
+        validate: (v) => v.length > 0,
       },
     ]);
 
@@ -1421,7 +1441,7 @@ async function viewGitignore() {
         type: "checkbox",
         name: "files",
         message: c.muted("ignore et:"),
-        choices: untracked.map(f => ({ name: c.muted("  " + f), value: f })),
+        choices: untracked.map((f) => ({ name: c.muted("  " + f), value: f })),
         pageSize: Math.max(getHeight() - 8, 10),
       },
     ]);
@@ -1453,22 +1473,22 @@ async function viewQuickActions() {
       name: "action",
       message: c.muted("›"),
       choices: [
-        { 
-          name: c.success("  ⚡ stage + commit + push"), 
+        {
+          name: c.success("  ⚡ stage + commit + push"),
           value: "all",
           disabled: !hasChanges && !hasStaged,
         },
-        { 
-          name: "  📦 stage all + commit", 
+        {
+          name: "  📦 stage all + commit",
           value: "stage-commit",
           disabled: !hasChanges && !hasStaged,
         },
-        { 
-          name: "  🔄 pull + push", 
+        {
+          name: "  🔄 pull + push",
           value: "sync",
         },
-        { 
-          name: "  🧹 discard all changes", 
+        {
+          name: "  🧹 discard all changes",
           value: "discard",
           disabled: !hasChanges,
         },
@@ -1483,7 +1503,10 @@ async function viewQuickActions() {
   if (action === "all") {
     // Stage all
     if (hasChanges) {
-      const spin1 = ora({ text: c.muted(" staging..."), spinner: "dots" }).start();
+      const spin1 = ora({
+        text: c.muted(" staging..."),
+        spinner: "dots",
+      }).start();
       await stageAll();
       spin1.succeed(c.success(" staged"));
     }
@@ -1497,9 +1520,13 @@ async function viewQuickActions() {
       try {
         const diff = await getStagedDiff();
         const newStatus = await getGitStatus();
-        const suggestions = await generateCommitSuggestions(diff, newStatus.staged, 1);
+        const suggestions = await generateCommitSuggestions(
+          diff,
+          newStatus.staged,
+          1,
+        );
         spin2.stop();
-        
+
         const { useAi } = await inquirer.prompt([
           {
             type: "confirm",
@@ -1508,7 +1535,7 @@ async function viewQuickActions() {
             default: true,
           },
         ]);
-        
+
         message = useAi ? suggestions[0] : null;
       } catch {
         spin2.fail(c.muted(" ai hatası"));
@@ -1521,19 +1548,25 @@ async function viewQuickActions() {
           type: "input",
           name: "custom",
           message: c.muted("mesaj:"),
-          validate: v => v.length > 0,
+          validate: (v) => v.length > 0,
         },
       ]);
       message = custom;
     }
 
     // Commit
-    const spin3 = ora({ text: c.muted(" committing..."), spinner: "dots" }).start();
+    const spin3 = ora({
+      text: c.muted(" committing..."),
+      spinner: "dots",
+    }).start();
     await createCommit(message);
     spin3.succeed(c.success(" committed"));
 
     // Push
-    const spin4 = ora({ text: c.muted(" pushing..."), spinner: "dots" }).start();
+    const spin4 = ora({
+      text: c.muted(" pushing..."),
+      spinner: "dots",
+    }).start();
     try {
       await pushToRemote();
       spin4.succeed(c.success(" pushed ✓"));
@@ -1551,12 +1584,18 @@ async function viewQuickActions() {
   }
 
   if (action === "sync") {
-    const spin1 = ora({ text: c.muted(" pulling..."), spinner: "dots" }).start();
+    const spin1 = ora({
+      text: c.muted(" pulling..."),
+      spinner: "dots",
+    }).start();
     try {
       await pullFromRemote();
       spin1.succeed(c.success(" pulled"));
-      
-      const spin2 = ora({ text: c.muted(" pushing..."), spinner: "dots" }).start();
+
+      const spin2 = ora({
+        text: c.muted(" pushing..."),
+        spinner: "dots",
+      }).start();
       await pushToRemote();
       spin2.succeed(c.success(" pushed ✓"));
     } catch (err) {
@@ -1615,7 +1654,7 @@ async function viewSearch() {
       type: "input",
       name: "query",
       message: c.muted(type === "message" ? "aranacak:" : "yazar:"),
-      validate: v => v.length > 0,
+      validate: (v) => v.length > 0,
     },
   ]);
 
@@ -1638,7 +1677,7 @@ async function viewSearch() {
       console.log(c.muted("  sonuç bulunamadı\n"));
     } else {
       console.log(c.muted(`  ${results.all.length} sonuç\n`));
-      
+
       results.all.forEach((commit) => {
         const hash = c.primary(commit.hash.substring(0, 7));
         const msg = truncate(commit.message, getWidth() - 20);
@@ -1666,7 +1705,9 @@ async function viewCherryPick() {
 
   const branches = await getBranches();
   const current = branches.current;
-  const others = branches.all.filter(b => b !== current && !b.startsWith("remotes/"));
+  const others = branches.all.filter(
+    (b) => b !== current && !b.startsWith("remotes/"),
+  );
 
   if (others.length === 0) {
     console.log(c.muted("  başka branch yok\n"));
@@ -1703,7 +1744,7 @@ async function viewCherryPick() {
         name: "commit",
         message: c.muted("commit seç:"),
         choices: [
-          ...commits.all.map(cmt => ({
+          ...commits.all.map((cmt) => ({
             name: `  ${c.primary(cmt.hash.substring(0, 7))} ${truncate(cmt.message, 40)}`,
             value: cmt.hash,
           })),
@@ -1715,7 +1756,10 @@ async function viewCherryPick() {
 
     if (commit === "back") return;
 
-    const pickSpin = ora({ text: c.muted(" cherry-picking..."), spinner: "dots" }).start();
+    const pickSpin = ora({
+      text: c.muted(" cherry-picking..."),
+      spinner: "dots",
+    }).start();
     await cherryPick(commit);
     pickSpin.succeed(c.success(" cherry-picked ✓"));
   } catch (err) {
@@ -1742,7 +1786,7 @@ async function viewRemote() {
     const remotes = await getRemotes();
 
     if (remotes.length > 0) {
-      remotes.forEach(r => {
+      remotes.forEach((r) => {
         console.log(c.primary(`  ${r.name}`));
         console.log(c.muted(`    fetch: ${r.refs.fetch || "-"}`));
         console.log(c.muted(`    push:  ${r.refs.push || "-"}\n`));
@@ -1774,7 +1818,7 @@ async function viewRemote() {
             name: "name",
             message: c.muted("isim:"),
             default: "origin",
-            validate: v => v.length > 0,
+            validate: (v) => v.length > 0,
           },
         ]);
         const { url } = await inquirer.prompt([
@@ -1782,7 +1826,7 @@ async function viewRemote() {
             type: "input",
             name: "url",
             message: c.muted("url:"),
-            validate: v => v.length > 0,
+            validate: (v) => v.length > 0,
           },
         ]);
         try {
@@ -1805,7 +1849,7 @@ async function viewRemote() {
               type: "list",
               name: "remoteName",
               message: c.muted("remote:"),
-              choices: remotes.map(r => r.name),
+              choices: remotes.map((r) => r.name),
             },
           ]);
           const { newUrl } = await inquirer.prompt([
@@ -1813,7 +1857,7 @@ async function viewRemote() {
               type: "input",
               name: "newUrl",
               message: c.muted("yeni url:"),
-              validate: v => v.length > 0,
+              validate: (v) => v.length > 0,
             },
           ]);
           try {
@@ -1837,7 +1881,7 @@ async function viewRemote() {
               type: "list",
               name: "toRemove",
               message: c.muted("sil:"),
-              choices: remotes.map(r => r.name),
+              choices: remotes.map((r) => r.name),
             },
           ]);
           const { confirm } = await inquirer.prompt([
@@ -1872,7 +1916,10 @@ async function viewStats() {
   header();
   section("stats");
 
-  const spin = ora({ text: c.muted(" hesaplanıyor..."), spinner: "dots" }).start();
+  const spin = ora({
+    text: c.muted(" hesaplanıyor..."),
+    spinner: "dots",
+  }).start();
 
   try {
     const stats = await getRepoStats();
@@ -1886,8 +1933,12 @@ async function viewStats() {
 
     if (stats.firstCommit) {
       console.log(c.muted("  tarih\n"));
-      console.log(`  ilk: ${c.white(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR"))}`);
-      console.log(`  son: ${c.white(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR"))}\n`);
+      console.log(
+        `  ilk: ${c.white(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR"))}`,
+      );
+      console.log(
+        `  son: ${c.white(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR"))}\n`,
+      );
     }
 
     const authors = Object.entries(stats.authors)
@@ -1897,7 +1948,9 @@ async function viewStats() {
     if (authors.length > 0) {
       console.log(c.muted("  katkıda bulunanlar\n"));
       authors.forEach(([name, count]) => {
-        const bar = "█".repeat(Math.min(Math.round(count / stats.totalCommits * 20), 20));
+        const bar = "█".repeat(
+          Math.min(Math.round((count / stats.totalCommits) * 20), 20),
+        );
         console.log(`  ${c.white(name.padEnd(20))} ${c.primary(bar)} ${count}`);
       });
       console.log("");
@@ -1928,7 +1981,9 @@ async function viewRebase() {
 
   console.log(c.muted("  son commitler:\n"));
   log.all.slice(0, 5).forEach((commit, i) => {
-    console.log(`  ${c.primary(commit.hash.substring(0, 7))} ${truncate(commit.message, 40)}`);
+    console.log(
+      `  ${c.primary(commit.hash.substring(0, 7))} ${truncate(commit.message, 40)}`,
+    );
   });
   console.log("");
 
@@ -1954,12 +2009,12 @@ async function viewRebase() {
         name: "count",
         message: c.muted("kaç commit birleştirilsin?"),
         default: 2,
-        validate: v => v >= 2 && v <= log.all.length,
+        validate: (v) => v >= 2 && v <= log.all.length,
       },
     ]);
 
     console.log(c.muted("\n  birleştirilecek commitler:"));
-    log.all.slice(0, count).forEach(cmt => {
+    log.all.slice(0, count).forEach((cmt) => {
       console.log(c.muted(`  - ${cmt.message}`));
     });
 
@@ -1968,7 +2023,7 @@ async function viewRebase() {
         type: "input",
         name: "message",
         message: c.muted("yeni mesaj:"),
-        validate: v => v.length > 0,
+        validate: (v) => v.length > 0,
       },
     ]);
 
@@ -1982,7 +2037,10 @@ async function viewRebase() {
     ]);
 
     if (confirm) {
-      const spin = ora({ text: c.muted(" squashing..."), spinner: "dots" }).start();
+      const spin = ora({
+        text: c.muted(" squashing..."),
+        spinner: "dots",
+      }).start();
       try {
         await squashCommits(count, message);
         spin.succeed(c.success(" squash tamamlandı"));
@@ -2007,7 +2065,10 @@ async function viewRebase() {
     ]);
 
     if (confirm) {
-      const spin = ora({ text: c.muted(" dropping..."), spinner: "dots" }).start();
+      const spin = ora({
+        text: c.muted(" dropping..."),
+        spinner: "dots",
+      }).start();
       try {
         await dropLastCommit();
         spin.succeed(c.success(" commit silindi"));
@@ -2037,7 +2098,7 @@ async function viewConflict() {
   }
 
   console.log(c.error(`  ${conflicts.length} dosyada çakışma:\n`));
-  conflicts.forEach(f => console.log(c.warning("  ⚠ " + f)));
+  conflicts.forEach((f) => console.log(c.warning("  ⚠ " + f)));
   console.log("");
 
   const { action } = await inquirer.prompt([
@@ -2074,7 +2135,10 @@ async function viewConflict() {
         message: c.muted("çözüm:"),
         choices: [
           { name: c.success("  ours (bizim versiyonu kullan)"), value: "ours" },
-          { name: c.primary("  theirs (onların versiyonunu kullan)"), value: "theirs" },
+          {
+            name: c.primary("  theirs (onların versiyonunu kullan)"),
+            value: "theirs",
+          },
         ],
       },
     ]);
@@ -2150,8 +2214,11 @@ async function viewBlame() {
   header();
   section("blame");
 
-  const spin = ora({ text: c.muted(" dosyalar yükleniyor..."), spinner: "dots" }).start();
-  
+  const spin = ora({
+    text: c.muted(" dosyalar yükleniyor..."),
+    spinner: "dots",
+  }).start();
+
   try {
     const files = await getTrackedFiles();
     spin.stop();
@@ -2167,14 +2234,22 @@ async function viewBlame() {
         type: "list",
         name: "file",
         message: c.muted("dosya seç:"),
-        choices: [...files.slice(0, 50), ...(files.length > 50 ? [c.muted(`... +${files.length - 50} dosya`)] : [])],
+        choices: [
+          ...files.slice(0, 50),
+          ...(files.length > 50
+            ? [c.muted(`... +${files.length - 50} dosya`)]
+            : []),
+        ],
         pageSize: Math.max(getHeight() - 8, 15),
       },
     ]);
 
     if (file.startsWith("...")) return;
 
-    const blameSpin = ora({ text: c.muted(" blame yükleniyor..."), spinner: "dots" }).start();
+    const blameSpin = ora({
+      text: c.muted(" blame yükleniyor..."),
+      spinner: "dots",
+    }).start();
     const blame = await getBlame(file);
     blameSpin.stop();
 
@@ -2183,7 +2258,7 @@ async function viewBlame() {
     section(`blame: ${file}`);
 
     const lineCount = Math.min(blame.length, getHeight() - 10);
-    
+
     blame.slice(0, lineCount).forEach((b, i) => {
       const lineNum = c.muted(String(i + 1).padStart(4));
       const hash = c.primary(b.hash.substring(0, 7));
@@ -2220,7 +2295,7 @@ async function viewWorktree() {
     const worktrees = await listWorktrees();
 
     if (worktrees.length > 0) {
-      worktrees.forEach(wt => {
+      worktrees.forEach((wt) => {
         const branchName = wt.branch || c.muted("(detached)");
         console.log(c.primary(`  📁 ${wt.path}`));
         console.log(c.muted(`     ${branchName}\n`));
@@ -2244,7 +2319,7 @@ async function viewWorktree() {
     switch (action) {
       case "add":
         const branches = await getBranches();
-        const available = branches.all.filter(b => !b.startsWith("remotes/"));
+        const available = branches.all.filter((b) => !b.startsWith("remotes/"));
 
         const { type } = await inquirer.prompt([
           {
@@ -2263,7 +2338,7 @@ async function viewWorktree() {
             type: "input",
             name: "worktreePath",
             message: c.muted("dizin yolu:"),
-            validate: v => v.length > 0,
+            validate: (v) => v.length > 0,
           },
         ]);
 
@@ -2284,7 +2359,7 @@ async function viewWorktree() {
                 type: "input",
                 name: "newBranch",
                 message: c.muted("yeni branch adı:"),
-                validate: v => v.length > 0 && !v.includes(" "),
+                validate: (v) => v.length > 0 && !v.includes(" "),
               },
             ]);
             await addWorktreeNewBranch(worktreePath, newBranch);
@@ -2308,7 +2383,7 @@ async function viewWorktree() {
               type: "list",
               name: "toRemove",
               message: c.muted("sil:"),
-              choices: removable.map(wt => ({
+              choices: removable.map((wt) => ({
                 name: `  ${wt.path} (${wt.branch || "detached"})`,
                 value: wt.path,
               })),

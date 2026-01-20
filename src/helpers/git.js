@@ -357,10 +357,10 @@ async function getRepoStats() {
   const log = await git.log(["--all"]);
   const branches = await git.branch(["-a"]);
   const tags = await git.tags();
-  
+
   // Count commits by author
   const authorStats = {};
-  log.all.forEach(commit => {
+  log.all.forEach((commit) => {
     const author = commit.author_name;
     authorStats[author] = (authorStats[author] || 0) + 1;
   });
@@ -371,8 +371,8 @@ async function getRepoStats() {
 
   return {
     totalCommits: log.all.length,
-    branches: branches.all.filter(b => !b.startsWith("remotes/")).length,
-    remoteBranches: branches.all.filter(b => b.startsWith("remotes/")).length,
+    branches: branches.all.filter((b) => !b.startsWith("remotes/")).length,
+    remoteBranches: branches.all.filter((b) => b.startsWith("remotes/")).length,
     tags: tags.all.length,
     authors: authorStats,
     firstCommit,
@@ -467,7 +467,7 @@ async function getBlame(file) {
  */
 async function getTrackedFiles() {
   const result = await git.raw(["ls-files"]);
-  return result.split("\n").filter(f => f.length > 0);
+  return result.split("\n").filter((f) => f.length > 0);
 }
 
 /**
@@ -478,7 +478,7 @@ async function listWorktrees() {
   const worktrees = [];
   let current = {};
 
-  result.split("\n").forEach(line => {
+  result.split("\n").forEach((line) => {
     if (line.startsWith("worktree ")) {
       if (current.path) worktrees.push(current);
       current = { path: line.substring(9) };
