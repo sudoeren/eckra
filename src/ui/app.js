@@ -25,6 +25,8 @@ const {
   undoLastCommit,
   getLastCommit,
   amendCommit,
+  getUnstagedDiff,
+  getFileDiff,
 } = require("../helpers/git");
 
 const {
@@ -155,6 +157,7 @@ async function startApp() {
       { name: "  branch", value: "branch" },
       { name: "  log", value: "log" },
       { name: "  stash", value: "stash" },
+      { name: "  diff", value: "diff" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -197,6 +200,9 @@ async function startApp() {
         break;
       case "stash":
         await viewStash();
+        break;
+      case "diff":
+        await viewDiff();
         break;
       case "undo":
         await viewUndo();
@@ -1030,6 +1036,92 @@ async function viewAmend() {
     console.log(c.error("  " + err.message));
     await pause();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DIFF
+// ═══════════════════════════════════════════════════════════════
+
+function formatDiff(diff) {
+  if (!diff) return c.muted("  değişiklik yok");
+  
+  const lines = diff.split("\n");
+  let output = [];
+  
+  for (const line of lines) {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      output.push(c.success("  " + line));
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      output.push(c.error("  " + line));
+    } else if (line.startsWith("@@")) {
+      output.push(c.primary("  " + line));
+    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
+      output.push(c.muted("  " + line));
+    } else {
+      output.push(c.white("  " + line));
+    }
+  }
+  
+  return output.join("\n");
+}
+
+async function viewDiff() {
+  clear();
+  header();
+  section("diff");
+
+  const status = await getGitStatus();
+  const allFiles = [...status.staged, ...status.modified, ...status.not_added];
+  
+  if (allFiles.length === 0) {
+    console.log(c.muted("  değişiklik yok\n"));
+    await pause();
+    return;
+  }
+
+  const { type } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "type",
+      message: c.muted("›"),
+      choices: [
+        { name: c.success("  staged") + c.muted(` (${status.staged.length})`), value: "staged" },
+        { name: c.warning("  unstaged") + c.muted(` (${status.modified.length})`), value: "unstaged" },
+        { name: "  dosya seç", value: "file" },
+        { name: c.muted("  geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (type === "back") return;
+
+  let diff;
+  
+  if (type === "staged") {
+    diff = await getStagedDiff();
+  } else if (type === "unstaged") {
+    diff = await getUnstagedDiff();
+  } else {
+    const { file } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "file",
+        message: c.muted("dosya:"),
+        choices: allFiles,
+        pageSize: Math.max(getHeight() - 8, 10),
+      },
+    ]);
+    const isStaged = status.staged.includes(file);
+    diff = await getFileDiff(file, isStaged);
+  }
+
+  clear();
+  header();
+  section("diff");
+  
+  console.log(formatDiff(diff));
+  console.log("");
+  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
