@@ -386,19 +386,21 @@ async function viewCommit() {
       );
       spin.stop();
 
+      console.log(c.muted("  öneriler:\n"));
+
       const { choice } = await inquirer.prompt([
         {
           type: "list",
           name: "choice",
-          message: c.muted("›"),
+          message: c.muted("seç"),
           choices: [
             ...suggestions.map((s, i) => ({
-              name: `  ${i + 1}. ${s}`,
+              name: c.white(`  ${s}`),
               value: s,
             })),
-            { type: "separator", line: c.muted("  " + line()) },
-            { name: c.muted("  yaz"), value: "_custom" },
-            { name: c.muted("  iptal"), value: "_cancel" },
+            { type: "separator", line: " " },
+            { name: c.primary("  ✎ kendim yazacağım"), value: "_custom" },
+            { name: c.muted("  ✗ iptal"), value: "_cancel" },
           ],
         },
       ]);

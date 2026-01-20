@@ -146,12 +146,34 @@ ${count} adet farklı commit mesajı yaz, her birini yeni satırda. Sadece mesaj
     );
 
     if (response.data && response.data.choices && response.data.choices[0]) {
-      const content = response.data.choices[0].message.content.trim();
+      let content = response.data.choices[0].message.content.trim();
+
+      // Backtick bloklarını temizle
+      content = content.replace(/```[\s\S]*?```/g, "");
+      content = content.replace(/`/g, "");
+
       const suggestions = content
         .split("\n")
-        .map((line) => line.replace(/^\d+[\.\)\-]\s*/, "").trim())
-        .filter((line) => line.length > 0)
+        .map((line) => {
+          let cleaned = line
+            .replace(/^\d+[\.\)\-\:]\s*/, "") // Numara kaldır
+            .replace(/^[\-\*]\s*/, "") // Liste işareti kaldır
+            .replace(/^["']|["']$/g, "") // Tırnak kaldır
+            .trim();
+          return cleaned;
+        })
+        .filter((line) => line.length > 5 && !line.startsWith("```"))
         .slice(0, count);
+
+      // Eğer boşsa varsayılan öneriler
+      if (suggestions.length === 0) {
+        return [
+          "chore: update files",
+          "refactor: improve code",
+          "feat: add changes",
+        ];
+      }
+
       return suggestions;
     }
 
