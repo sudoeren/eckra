@@ -50,6 +50,10 @@ const {
   abortMerge,
   getBlame,
   getTrackedFiles,
+  listWorktrees,
+  addWorktree,
+  addWorktreeNewBranch,
+  removeWorktree,
 } = require("../helpers/git");
 
 const {
@@ -191,6 +195,7 @@ async function startApp() {
       { name: "  rebase", value: "rebase" },
       { name: "  conflict", value: "conflict" },
       { name: "  blame", value: "blame" },
+      { name: "  worktree", value: "worktree" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -266,6 +271,9 @@ async function startApp() {
         break;
       case "blame":
         await viewBlame();
+        break;
+      case "worktree":
+        await viewWorktree();
         break;
       case "undo":
         await viewUndo();
@@ -2195,6 +2203,145 @@ async function viewBlame() {
   }
 
   await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKTREE
+// ═══════════════════════════════════════════════════════════════
+
+async function viewWorktree() {
+  let inMenu = true;
+
+  while (inMenu) {
+    clear();
+    header();
+    section("worktree");
+
+    const worktrees = await listWorktrees();
+
+    if (worktrees.length > 0) {
+      worktrees.forEach(wt => {
+        const branchName = wt.branch || c.muted("(detached)");
+        console.log(c.primary(`  📁 ${wt.path}`));
+        console.log(c.muted(`     ${branchName}\n`));
+      });
+    }
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: c.muted("›"),
+        choices: [
+          { name: c.success("  yeni worktree"), value: "add" },
+          { name: c.error("  sil"), value: "remove" },
+          { type: "separator", line: " " },
+          { name: c.muted("  geri"), value: "back" },
+        ],
+      },
+    ]);
+
+    switch (action) {
+      case "add":
+        const branches = await getBranches();
+        const available = branches.all.filter(b => !b.startsWith("remotes/"));
+
+        const { type } = await inquirer.prompt([
+          {
+            type: "list",
+            name: "type",
+            message: c.muted("›"),
+            choices: [
+              { name: "  mevcut branch", value: "existing" },
+              { name: "  yeni branch oluştur", value: "new" },
+            ],
+          },
+        ]);
+
+        const { worktreePath } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "worktreePath",
+            message: c.muted("dizin yolu:"),
+            validate: v => v.length > 0,
+          },
+        ]);
+
+        try {
+          if (type === "existing") {
+            const { branch } = await inquirer.prompt([
+              {
+                type: "list",
+                name: "branch",
+                message: c.muted("branch:"),
+                choices: available,
+              },
+            ]);
+            await addWorktree(worktreePath, branch);
+          } else {
+            const { newBranch } = await inquirer.prompt([
+              {
+                type: "input",
+                name: "newBranch",
+                message: c.muted("yeni branch adı:"),
+                validate: v => v.length > 0 && !v.includes(" "),
+              },
+            ]);
+            await addWorktreeNewBranch(worktreePath, newBranch);
+          }
+          console.log(c.success("\n  ✓ worktree oluşturuldu"));
+          await sleep(600);
+        } catch (err) {
+          console.log(c.error("  " + err.message));
+          await pause();
+        }
+        break;
+
+      case "remove":
+        const removable = worktrees.filter((_, i) => i > 0); // İlk worktree ana repo
+        if (removable.length === 0) {
+          console.log(c.muted("  silinecek worktree yok"));
+          await pause();
+        } else {
+          const { toRemove } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "toRemove",
+              message: c.muted("sil:"),
+              choices: removable.map(wt => ({
+                name: `  ${wt.path} (${wt.branch || "detached"})`,
+                value: wt.path,
+              })),
+            },
+          ]);
+
+          const { confirm } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "confirm",
+              message: c.error("worktree silinsin mi?"),
+              default: false,
+            },
+          ]);
+
+          if (confirm) {
+            try {
+              await removeWorktree(toRemove);
+              console.log(c.success("\n  ✓ silindi"));
+              await sleep(600);
+            } catch (err) {
+              console.log(c.error("  " + err.message));
+              await pause();
+            }
+          }
+        }
+        break;
+
+      case "back":
+        inMenu = false;
+        break;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

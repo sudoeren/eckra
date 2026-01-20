@@ -470,6 +470,52 @@ async function getTrackedFiles() {
   return result.split("\n").filter(f => f.length > 0);
 }
 
+/**
+ * List worktrees
+ */
+async function listWorktrees() {
+  const result = await git.raw(["worktree", "list", "--porcelain"]);
+  const worktrees = [];
+  let current = {};
+
+  result.split("\n").forEach(line => {
+    if (line.startsWith("worktree ")) {
+      if (current.path) worktrees.push(current);
+      current = { path: line.substring(9) };
+    } else if (line.startsWith("HEAD ")) {
+      current.head = line.substring(5);
+    } else if (line.startsWith("branch ")) {
+      current.branch = line.substring(7).replace("refs/heads/", "");
+    } else if (line === "bare") {
+      current.bare = true;
+    }
+  });
+
+  if (current.path) worktrees.push(current);
+  return worktrees;
+}
+
+/**
+ * Add a worktree
+ */
+async function addWorktree(path, branch) {
+  return await git.raw(["worktree", "add", path, branch]);
+}
+
+/**
+ * Add a worktree with new branch
+ */
+async function addWorktreeNewBranch(path, newBranch) {
+  return await git.raw(["worktree", "add", "-b", newBranch, path]);
+}
+
+/**
+ * Remove a worktree
+ */
+async function removeWorktree(path) {
+  return await git.raw(["worktree", "remove", path]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -527,4 +573,8 @@ module.exports = {
   abortMerge,
   getBlame,
   getTrackedFiles,
+  listWorktrees,
+  addWorktree,
+  addWorktreeNewBranch,
+  removeWorktree,
 };
