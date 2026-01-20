@@ -34,15 +34,12 @@ const {
   deleteTag,
   pushTags,
   searchCommits,
-  searchCommitsByAuthor,
   cherryPick,
   getOtherBranchCommits,
   removeRemote,
-  renameRemote,
   setRemoteUrl,
   getRepoStats,
   squashCommits,
-  rewordLastCommit,
   dropLastCommit,
   getConflictDetails,
   acceptOurs,
@@ -64,82 +61,123 @@ const {
 const { getConfig, saveConfig } = require("../helpers/config");
 
 // ═══════════════════════════════════════════════════════════════
-// TERMINAL SIZE & UTILS
+// STYLES
 // ═══════════════════════════════════════════════════════════════
 
-function getWidth() {
-  return process.stdout.columns || 80;
-}
-
-function getHeight() {
-  return process.stdout.rows || 24;
-}
-
-function line(char = "─") {
-  return char.repeat(Math.min(getWidth() - 4, 60));
-}
-
-function truncate(str, len) {
-  if (!str) return "";
-  return str.length > len ? str.substring(0, len - 1) + "…" : str.padEnd(len);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// COLORS (Minimal - sadece chalk built-in)
-// ═══════════════════════════════════════════════════════════════
-
-const c = {
-  title: chalk.bold.white,
-  primary: chalk.cyan,
-  success: chalk.green,
-  warning: chalk.yellow,
-  error: chalk.red,
-  muted: chalk.gray,
+const s = {
+  brand: chalk.hex("#00D9FF").bold,
+  primary: chalk.hex("#00D9FF"),
+  success: chalk.hex("#00FF88"),
+  warning: chalk.hex("#FFB800"),
+  error: chalk.hex("#FF4757"),
+  muted: chalk.hex("#6B7280"),
+  text: chalk.hex("#E5E7EB"),
+  dim: chalk.hex("#4B5563"),
   white: chalk.white,
-  dim: chalk.dim,
+  bold: chalk.bold,
+};
+
+const icons = {
+  staged: "●",
+  modified: "◐",
+  untracked: "○",
+  branch: "",
+  commit: "◆",
+  push: "↑",
+  pull: "↓",
+  check: "✓",
+  cross: "✗",
+  arrow: "→",
+  dot: "·",
+  star: "★",
+  folder: "📁",
+  tag: "🏷",
 };
 
 // ═══════════════════════════════════════════════════════════════
-// UI COMPONENTS
+// UTILS
 // ═══════════════════════════════════════════════════════════════
 
-function clear() {
-  console.clear();
+const clear = () => console.clear();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const cols = () => process.stdout.columns || 80;
+const rows = () => process.stdout.rows || 24;
+
+function truncate(str, max) {
+  if (!str) return "";
+  return str.length > max ? str.slice(0, max - 1) + "…" : str;
 }
+
+function timeAgo(date) {
+  const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
+  if (seconds < 60) return "şimdi";
+  if (seconds < 3600) return Math.floor(seconds / 60) + " dk";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + " saat";
+  if (seconds < 604800) return Math.floor(seconds / 86400) + " gün";
+  return Math.floor(seconds / 604800) + " hafta";
+}
+
+function box(content, title = "") {
+  const width = Math.min(cols() - 4, 70);
+  const top = title
+    ? s.dim("╭─") +
+      s.muted(` ${title} `) +
+      s.dim("─".repeat(width - title.length - 5) + "╮")
+    : s.dim("╭" + "─".repeat(width - 2) + "╮");
+  const bottom = s.dim("╰" + "─".repeat(width - 2) + "╯");
+  const lines = content.split("\n").map((line) => {
+    const padded = line.padEnd(width - 4);
+    return s.dim("│") + " " + padded + " " + s.dim("│");
+  });
+  return [top, ...lines, bottom].join("\n");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HEADER & STATUS
+// ═══════════════════════════════════════════════════════════════
 
 function header() {
-  const banner = `
-  ███████╗ ██████╗██╗  ██╗██████╗  █████╗ 
-  ██╔════╝██╔════╝██║ ██╔╝██╔══██╗██╔══██╗
-  █████╗  ██║     █████╔╝ ██████╔╝███████║
-  ██╔══╝  ██║     ██╔═██╗ ██╔══██╗██╔══██║
-  ███████╗╚██████╗██║  ██╗██║  ██║██║  ██║
-  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝`;
-  console.log(c.white(banner));
-  console.log("");
+  console.log();
+  console.log(s.brand("  ╔═╗╔═╗╦╔═╦═╗╔═╗"));
+  console.log(s.brand("  ║╣ ║  ╠╩╗╠╦╝╠═╣"));
+  console.log(s.brand("  ╚═╝╚═╝╩ ╩╩╚═╩ ╩"));
+  console.log();
 }
 
-async function statusBar() {
-  const status = await getGitStatus();
+async function getStatusInfo() {
+  try {
+    const status = await getGitStatus();
+    const branch = status.current || "master";
+    const staged = status.staged.length;
+    const modified = status.modified.length;
+    const untracked = status.not_added.length;
+    const conflicts = status.conflicted.length;
+    const clean = staged === 0 && modified === 0 && untracked === 0;
 
-  const branch = status.current || "master";
-  const staged = status.staged.length;
-  const modified = status.modified.length;
-  const untracked = status.not_added.length;
-
-  const branchStr = c.primary(branch);
-  const statsStr = `${c.success("+" + staged)} ${c.warning("~" + modified)} ${c.muted("?" + untracked)}`;
-
-  console.log("");
-  console.log(`  ${branchStr}  ${c.muted("|")}  ${statsStr}`);
-  console.log("");
+    return { branch, staged, modified, untracked, conflicts, clean, status };
+  } catch {
+    return null;
+  }
 }
 
-function section(title) {
-  console.log(c.muted("\n  " + title.toLowerCase()));
-  console.log(
-    c.muted("  " + "─".repeat(Math.min(title.length + 6, 20))) + "\n",
-  );
+function statusLine(info) {
+  if (!info) return s.error("  ✗ git repository değil\n");
+
+  const parts = [s.primary(`${icons.branch} ${info.branch}`)];
+
+  if (info.conflicts > 0) {
+    parts.push(s.error(`${info.conflicts} conflict`));
+  } else if (info.clean) {
+    parts.push(s.success("✓ clean"));
+  } else {
+    if (info.staged > 0) parts.push(s.success(`${icons.staged}${info.staged}`));
+    if (info.modified > 0)
+      parts.push(s.warning(`${icons.modified}${info.modified}`));
+    if (info.untracked > 0)
+      parts.push(s.muted(`${icons.untracked}${info.untracked}`));
+  }
+
+  return "  " + parts.join(s.dim(" │ ")) + "\n";
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -152,273 +190,214 @@ async function startApp() {
   while (running) {
     clear();
     header();
-    await statusBar();
 
-    const status = await getGitStatus();
-    const hasChanges = status.modified.length + status.not_added.length > 0;
-    const hasStaged = status.staged.length > 0;
+    const info = await getStatusInfo();
+    console.log(statusLine(info));
 
-    const choices = [
-      { name: "  durum", value: "status" },
-      { type: "separator", line: c.muted("  " + line()) },
-      {
-        name: hasChanges
-          ? c.white(`  stage`) +
-            c.muted(` (${status.modified.length + status.not_added.length})`)
-          : c.dim("  stage"),
-        value: "stage",
-        disabled: !hasChanges,
-      },
-      {
+    if (!info) {
+      console.log(s.muted("  Git repository'de değilsiniz."));
+      console.log(
+        s.muted("  Bir git projesine gidin veya 'git init' çalıştırın.\n"),
+      );
+      await inquirer.prompt([
+        { type: "input", name: "x", message: s.muted("Enter'a bas...") },
+      ]);
+      return;
+    }
+
+    // Akıllı menü - duruma göre seçenekler
+    const choices = [];
+
+    // Conflict varsa öncelik
+    if (info.conflicts > 0) {
+      choices.push({ name: s.error("  ⚠ Conflict Çöz"), value: "conflict" });
+      choices.push({
+        type: "separator",
+        line: s.dim("  ─────────────────────"),
+      });
+    }
+
+    // Ana işlemler
+    if (info.modified > 0 || info.untracked > 0) {
+      choices.push({
         name:
-          hasStaged || hasChanges
-            ? c.white(`  commit`) +
-              (hasStaged ? c.muted(` (${status.staged.length})`) : "")
-            : c.dim("  commit"),
+          `  ${s.success("+")} Stage` +
+          s.muted(` (${info.modified + info.untracked} dosya)`),
+        value: "stage",
+      });
+    }
+
+    if (info.staged > 0 || info.modified > 0 || info.untracked > 0) {
+      choices.push({
+        name:
+          `  ${s.primary("◆")} Commit` +
+          (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
         value: "commit",
-        disabled: !hasStaged && !hasChanges,
-      },
-      { name: "  push", value: "push" },
-      { name: "  pull", value: "pull" },
-      { type: "separator", line: c.muted("  " + line()) },
-      { name: "  branch", value: "branch" },
-      { name: "  log", value: "log" },
-      { name: "  stash", value: "stash" },
-      { name: "  diff", value: "diff" },
-      { name: "  tag", value: "tag" },
-      { name: "  gitignore", value: "gitignore" },
-      { name: c.success("  hızlı işlem"), value: "quick" },
-      { name: "  ara", value: "search" },
-      { name: "  cherry-pick", value: "cherry" },
-      { name: "  remote", value: "remote" },
-      { name: "  stats", value: "stats" },
-      { name: "  rebase", value: "rebase" },
-      { name: "  conflict", value: "conflict" },
-      { name: "  blame", value: "blame" },
-      { name: "  worktree", value: "worktree" },
-      { name: c.warning("  undo"), value: "undo" },
-      { name: c.primary("  amend"), value: "amend" },
-      { type: "separator", line: c.muted("  " + line()) },
-      { name: c.muted("  ayarlar"), value: "settings" },
-      { name: c.muted("  çıkış"), value: "exit" },
-    ];
+      });
+    }
+
+    choices.push({ name: `  ${s.primary("↑")} Push`, value: "push" });
+    choices.push({ name: `  ${s.primary("↓")} Pull`, value: "pull" });
+
+    choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
+
+    choices.push({ name: `  ${s.text("◎")} Durum`, value: "status" });
+    choices.push({ name: `  ${s.text("⎇")} Branch`, value: "branch" });
+    choices.push({ name: `  ${s.text("◷")} Log`, value: "log" });
+    choices.push({ name: `  ${s.text("⋯")} Daha Fazla`, value: "more" });
+
+    choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
+    choices.push({ name: s.muted("  ✕ Çıkış"), value: "exit" });
 
     const { action } = await inquirer.prompt([
       {
         type: "list",
         name: "action",
-        message: c.muted("›"),
+        message: s.muted("Ne yapmak istersin?"),
         choices,
-        pageSize: Math.max(getHeight() - 10, 12),
+        pageSize: 15,
         loop: false,
       },
     ]);
 
     switch (action) {
-      case "status":
-        await viewStatus();
-        break;
       case "stage":
-        await viewStage();
+        await doStage(info);
         break;
       case "commit":
-        await viewCommit();
+        await doCommit(info);
         break;
       case "push":
-        await viewPush();
+        await doPush();
         break;
       case "pull":
-        await viewPull();
+        await doPull();
+        break;
+      case "status":
+        await doStatus();
         break;
       case "branch":
-        await viewBranch();
+        await doBranch();
         break;
       case "log":
-        await viewLog();
+        await doLog();
         break;
-      case "stash":
-        await viewStash();
-        break;
-      case "diff":
-        await viewDiff();
-        break;
-      case "tag":
-        await viewTag();
-        break;
-      case "gitignore":
-        await viewGitignore();
-        break;
-      case "quick":
-        await viewQuickActions();
-        break;
-      case "search":
-        await viewSearch();
-        break;
-      case "cherry":
-        await viewCherryPick();
-        break;
-      case "remote":
-        await viewRemote();
-        break;
-      case "stats":
-        await viewStats();
-        break;
-      case "rebase":
-        await viewRebase();
+      case "more":
+        await doMore();
         break;
       case "conflict":
-        await viewConflict();
-        break;
-      case "blame":
-        await viewBlame();
-        break;
-      case "worktree":
-        await viewWorktree();
-        break;
-      case "undo":
-        await viewUndo();
-        break;
-      case "amend":
-        await viewAmend();
-        break;
-      case "settings":
-        await viewSettings();
+        await doConflict();
         break;
       case "exit":
         running = false;
-        clear();
-        console.log(c.muted("\n  ×\n"));
         break;
     }
   }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// STATUS
-// ═══════════════════════════════════════════════════════════════
-
-async function viewStatus() {
   clear();
-  header();
-  section("durum");
-
-  const status = await getGitStatus();
-  const w = Math.min(getWidth() - 12, 50);
-
-  if (status.staged.length > 0) {
-    console.log(c.success("  staged"));
-    status.staged.forEach((f) =>
-      console.log(c.success("  + ") + truncate(f, w)),
-    );
-    console.log("");
-  }
-
-  if (status.modified.length > 0) {
-    console.log(c.warning("  modified"));
-    status.modified.forEach((f) =>
-      console.log(c.warning("  ~ ") + truncate(f, w)),
-    );
-    console.log("");
-  }
-
-  if (status.not_added.length > 0) {
-    console.log(c.muted("  untracked"));
-    status.not_added.forEach((f) =>
-      console.log(c.muted("  ? ") + truncate(f, w)),
-    );
-    console.log("");
-  }
-
-  if (
-    !status.staged.length &&
-    !status.modified.length &&
-    !status.not_added.length
-  ) {
-    console.log(c.success("  ✓ temiz\n"));
-  }
-
-  await pause();
+  console.log(s.muted("\n  👋 Görüşürüz!\n"));
 }
 
 // ═══════════════════════════════════════════════════════════════
 // STAGE
 // ═══════════════════════════════════════════════════════════════
 
-async function viewStage() {
+async function doStage(info) {
   clear();
   header();
-  section("stage");
+  console.log(s.bold("  Stage\n"));
 
-  const status = await getGitStatus();
+  const status = info?.status || (await getGitStatus());
   const files = [...status.modified, ...status.not_added];
 
   if (files.length === 0) {
-    console.log(c.muted("  değişiklik yok\n"));
+    console.log(s.muted("  Değişiklik yok.\n"));
     await pause();
     return;
   }
+
+  // Dosyaları kategorize et
+  const modifiedFiles = status.modified.map((f) => ({
+    name: `  ${s.warning("~")} ${f}`,
+    value: f,
+    short: f,
+  }));
+
+  const untrackedFiles = status.not_added.map((f) => ({
+    name: `  ${s.muted("+")} ${f}`,
+    value: f,
+    short: f,
+  }));
 
   const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
-      message: c.muted("›"),
+      message: s.muted("Ne yapayım?"),
       choices: [
-        { name: c.success("  tümü"), value: "all" },
-        { name: "  seç", value: "select" },
-        { name: c.muted("  geri"), value: "back" },
+        { name: s.success("  ✓ Tümünü Stage Et"), value: "all" },
+        { name: s.text("  ◉ Dosya Seç"), value: "select" },
+        { name: s.muted("  ← Geri"), value: "back" },
       ],
     },
   ]);
 
   if (action === "back") return;
 
-  let staged = false;
-
   if (action === "all") {
-    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+    const spin = ora({ text: s.muted(" Staging..."), spinner: "dots" }).start();
     await stageAll();
-    spin.succeed(c.success(" staged"));
-    staged = true;
-  } else {
-    const { selected } = await inquirer.prompt([
+    spin.succeed(s.success(" Tümü staged!"));
+    await sleep(500);
+
+    // Direkt commit'e yönlendir
+    const { goCommit } = await inquirer.prompt([
       {
-        type: "checkbox",
-        name: "selected",
-        message: c.muted("›"),
-        choices: files.map((f) => ({
-          name:
-            (status.modified.includes(f) ? c.warning("~ ") : c.muted("? ")) + f,
-          value: f,
-        })),
-        pageSize: Math.max(getHeight() - 8, 10),
+        type: "confirm",
+        name: "goCommit",
+        message: s.muted("Commit yapmak ister misin?"),
+        default: true,
       },
     ]);
 
-    if (selected.length > 0) {
-      await stageFiles(selected);
-      console.log(c.success(`\n  ✓ ${selected.length} staged`));
-      staged = true;
-    }
+    if (goCommit) await doCommit();
+    return;
   }
 
-  // Stage sonrası akıllı yönlendirme
-  if (staged) {
-    const { next } = await inquirer.prompt([
+  // Dosya seç
+  const { selected } = await inquirer.prompt([
+    {
+      type: "checkbox",
+      name: "selected",
+      message: s.muted("Dosyaları seç (space ile):"),
+      choices: [
+        ...(modifiedFiles.length > 0
+          ? [{ type: "separator", line: s.muted("  Modified") }]
+          : []),
+        ...modifiedFiles,
+        ...(untrackedFiles.length > 0
+          ? [{ type: "separator", line: s.muted("  Untracked") }]
+          : []),
+        ...untrackedFiles,
+      ],
+      pageSize: rows() - 10,
+    },
+  ]);
+
+  if (selected.length > 0) {
+    await stageFiles(selected);
+    console.log(s.success(`\n  ✓ ${selected.length} dosya staged!`));
+
+    const { goCommit } = await inquirer.prompt([
       {
-        type: "list",
-        name: "next",
-        message: c.muted("devam?"),
-        choices: [
-          { name: c.success("  commit yap"), value: "commit" },
-          { name: c.muted("  ana menü"), value: "menu" },
-        ],
+        type: "confirm",
+        name: "goCommit",
+        message: s.muted("Commit yapmak ister misin?"),
+        default: true,
       },
     ]);
 
-    if (next === "commit") {
-      await viewCommit();
-    }
+    if (goCommit) await doCommit();
   }
 }
 
@@ -426,142 +405,155 @@ async function viewStage() {
 // COMMIT
 // ═══════════════════════════════════════════════════════════════
 
-async function viewCommit() {
+async function doCommit(info) {
   clear();
   header();
-  section("commit");
+  console.log(s.bold("  Commit\n"));
 
-  let status = await getGitStatus();
+  let status = info?.status || (await getGitStatus());
 
+  // Hiç değişiklik yoksa
+  if (
+    status.staged.length === 0 &&
+    status.modified.length === 0 &&
+    status.not_added.length === 0
+  ) {
+    console.log(s.muted("  Commit edilecek değişiklik yok.\n"));
+    await pause();
+    return;
+  }
+
+  // Staged yoksa önce stage et
   if (status.staged.length === 0) {
-    const hasChanges = status.modified.length + status.not_added.length > 0;
-    if (!hasChanges) {
-      console.log(c.muted("  değişiklik yok\n"));
-      await pause();
-      return;
-    }
-
-    const { doStage } = await inquirer.prompt([
+    const { doStageFirst } = await inquirer.prompt([
       {
         type: "confirm",
-        name: "doStage",
-        message: c.muted("tümünü stage et?"),
+        name: "doStageFirst",
+        message: s.warning("Staged dosya yok. Tümünü stage edeyim mi?"),
         default: true,
       },
     ]);
 
-    if (!doStage) return;
+    if (!doStageFirst) return;
     await stageAll();
     status = await getGitStatus();
   }
 
-  console.log(c.muted("  staged:"));
-  status.staged.forEach((f) => console.log(c.success("  + ") + f));
-  console.log("");
+  // Staged dosyaları göster
+  console.log(s.muted("  Commit edilecek dosyalar:"));
+  status.staged
+    .slice(0, 5)
+    .forEach((f) => console.log(s.success(`    + ${f}`)));
+  if (status.staged.length > 5)
+    console.log(s.muted(`    ... ve ${status.staged.length - 5} dosya daha`));
+  console.log();
 
+  // AI ile mesaj öner
   let message;
   const lm = await checkLMStudioConnection();
 
   if (lm.connected) {
-    const spin = ora({ text: c.muted(" ai..."), spinner: "dots" }).start();
+    const { useAI } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "useAI",
+        message: s.primary("AI ile commit mesajı önereyim mi?"),
+        default: true,
+      },
+    ]);
 
-    try {
-      const diff = await getStagedDiff();
-      const suggestions = await generateCommitSuggestions(
-        diff,
-        status.staged,
-        3,
-      );
-      spin.stop();
+    if (useAI) {
+      const spin = ora({
+        text: s.muted(" AI düşünüyor..."),
+        spinner: "dots",
+      }).start();
 
-      console.log(c.muted("  öneriler:\n"));
+      try {
+        const diff = await getStagedDiff();
+        const suggestions = await generateCommitSuggestions(
+          diff,
+          status.staged,
+          3,
+        );
+        spin.stop();
 
-      const { choice } = await inquirer.prompt([
-        {
-          type: "list",
-          name: "choice",
-          message: c.muted("seç"),
-          choices: [
-            ...suggestions.map((s, i) => ({
-              name: c.white(`  ${s}`),
-              value: s,
-            })),
-            { type: "separator", line: " " },
-            { name: c.primary("  ✎ kendim yazacağım"), value: "_custom" },
-            { name: c.muted("  ✗ iptal"), value: "_cancel" },
-          ],
-        },
-      ]);
+        console.log(s.muted("\n  AI Önerileri:\n"));
 
-      if (choice === "_cancel") return;
-      if (choice === "_custom") {
-        const { custom } = await inquirer.prompt([
+        const { selected } = await inquirer.prompt([
           {
-            type: "input",
-            name: "custom",
-            message: c.muted("›"),
-            validate: (v) => v.length > 0,
+            type: "list",
+            name: "selected",
+            message: s.muted("Birini seç veya kendin yaz:"),
+            choices: [
+              ...suggestions.map((msg, i) => ({
+                name: `  ${i + 1}. ${s.text(msg)}`,
+                value: msg,
+              })),
+              { type: "separator", line: " " },
+              { name: s.primary("  ✎ Kendim yazacağım"), value: "_custom" },
+              { name: s.muted("  ← İptal"), value: "_cancel" },
+            ],
           },
         ]);
-        message = custom;
-      } else {
-        message = choice;
+
+        if (selected === "_cancel") return;
+        if (selected !== "_custom") message = selected;
+      } catch (err) {
+        spin.fail(s.error(" AI hatası"));
       }
-    } catch (err) {
-      spin.fail(c.error(" ai hatası"));
-      const { custom } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "custom",
-          message: c.muted("›"),
-          validate: (v) => v.length > 0,
-        },
-      ]);
-      message = custom;
     }
-  } else {
-    console.log(c.muted("  ai bağlı değil\n"));
+  }
+
+  // Manuel mesaj
+  if (!message) {
     const { custom } = await inquirer.prompt([
       {
         type: "input",
         name: "custom",
-        message: c.muted("›"),
-        validate: (v) => v.length > 0,
+        message: s.muted("Commit mesajı:"),
+        validate: (v) => v.length > 0 || "Mesaj boş olamaz",
       },
     ]);
     message = custom;
   }
 
-  console.log(c.muted("\n  → ") + c.white(message));
+  // Onay
+  console.log(s.muted("\n  Mesaj: ") + s.text(message));
 
   const { confirm } = await inquirer.prompt([
     {
       type: "confirm",
       name: "confirm",
-      message: c.muted("commit?"),
+      message: s.muted("Commit yapayım mı?"),
       default: true,
     },
   ]);
 
-  if (confirm) {
-    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-    try {
-      const result = await createCommit(message);
-      spin.succeed(c.success(` ${result.commit.substring(0, 7)}`));
+  if (!confirm) return;
 
-      const { doPush } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "doPush",
-          message: c.muted("push?"),
-          default: false,
-        },
-      ]);
-      if (doPush) await viewPush();
-    } catch (err) {
-      spin.fail(c.error(" " + err.message));
-      await pause();
-    }
+  const spin = ora({
+    text: s.muted(" Commit yapılıyor..."),
+    spinner: "dots",
+  }).start();
+
+  try {
+    const result = await createCommit(message);
+    spin.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
+
+    // Push öner
+    const { doPushNow } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "doPushNow",
+        message: s.muted("Push yapmak ister misin?"),
+        default: false,
+      },
+    ]);
+
+    if (doPushNow) await doPush();
+  } catch (err) {
+    spin.fail(s.error(` Hata: ${err.message}`));
+    await pause();
   }
 }
 
@@ -569,46 +561,18 @@ async function viewCommit() {
 // PUSH
 // ═══════════════════════════════════════════════════════════════
 
-async function viewPush() {
-  const spin = ora({ text: c.muted(" push..."), spinner: "dots" }).start();
+async function doPush() {
+  const spin = ora({
+    text: s.muted(" Push yapılıyor..."),
+    spinner: "dots",
+  }).start();
 
   try {
-    const remotes = await getRemotes();
-
-    if (remotes.length === 0) {
-      spin.stop();
-      console.log(c.warning("\n  remote yok"));
-
-      const { add } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "add",
-          message: c.muted("ekle?"),
-          default: true,
-        },
-      ]);
-
-      if (add) {
-        const { url } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "url",
-            message: c.muted("url:"),
-            validate: (v) => v.length > 0,
-          },
-        ]);
-        await addRemote("origin", url);
-        console.log(c.success("  ✓ eklendi"));
-      }
-      return;
-    }
-
     await pushToRemote();
-    spin.succeed(c.success(" pushed ✓"));
+    spin.succeed(s.success(" Push başarılı!"));
     await sleep(800);
-    return; // Ana menüye dön
   } catch (err) {
-    spin.fail(c.error(" " + err.message));
+    spin.fail(s.error(" Push hatası"));
 
     if (err.message.includes("no upstream")) {
       const branch = await getCurrentBranch();
@@ -616,53 +580,101 @@ async function viewPush() {
         {
           type: "confirm",
           name: "setUpstream",
-          message: c.muted(`upstream ayarla?`),
+          message: s.warning(`Upstream ayarlansın mı? (-u origin ${branch})`),
           default: true,
         },
       ]);
 
       if (setUpstream) {
-        const simpleGit = require("simple-git")();
-        await simpleGit.push(["-u", "origin", branch]);
-        console.log(c.success("  ✓ pushed"));
+        const spin2 = ora({
+          text: s.muted(" Upstream ayarlanıyor..."),
+          spinner: "dots",
+        }).start();
+        try {
+          const simpleGit = require("simple-git")();
+          await simpleGit.push(["-u", "origin", branch]);
+          spin2.succeed(s.success(" Push başarılı!"));
+        } catch (e) {
+          spin2.fail(s.error(` ${e.message}`));
+        }
       }
+    } else {
+      console.log(s.error(`\n  ${err.message}\n`));
     }
+    await pause();
   }
-
-  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
 // PULL
 // ═══════════════════════════════════════════════════════════════
 
-async function viewPull() {
-  const spin = ora({ text: c.muted(" pull..."), spinner: "dots" }).start();
+async function doPull() {
+  const spin = ora({
+    text: s.muted(" Pull yapılıyor..."),
+    spinner: "dots",
+  }).start();
 
   try {
     const result = await pullFromRemote();
-    spin.succeed(c.success(" pulled"));
 
     if (result.summary?.changes > 0) {
-      console.log(c.muted(`  ${result.summary.changes} dosya güncellendi`));
-
-      // Pull sonrası status göster seçeneği
-      const { showStatus } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "showStatus",
-          message: c.muted("durumu göster?"),
-          default: true,
-        },
-      ]);
-
-      if (showStatus) {
-        await viewStatus();
-        return;
-      }
+      spin.succeed(s.success(` ${result.summary.changes} dosya güncellendi`));
+    } else {
+      spin.succeed(s.success(" Zaten güncel!"));
     }
+    await sleep(800);
   } catch (err) {
-    spin.fail(c.error(" " + err.message));
+    spin.fail(s.error(` ${err.message}`));
+    await pause();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════════════════════════
+
+async function doStatus() {
+  clear();
+  header();
+  console.log(s.bold("  Durum\n"));
+
+  const status = await getGitStatus();
+  const branch = status.current;
+
+  console.log(s.primary(`  Branch: ${branch}\n`));
+
+  if (status.staged.length > 0) {
+    console.log(s.success("  Staged:"));
+    status.staged.forEach((f) => console.log(s.success(`    + ${f}`)));
+    console.log();
+  }
+
+  if (status.modified.length > 0) {
+    console.log(s.warning("  Modified:"));
+    status.modified.forEach((f) => console.log(s.warning(`    ~ ${f}`)));
+    console.log();
+  }
+
+  if (status.not_added.length > 0) {
+    console.log(s.muted("  Untracked:"));
+    status.not_added.forEach((f) => console.log(s.muted(`    ? ${f}`)));
+    console.log();
+  }
+
+  if (status.conflicted.length > 0) {
+    console.log(s.error("  Conflicts:"));
+    status.conflicted.forEach((f) => console.log(s.error(`    ! ${f}`)));
+    console.log();
+  }
+
+  if (
+    status.staged.length === 0 &&
+    status.modified.length === 0 &&
+    status.not_added.length === 0 &&
+    status.conflicted.length === 0
+  ) {
+    console.log(s.success("  ✓ Çalışma dizini temiz!\n"));
   }
 
   await pause();
@@ -672,35 +684,40 @@ async function viewPull() {
 // BRANCH
 // ═══════════════════════════════════════════════════════════════
 
-async function viewBranch() {
+async function doBranch() {
   let inMenu = true;
 
   while (inMenu) {
     clear();
     header();
-    section("branch");
+    console.log(s.bold("  Branch\n"));
 
     const branches = await getBranches();
     const current = branches.current;
     const locals = branches.all.filter((b) => !b.startsWith("remotes/"));
 
+    // Branch listesi
     locals.forEach((b) => {
-      console.log(b === current ? c.success("  ● " + b) : c.muted("  ○ " + b));
+      if (b === current) {
+        console.log(s.success(`  ● ${b}`));
+      } else {
+        console.log(s.muted(`  ○ ${b}`));
+      }
     });
-    console.log("");
+    console.log();
 
     const { action } = await inquirer.prompt([
       {
         type: "list",
         name: "action",
-        message: c.muted("›"),
+        message: s.muted("Ne yapayım?"),
         choices: [
-          { name: c.success("  yeni"), value: "new" },
-          { name: "  değiştir", value: "switch" },
-          { name: "  merge", value: "merge" },
-          { name: c.error("  sil"), value: "delete" },
-          { type: "separator", line: c.muted("  " + line()) },
-          { name: c.muted("  geri"), value: "back" },
+          { name: s.success("  + Yeni Branch"), value: "new" },
+          { name: s.text("  ↔ Branch Değiştir"), value: "switch" },
+          { name: s.text("  ⎇ Merge"), value: "merge" },
+          { name: s.error("  ✕ Branch Sil"), value: "delete" },
+          { type: "separator", line: " " },
+          { name: s.muted("  ← Geri"), value: "back" },
         ],
       },
     ]);
@@ -711,16 +728,16 @@ async function viewBranch() {
           {
             type: "input",
             name: "name",
-            message: c.muted("isim:"),
+            message: s.muted("Branch adı:"),
             validate: (v) => v.length > 0 && !v.includes(" "),
           },
         ]);
         try {
           await createBranch(name);
-          console.log(c.success(`  ✓ ${name}`));
+          console.log(s.success(`\n  ✓ ${name} oluşturuldu ve geçildi!`));
           await sleep(600);
         } catch (err) {
-          console.log(c.error("  " + err.message));
+          console.log(s.error(`\n  ✗ ${err.message}`));
           await pause();
         }
         break;
@@ -728,35 +745,23 @@ async function viewBranch() {
       case "switch":
         const others = locals.filter((b) => b !== current);
         if (others.length === 0) {
-          console.log(c.muted("  başka branch yok"));
+          console.log(s.muted("\n  Başka branch yok."));
           await pause();
         } else {
           const { target } = await inquirer.prompt([
             {
               type: "list",
               name: "target",
-              message: c.muted("›"),
+              message: s.muted("Hangi branch'e geçeyim?"),
               choices: others,
             },
           ]);
           try {
             await switchBranch(target);
-            console.log(c.success(`  ✓ ${target}`));
-
-            // Branch değiştirdikten sonra pull öner
-            const { doPull } = await inquirer.prompt([
-              {
-                type: "confirm",
-                name: "doPull",
-                message: c.muted("pull yap?"),
-                default: false,
-              },
-            ]);
-            if (doPull) {
-              await viewPull();
-            }
+            console.log(s.success(`\n  ✓ ${target} branch'ine geçildi!`));
+            await sleep(600);
           } catch (err) {
-            console.log(c.error("  " + err.message));
+            console.log(s.error(`\n  ✗ ${err.message}`));
             await pause();
           }
         }
@@ -765,23 +770,23 @@ async function viewBranch() {
       case "merge":
         const mergeable = locals.filter((b) => b !== current);
         if (mergeable.length === 0) {
-          console.log(c.muted("  merge edilecek branch yok"));
+          console.log(s.muted("\n  Merge edilecek branch yok."));
           await pause();
         } else {
           const { source } = await inquirer.prompt([
             {
               type: "list",
               name: "source",
-              message: c.muted("›"),
+              message: s.muted("Hangi branch'i merge edeyim?"),
               choices: mergeable,
             },
           ]);
           try {
             await mergeBranch(source);
-            console.log(c.success(`  ✓ merged`));
+            console.log(s.success(`\n  ✓ ${source} merge edildi!`));
             await sleep(600);
           } catch (err) {
-            console.log(c.error("  " + err.message));
+            console.log(s.error(`\n  ✗ ${err.message}`));
             await pause();
           }
         }
@@ -790,32 +795,32 @@ async function viewBranch() {
       case "delete":
         const deletable = locals.filter((b) => b !== current);
         if (deletable.length === 0) {
-          console.log(c.muted("  silinecek branch yok"));
+          console.log(s.muted("\n  Silinecek branch yok."));
           await pause();
         } else {
           const { toDelete } = await inquirer.prompt([
             {
               type: "list",
               name: "toDelete",
-              message: c.error("sil:"),
+              message: s.muted("Hangi branch'i sileyim?"),
               choices: deletable,
             },
           ]);
-          const { sure } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt([
             {
               type: "confirm",
-              name: "sure",
-              message: c.error("emin?"),
+              name: "confirm",
+              message: s.error(`${toDelete} silinsin mi?`),
               default: false,
             },
           ]);
-          if (sure) {
+          if (confirm) {
             try {
-              await deleteBranch(toDelete, true);
-              console.log(c.success(`  ✓ silindi`));
+              await deleteBranch(toDelete);
+              console.log(s.success(`\n  ✓ ${toDelete} silindi!`));
               await sleep(600);
             } catch (err) {
-              console.log(c.error("  " + err.message));
+              console.log(s.error(`\n  ✗ ${err.message}`));
               await pause();
             }
           }
@@ -833,239 +838,151 @@ async function viewBranch() {
 // LOG
 // ═══════════════════════════════════════════════════════════════
 
-async function viewLog() {
+async function doLog() {
   clear();
   header();
-  section("log");
+  console.log(s.bold("  Commit Geçmişi\n"));
 
-  const log = await getCommitLog(Math.max(getHeight() - 10, 8));
-  const w = Math.min(getWidth() - 24, 45);
+  const log = await getCommitLog(15);
+
+  if (log.all.length === 0) {
+    console.log(s.muted("  Henüz commit yok.\n"));
+    await pause();
+    return;
+  }
 
   log.all.forEach((commit) => {
-    const hash = c.warning(commit.hash.substring(0, 7));
-    const msg = truncate(commit.message, w);
-    const time = c.muted(timeAgo(new Date(commit.date)));
-    console.log(`  ${hash}  ${msg}  ${time}`);
+    const hash = s.primary(commit.hash.substring(0, 7));
+    const msg = truncate(commit.message, cols() - 30);
+    const time = s.muted(timeAgo(commit.date));
+    console.log(`  ${hash} ${s.text(msg)}`);
+    console.log(s.muted(`         ${commit.author_name} · ${time}\n`));
   });
 
-  console.log("");
   await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
-// STASH
+// MORE (Gelişmiş Özellikler)
 // ═══════════════════════════════════════════════════════════════
 
-async function viewStash() {
-  clear();
-  header();
-  section("stash");
+async function doMore() {
+  let inMenu = true;
 
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: c.muted("›"),
-      choices: [
-        { name: c.success("  kaydet"), value: "save" },
-        { name: "  geri yükle", value: "pop" },
-        { name: "  liste", value: "list" },
-        { type: "separator", line: c.muted("  " + line()) },
-        { name: c.muted("  geri"), value: "back" },
-      ],
-    },
-  ]);
+  while (inMenu) {
+    clear();
+    header();
+    console.log(s.bold("  Daha Fazla\n"));
 
-  switch (action) {
-    case "save":
-      const { msg } = await inquirer.prompt([
-        { type: "input", name: "msg", message: c.muted("mesaj:") },
-      ]);
-      try {
-        await stashChanges(msg || null);
-        console.log(c.success("  ✓ kaydedildi"));
-      } catch (err) {
-        console.log(c.error("  " + err.message));
-      }
-      await pause();
-      break;
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("Ne yapmak istersin?"),
+        choices: [
+          { name: s.warning("  ↩ Undo (Son commit'i geri al)"), value: "undo" },
+          {
+            name: s.primary("  ✎ Amend (Commit mesajını düzelt)"),
+            value: "amend",
+          },
+          { name: s.text("  ≋ Diff (Değişiklikleri gör)"), value: "diff" },
+          { type: "separator", line: " " },
+          { name: s.text("  📦 Stash"), value: "stash" },
+          { name: s.text("  🏷 Tag"), value: "tag" },
+          { name: s.text("  🔗 Remote"), value: "remote" },
+          { type: "separator", line: " " },
+          { name: s.text("  📊 İstatistikler"), value: "stats" },
+          { name: s.text("  🔍 Commit Ara"), value: "search" },
+          { name: s.text("  📋 Blame"), value: "blame" },
+          { type: "separator", line: " " },
+          { name: s.text("  ⚙ Ayarlar"), value: "settings" },
+          { name: s.muted("  ← Ana Menü"), value: "back" },
+        ],
+        pageSize: 15,
+      },
+    ]);
 
-    case "pop":
-      try {
-        await popStash();
-        console.log(c.success("  ✓ yüklendi"));
-      } catch (err) {
-        console.log(c.error("  " + err.message));
-      }
-      await pause();
-      break;
-
-    case "list":
-      try {
-        const stashes = await listStashes();
-        if (stashes.all.length === 0) {
-          console.log(c.muted("  stash yok"));
-        } else {
-          stashes.all.forEach((s, i) =>
-            console.log(c.muted(`  ${i}: `) + s.message),
-          );
-        }
-      } catch (err) {
-        console.log(c.error("  " + err.message));
-      }
-      await pause();
-      break;
+    switch (action) {
+      case "undo":
+        await doUndo();
+        break;
+      case "amend":
+        await doAmend();
+        break;
+      case "diff":
+        await doDiff();
+        break;
+      case "stash":
+        await doStash();
+        break;
+      case "tag":
+        await doTag();
+        break;
+      case "remote":
+        await doRemote();
+        break;
+      case "stats":
+        await doStats();
+        break;
+      case "search":
+        await doSearch();
+        break;
+      case "blame":
+        await doBlame();
+        break;
+      case "settings":
+        await doSettings();
+        break;
+      case "back":
+        inMenu = false;
+        break;
+    }
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SETTINGS
-// ═══════════════════════════════════════════════════════════════
-
-async function viewSettings() {
-  clear();
-  header();
-  section("ayarlar");
-
-  const config = getConfig();
-  const lm = await checkLMStudioConnection();
-
-  console.log(c.muted("  url   ") + config.lmStudioUrl);
-  console.log(c.muted("  model ") + config.model);
-  console.log(
-    c.muted("  ai    ") +
-      (lm.connected ? c.success("bağlı") : c.error("bağlı değil")),
-  );
-  console.log("");
-
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: c.muted("›"),
-      choices: [
-        { name: "  url değiştir", value: "url" },
-        { name: "  model değiştir", value: "model" },
-        { name: "  test", value: "test" },
-        { type: "separator", line: c.muted("  " + line()) },
-        { name: c.muted("  geri"), value: "back" },
-      ],
-    },
-  ]);
-
-  switch (action) {
-    case "url":
-      const { newUrl } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "newUrl",
-          message: c.muted("url:"),
-          default: config.lmStudioUrl,
-        },
-      ]);
-      saveConfig({ lmStudioUrl: newUrl });
-      console.log(c.success("  ✓"));
-      await pause();
-      break;
-
-    case "model":
-      const { newModel } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "newModel",
-          message: c.muted("model:"),
-          default: config.model,
-        },
-      ]);
-      saveConfig({ model: newModel });
-      console.log(c.success("  ✓"));
-      await pause();
-      break;
-
-    case "test":
-      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-      const result = await checkLMStudioConnection();
-      if (result.connected) {
-        spin.succeed(c.success(" bağlı"));
-        if (result.models?.length > 0) {
-          result.models.forEach((m) => console.log(c.muted("  ") + m.id));
-        }
-      } else {
-        spin.fail(c.error(" bağlantı yok"));
-      }
-      await pause();
-      break;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════════════
-
-async function pause() {
-  await inquirer.prompt([{ type: "input", name: "_", message: c.dim("↵") }]);
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function timeAgo(date) {
-  const sec = Math.floor((Date.now() - date) / 1000);
-  if (sec < 60) return "şimdi";
-  if (sec < 3600) return Math.floor(sec / 60) + "dk";
-  if (sec < 86400) return Math.floor(sec / 3600) + "sa";
-  if (sec < 604800) return Math.floor(sec / 86400) + "g";
-  return Math.floor(sec / 604800) + "h";
 }
 
 // ═══════════════════════════════════════════════════════════════
 // UNDO
 // ═══════════════════════════════════════════════════════════════
 
-async function viewUndo() {
+async function doUndo() {
   clear();
   header();
-  section("undo");
+  console.log(s.bold("  Undo\n"));
 
-  try {
-    const lastCommit = await getLastCommit();
+  const lastCommit = await getLastCommit();
 
-    if (!lastCommit) {
-      console.log(c.muted("  commit yok\n"));
-      await pause();
-      return;
-    }
+  if (!lastCommit) {
+    console.log(s.muted("  Geri alınacak commit yok.\n"));
+    await pause();
+    return;
+  }
 
-    console.log(c.muted("  son commit:"));
-    console.log(
-      c.white(`  ${lastCommit.hash.substring(0, 7)} `) +
-        c.muted(lastCommit.message),
+  console.log(s.muted("  Son commit:"));
+  console.log(
+    s.text(`  ${lastCommit.hash.substring(0, 7)} - ${lastCommit.message}`),
+  );
+  console.log(
+    s.muted(`  ${lastCommit.author_name} · ${timeAgo(lastCommit.date)}\n`),
+  );
+
+  const { confirm } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "confirm",
+      message: s.warning("Bu commit geri alınsın mı? (değişiklikler korunur)"),
+      default: false,
+    },
+  ]);
+
+  if (confirm) {
+    const spin = ora({
+      text: s.muted(" Geri alınıyor..."),
+      spinner: "dots",
+    }).start();
+    await undoLastCommit();
+    spin.succeed(
+      s.success(" Commit geri alındı! Değişiklikler staged olarak kaldı."),
     );
-    console.log(
-      c.muted(
-        `  ${lastCommit.author_name} · ${timeAgo(new Date(lastCommit.date))}\n`,
-      ),
-    );
-
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: c.warning("geri al? (değişiklikler korunur)"),
-        default: false,
-      },
-    ]);
-
-    if (confirm) {
-      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-      await undoLastCommit();
-      spin.succeed(c.success(" geri alındı"));
-      console.log(c.muted("  değişiklikler staged olarak kaldı\n"));
-      await pause();
-    }
-  } catch (err) {
-    console.log(c.error("  " + err.message));
     await pause();
   }
 }
@@ -1074,45 +991,40 @@ async function viewUndo() {
 // AMEND
 // ═══════════════════════════════════════════════════════════════
 
-async function viewAmend() {
+async function doAmend() {
   clear();
   header();
-  section("amend");
+  console.log(s.bold("  Amend\n"));
 
-  try {
-    const lastCommit = await getLastCommit();
+  const lastCommit = await getLastCommit();
 
-    if (!lastCommit) {
-      console.log(c.muted("  commit yok\n"));
-      await pause();
-      return;
-    }
-
-    console.log(c.muted("  mevcut mesaj:"));
-    console.log(c.white(`  "${lastCommit.message}"\n`));
-
-    const { newMessage } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "newMessage",
-        message: c.muted("yeni mesaj:"),
-        default: lastCommit.message,
-        validate: (v) => v.length > 0,
-      },
-    ]);
-
-    if (newMessage !== lastCommit.message) {
-      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-      await amendCommit(newMessage);
-      spin.succeed(c.success(" güncellendi"));
-      await sleep(600);
-    } else {
-      console.log(c.muted("\n  değişiklik yok"));
-      await pause();
-    }
-  } catch (err) {
-    console.log(c.error("  " + err.message));
+  if (!lastCommit) {
+    console.log(s.muted("  Düzenlenecek commit yok.\n"));
     await pause();
+    return;
+  }
+
+  console.log(s.muted("  Mevcut mesaj:"));
+  console.log(s.text(`  "${lastCommit.message}"\n`));
+
+  const { newMessage } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "newMessage",
+      message: s.muted("Yeni mesaj:"),
+      default: lastCommit.message,
+      validate: (v) => v.length > 0,
+    },
+  ]);
+
+  if (newMessage !== lastCommit.message) {
+    const spin = ora({
+      text: s.muted(" Güncelleniyor..."),
+      spinner: "dots",
+    }).start();
+    await amendCommit(newMessage);
+    spin.succeed(s.success(" Commit mesajı güncellendi!"));
+    await sleep(600);
   }
 }
 
@@ -1120,39 +1032,15 @@ async function viewAmend() {
 // DIFF
 // ═══════════════════════════════════════════════════════════════
 
-function formatDiff(diff) {
-  if (!diff) return c.muted("  değişiklik yok");
-
-  const lines = diff.split("\n");
-  let output = [];
-
-  for (const line of lines) {
-    if (line.startsWith("+") && !line.startsWith("+++")) {
-      output.push(c.success("  " + line));
-    } else if (line.startsWith("-") && !line.startsWith("---")) {
-      output.push(c.error("  " + line));
-    } else if (line.startsWith("@@")) {
-      output.push(c.primary("  " + line));
-    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
-      output.push(c.muted("  " + line));
-    } else {
-      output.push(c.white("  " + line));
-    }
-  }
-
-  return output.join("\n");
-}
-
-async function viewDiff() {
+async function doDiff() {
   clear();
   header();
-  section("diff");
+  console.log(s.bold("  Diff\n"));
 
   const status = await getGitStatus();
-  const allFiles = [...status.staged, ...status.modified, ...status.not_added];
 
-  if (allFiles.length === 0) {
-    console.log(c.muted("  değişiklik yok\n"));
+  if (status.staged.length === 0 && status.modified.length === 0) {
+    console.log(s.muted("  Değişiklik yok.\n"));
     await pause();
     return;
   }
@@ -1161,749 +1049,282 @@ async function viewDiff() {
     {
       type: "list",
       name: "type",
-      message: c.muted("›"),
+      message: s.muted("Hangi değişiklikleri göstereyim?"),
       choices: [
         {
-          name: c.success("  staged") + c.muted(` (${status.staged.length})`),
+          name: s.success(`  Staged (${status.staged.length})`),
           value: "staged",
         },
         {
-          name:
-            c.warning("  unstaged") + c.muted(` (${status.modified.length})`),
+          name: s.warning(`  Unstaged (${status.modified.length})`),
           value: "unstaged",
         },
-        { name: "  dosya seç", value: "file" },
-        { name: c.muted("  geri"), value: "back" },
+        { name: s.muted("  ← Geri"), value: "back" },
       ],
     },
   ]);
 
   if (type === "back") return;
 
-  let diff;
+  const diff =
+    type === "staged" ? await getStagedDiff() : await getUnstagedDiff();
 
-  if (type === "staged") {
-    diff = await getStagedDiff();
-  } else if (type === "unstaged") {
-    diff = await getUnstagedDiff();
-  } else {
-    const { file } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "file",
-        message: c.muted("dosya:"),
-        choices: allFiles,
-        pageSize: Math.max(getHeight() - 8, 10),
-      },
-    ]);
-    const isStaged = status.staged.includes(file);
-    diff = await getFileDiff(file, isStaged);
+  if (!diff) {
+    console.log(s.muted("\n  Diff yok.\n"));
+    await pause();
+    return;
   }
 
   clear();
-  header();
-  section("diff");
+  console.log();
 
-  console.log(formatDiff(diff));
-  console.log("");
+  // Renkli diff
+  diff.split("\n").forEach((line) => {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      console.log(s.success(line));
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      console.log(s.error(line));
+    } else if (line.startsWith("@@")) {
+      console.log(s.primary(line));
+    } else {
+      console.log(s.muted(line));
+    }
+  });
+
+  console.log();
   await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STASH
+// ═══════════════════════════════════════════════════════════════
+
+async function doStash() {
+  let inMenu = true;
+
+  while (inMenu) {
+    clear();
+    header();
+    console.log(s.bold("  Stash\n"));
+
+    const stashes = await listStashes();
+
+    if (stashes.all.length > 0) {
+      stashes.all.slice(0, 5).forEach((st, i) => {
+        console.log(s.muted(`  ${i}: `) + s.text(st.message));
+      });
+      console.log();
+    } else {
+      console.log(s.muted("  Stash yok.\n"));
+    }
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("Ne yapayım?"),
+        choices: [
+          { name: s.success("  + Stash Kaydet"), value: "save" },
+          { name: s.primary("  ↓ Stash Uygula (pop)"), value: "pop" },
+          { name: s.muted("  ← Geri"), value: "back" },
+        ],
+      },
+    ]);
+
+    switch (action) {
+      case "save":
+        const status = await getGitStatus();
+        if (status.modified.length === 0 && status.not_added.length === 0) {
+          console.log(s.muted("\n  Stash edilecek değişiklik yok."));
+          await pause();
+        } else {
+          const { message } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "message",
+              message: s.muted("Stash mesajı (opsiyonel):"),
+            },
+          ]);
+          await stashChanges(message || null);
+          console.log(s.success("\n  ✓ Değişiklikler stash'lendi!"));
+          await sleep(600);
+        }
+        break;
+
+      case "pop":
+        if (stashes.all.length === 0) {
+          console.log(s.muted("\n  Pop edilecek stash yok."));
+          await pause();
+        } else {
+          try {
+            await popStash();
+            console.log(s.success("\n  ✓ Stash uygulandı!"));
+            await sleep(600);
+          } catch (err) {
+            console.log(s.error(`\n  ✗ ${err.message}`));
+            await pause();
+          }
+        }
+        break;
+
+      case "back":
+        inMenu = false;
+        break;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
 // TAG
 // ═══════════════════════════════════════════════════════════════
 
-async function viewTag() {
-  let inMenu = true;
-
-  while (inMenu) {
-    clear();
-    header();
-    section("tag");
-
-    const tags = await listTags();
-
-    if (tags.all.length > 0) {
-      tags.all.forEach((t) => console.log(c.primary("  🏷  " + t)));
-      console.log("");
-    } else {
-      console.log(c.muted("  tag yok\n"));
-    }
-
-    const { action } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "action",
-        message: c.muted("›"),
-        choices: [
-          { name: c.success("  yeni"), value: "new" },
-          { name: "  push tags", value: "push" },
-          { name: c.error("  sil"), value: "delete" },
-          { type: "separator", line: " " },
-          { name: c.muted("  geri"), value: "back" },
-        ],
-      },
-    ]);
-
-    switch (action) {
-      case "new":
-        const { name } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "name",
-            message: c.muted("isim (örn: v1.0.0):"),
-            validate: (v) => v.length > 0,
-          },
-        ]);
-
-        const { withMessage } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "withMessage",
-            message: c.muted("açıklama ekle?"),
-            default: false,
-          },
-        ]);
-
-        let tagMsg = null;
-        if (withMessage) {
-          const { msg } = await inquirer.prompt([
-            {
-              type: "input",
-              name: "msg",
-              message: c.muted("açıklama:"),
-            },
-          ]);
-          tagMsg = msg;
-        }
-
-        try {
-          await createTag(name, tagMsg);
-          console.log(c.success(`\n  ✓ ${name}`));
-          await sleep(600);
-        } catch (err) {
-          console.log(c.error("  " + err.message));
-          await pause();
-        }
-        break;
-
-      case "push":
-        const spin = ora({
-          text: c.muted(" pushing tags..."),
-          spinner: "dots",
-        }).start();
-        try {
-          await pushTags();
-          spin.succeed(c.success(" tags pushed"));
-        } catch (err) {
-          spin.fail(c.error(" " + err.message));
-        }
-        await pause();
-        break;
-
-      case "delete":
-        if (tags.all.length === 0) {
-          console.log(c.muted("  silinecek tag yok"));
-          await pause();
-        } else {
-          const { tagToDelete } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "tagToDelete",
-              message: c.muted("sil:"),
-              choices: tags.all,
-            },
-          ]);
-          try {
-            await deleteTag(tagToDelete);
-            console.log(c.success(`  ✓ silindi`));
-            await sleep(600);
-          } catch (err) {
-            console.log(c.error("  " + err.message));
-            await pause();
-          }
-        }
-        break;
-
-      case "back":
-        inMenu = false;
-        break;
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// GITIGNORE
-// ═══════════════════════════════════════════════════════════════
-
-const GITIGNORE_TEMPLATES = {
-  node: ["node_modules/", "npm-debug.log", ".env", "dist/", "coverage/"],
-  python: ["__pycache__/", "*.pyc", ".env", "venv/", ".pytest_cache/"],
-  java: ["*.class", "*.jar", "target/", ".idea/", "*.log"],
-  general: [".DS_Store", "Thumbs.db", "*.log", ".env", ".env.local"],
-};
-
-async function viewGitignore() {
+async function doTag() {
   clear();
   header();
-  section("gitignore");
+  console.log(s.bold("  Tag\n"));
 
-  const gitignorePath = path.join(process.cwd(), ".gitignore");
-  let currentContent = "";
+  const tags = await listTags();
 
-  if (fs.existsSync(gitignorePath)) {
-    currentContent = fs.readFileSync(gitignorePath, "utf-8");
-    const lines = currentContent
-      .split("\n")
-      .filter((l) => l.trim() && !l.startsWith("#"));
-    console.log(c.muted("  mevcut kurallar:"));
-    lines.slice(0, 10).forEach((l) => console.log(c.white("  " + l)));
-    if (lines.length > 10)
-      console.log(c.muted(`  ... +${lines.length - 10} daha`));
-    console.log("");
+  if (tags.all.length > 0) {
+    tags.all.slice(0, 10).forEach((t) => console.log(s.primary(`  🏷 ${t}`)));
+    console.log();
   } else {
-    console.log(c.muted("  .gitignore yok\n"));
+    console.log(s.muted("  Tag yok.\n"));
   }
 
   const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
-      message: c.muted("›"),
+      message: s.muted("Ne yapayım?"),
       choices: [
-        { name: c.success("  şablon ekle"), value: "template" },
-        { name: "  manuel ekle", value: "manual" },
-        { name: "  untracked dosya ekle", value: "untracked" },
-        { name: c.muted("  geri"), value: "back" },
+        { name: s.success("  + Yeni Tag"), value: "new" },
+        { name: s.primary("  ↑ Push Tags"), value: "push" },
+        { name: s.error("  ✕ Tag Sil"), value: "delete" },
+        { name: s.muted("  ← Geri"), value: "back" },
       ],
     },
   ]);
 
   if (action === "back") return;
 
-  if (action === "template") {
-    const { template } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "template",
-        message: c.muted("şablon:"),
-        choices: [
-          { name: "  Node.js", value: "node" },
-          { name: "  Python", value: "python" },
-          { name: "  Java", value: "java" },
-          { name: "  Genel", value: "general" },
-        ],
-      },
-    ]);
-
-    const patterns = GITIGNORE_TEMPLATES[template];
-    const newPatterns = patterns.filter((p) => !currentContent.includes(p));
-
-    if (newPatterns.length === 0) {
-      console.log(c.muted("\n  tüm kurallar zaten mevcut"));
-      await pause();
-      return;
-    }
-
-    const toAdd = `\n# ${template}\n${newPatterns.join("\n")}\n`;
-    fs.appendFileSync(gitignorePath, toAdd);
-    console.log(c.success(`\n  ✓ ${newPatterns.length} kural eklendi`));
-    await pause();
-  }
-
-  if (action === "manual") {
-    const { pattern } = await inquirer.prompt([
+  if (action === "new") {
+    const { name } = await inquirer.prompt([
       {
         type: "input",
-        name: "pattern",
-        message: c.muted("pattern:"),
+        name: "name",
+        message: s.muted("Tag adı (örn: v1.0.0):"),
         validate: (v) => v.length > 0,
       },
     ]);
+    await createTag(name);
+    console.log(s.success(`\n  ✓ ${name} oluşturuldu!`));
+    await sleep(600);
+  }
 
-    fs.appendFileSync(gitignorePath, `\n${pattern}`);
-    console.log(c.success("\n  ✓ eklendi"));
+  if (action === "push") {
+    const spin = ora({
+      text: s.muted(" Push tags..."),
+      spinner: "dots",
+    }).start();
+    try {
+      await pushTags();
+      spin.succeed(s.success(" Tags pushed!"));
+    } catch (err) {
+      spin.fail(s.error(` ${err.message}`));
+    }
     await pause();
   }
 
-  if (action === "untracked") {
-    const status = await getGitStatus();
-    const untracked = status.not_added;
-
-    if (untracked.length === 0) {
-      console.log(c.muted("\n  untracked dosya yok"));
+  if (action === "delete") {
+    if (tags.all.length === 0) {
+      console.log(s.muted("\n  Silinecek tag yok."));
       await pause();
-      return;
-    }
-
-    const { files } = await inquirer.prompt([
-      {
-        type: "checkbox",
-        name: "files",
-        message: c.muted("ignore et:"),
-        choices: untracked.map((f) => ({ name: c.muted("  " + f), value: f })),
-        pageSize: Math.max(getHeight() - 8, 10),
-      },
-    ]);
-
-    if (files.length > 0) {
-      fs.appendFileSync(gitignorePath, `\n${files.join("\n")}`);
-      console.log(c.success(`\n  ✓ ${files.length} dosya eklendi`));
-    }
-    await pause();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// QUICK ACTIONS
-// ═══════════════════════════════════════════════════════════════
-
-async function viewQuickActions() {
-  clear();
-  header();
-  section("hızlı işlem");
-
-  const status = await getGitStatus();
-  const hasChanges = status.modified.length + status.not_added.length > 0;
-  const hasStaged = status.staged.length > 0;
-
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: c.muted("›"),
-      choices: [
+    } else {
+      const { toDelete } = await inquirer.prompt([
         {
-          name: c.success("  ⚡ stage + commit + push"),
-          value: "all",
-          disabled: !hasChanges && !hasStaged,
-        },
-        {
-          name: "  📦 stage all + commit",
-          value: "stage-commit",
-          disabled: !hasChanges && !hasStaged,
-        },
-        {
-          name: "  🔄 pull + push",
-          value: "sync",
-        },
-        {
-          name: "  🧹 discard all changes",
-          value: "discard",
-          disabled: !hasChanges,
-        },
-        { type: "separator", line: " " },
-        { name: c.muted("  geri"), value: "back" },
-      ],
-    },
-  ]);
-
-  if (action === "back") return;
-
-  if (action === "all") {
-    // Stage all
-    if (hasChanges) {
-      const spin1 = ora({
-        text: c.muted(" staging..."),
-        spinner: "dots",
-      }).start();
-      await stageAll();
-      spin1.succeed(c.success(" staged"));
-    }
-
-    // Get commit message
-    const lm = await checkLMStudioConnection();
-    let message;
-
-    if (lm.connected) {
-      const spin2 = ora({ text: c.muted(" ai..."), spinner: "dots" }).start();
-      try {
-        const diff = await getStagedDiff();
-        const newStatus = await getGitStatus();
-        const suggestions = await generateCommitSuggestions(
-          diff,
-          newStatus.staged,
-          1,
-        );
-        spin2.stop();
-
-        const { useAi } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "useAi",
-            message: c.white(suggestions[0]) + c.muted(" kullan?"),
-            default: true,
-          },
-        ]);
-
-        message = useAi ? suggestions[0] : null;
-      } catch {
-        spin2.fail(c.muted(" ai hatası"));
-      }
-    }
-
-    if (!message) {
-      const { custom } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "custom",
-          message: c.muted("mesaj:"),
-          validate: (v) => v.length > 0,
+          type: "list",
+          name: "toDelete",
+          message: s.muted("Hangi tag silinsin?"),
+          choices: tags.all,
         },
       ]);
-      message = custom;
-    }
-
-    // Commit
-    const spin3 = ora({
-      text: c.muted(" committing..."),
-      spinner: "dots",
-    }).start();
-    await createCommit(message);
-    spin3.succeed(c.success(" committed"));
-
-    // Push
-    const spin4 = ora({
-      text: c.muted(" pushing..."),
-      spinner: "dots",
-    }).start();
-    try {
-      await pushToRemote();
-      spin4.succeed(c.success(" pushed ✓"));
-    } catch (err) {
-      spin4.fail(c.error(" " + err.message));
-    }
-    await pause();
-  }
-
-  if (action === "stage-commit") {
-    if (hasChanges) {
-      await stageAll();
-    }
-    await viewCommit();
-  }
-
-  if (action === "sync") {
-    const spin1 = ora({
-      text: c.muted(" pulling..."),
-      spinner: "dots",
-    }).start();
-    try {
-      await pullFromRemote();
-      spin1.succeed(c.success(" pulled"));
-
-      const spin2 = ora({
-        text: c.muted(" pushing..."),
-        spinner: "dots",
-      }).start();
-      await pushToRemote();
-      spin2.succeed(c.success(" pushed ✓"));
-    } catch (err) {
-      spin1.fail(c.error(" " + err.message));
-    }
-    await pause();
-  }
-
-  if (action === "discard") {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: c.error("tüm değişiklikler silinecek, emin misin?"),
-        default: false,
-      },
-    ]);
-
-    if (confirm) {
-      const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-      const simpleGit = require("simple-git")();
-      await simpleGit.checkout(["--", "."]);
-      await simpleGit.clean("fd");
-      spin.succeed(c.success(" temizlendi"));
-      await pause();
+      await deleteTag(toDelete);
+      console.log(s.success(`\n  ✓ ${toDelete} silindi!`));
+      await sleep(600);
     }
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SEARCH
-// ═══════════════════════════════════════════════════════════════
-
-async function viewSearch() {
-  clear();
-  header();
-  section("ara");
-
-  const { type } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "type",
-      message: c.muted("›"),
-      choices: [
-        { name: "  mesajda ara", value: "message" },
-        { name: "  yazara göre", value: "author" },
-        { name: c.muted("  geri"), value: "back" },
-      ],
-    },
-  ]);
-
-  if (type === "back") return;
-
-  const { query } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "query",
-      message: c.muted(type === "message" ? "aranacak:" : "yazar:"),
-      validate: (v) => v.length > 0,
-    },
-  ]);
-
-  const spin = ora({ text: c.muted(" arıyor..."), spinner: "dots" }).start();
-
-  try {
-    let results;
-    if (type === "message") {
-      results = await searchCommits(query);
-    } else {
-      results = await searchCommitsByAuthor(query);
-    }
-
-    spin.stop();
-    clear();
-    header();
-    section("sonuçlar");
-
-    if (results.all.length === 0) {
-      console.log(c.muted("  sonuç bulunamadı\n"));
-    } else {
-      console.log(c.muted(`  ${results.all.length} sonuç\n`));
-
-      results.all.forEach((commit) => {
-        const hash = c.primary(commit.hash.substring(0, 7));
-        const msg = truncate(commit.message, getWidth() - 20);
-        const author = c.muted(commit.author_name);
-        const time = c.muted(timeAgo(new Date(commit.date)));
-        console.log(`  ${hash} ${msg}`);
-        console.log(`         ${author} · ${time}\n`);
-      });
-    }
-  } catch (err) {
-    spin.fail(c.error(" " + err.message));
-  }
-
-  await pause();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CHERRY-PICK
-// ═══════════════════════════════════════════════════════════════
-
-async function viewCherryPick() {
-  clear();
-  header();
-  section("cherry-pick");
-
-  const branches = await getBranches();
-  const current = branches.current;
-  const others = branches.all.filter(
-    (b) => b !== current && !b.startsWith("remotes/"),
-  );
-
-  if (others.length === 0) {
-    console.log(c.muted("  başka branch yok\n"));
-    await pause();
-    return;
-  }
-
-  const { sourceBranch } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "sourceBranch",
-      message: c.muted("kaynak branch:"),
-      choices: [...others, { name: c.muted("  geri"), value: "back" }],
-    },
-  ]);
-
-  if (sourceBranch === "back") return;
-
-  const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-
-  try {
-    const commits = await getOtherBranchCommits(sourceBranch);
-    spin.stop();
-
-    if (commits.all.length === 0) {
-      console.log(c.muted("  alınacak commit yok\n"));
-      await pause();
-      return;
-    }
-
-    const { commit } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "commit",
-        message: c.muted("commit seç:"),
-        choices: [
-          ...commits.all.map((cmt) => ({
-            name: `  ${c.primary(cmt.hash.substring(0, 7))} ${truncate(cmt.message, 40)}`,
-            value: cmt.hash,
-          })),
-          { name: c.muted("  geri"), value: "back" },
-        ],
-        pageSize: Math.max(getHeight() - 8, 10),
-      },
-    ]);
-
-    if (commit === "back") return;
-
-    const pickSpin = ora({
-      text: c.muted(" cherry-picking..."),
-      spinner: "dots",
-    }).start();
-    await cherryPick(commit);
-    pickSpin.succeed(c.success(" cherry-picked ✓"));
-  } catch (err) {
-    if (err.message) {
-      console.log(c.error("\n  " + err.message));
-    }
-  }
-
-  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
 // REMOTE
 // ═══════════════════════════════════════════════════════════════
 
-async function viewRemote() {
-  let inMenu = true;
+async function doRemote() {
+  clear();
+  header();
+  console.log(s.bold("  Remote\n"));
 
-  while (inMenu) {
-    clear();
-    header();
-    section("remote");
+  const remotes = await getRemotes();
 
-    const remotes = await getRemotes();
+  if (remotes.length > 0) {
+    remotes.forEach((r) => {
+      console.log(s.primary(`  ${r.name}`));
+      console.log(s.muted(`    ${r.refs.fetch || "-"}\n`));
+    });
+  } else {
+    console.log(s.muted("  Remote yok.\n"));
+  }
 
-    if (remotes.length > 0) {
-      remotes.forEach((r) => {
-        console.log(c.primary(`  ${r.name}`));
-        console.log(c.muted(`    fetch: ${r.refs.fetch || "-"}`));
-        console.log(c.muted(`    push:  ${r.refs.push || "-"}\n`));
-      });
-    } else {
-      console.log(c.muted("  remote yok\n"));
-    }
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: s.muted("Ne yapayım?"),
+      choices: [
+        { name: s.success("  + Remote Ekle"), value: "add" },
+        { name: s.error("  ✕ Remote Sil"), value: "remove" },
+        { name: s.muted("  ← Geri"), value: "back" },
+      ],
+    },
+  ]);
 
-    const { action } = await inquirer.prompt([
+  if (action === "back") return;
+
+  if (action === "add") {
+    const { name } = await inquirer.prompt([
       {
-        type: "list",
-        name: "action",
-        message: c.muted("›"),
-        choices: [
-          { name: c.success("  ekle"), value: "add" },
-          { name: "  url değiştir", value: "url" },
-          { name: c.error("  sil"), value: "remove" },
-          { type: "separator", line: " " },
-          { name: c.muted("  geri"), value: "back" },
-        ],
+        type: "input",
+        name: "name",
+        message: s.muted("Remote adı:"),
+        default: "origin",
       },
     ]);
+    const { url } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "url",
+        message: s.muted("URL:"),
+        validate: (v) => v.length > 0,
+      },
+    ]);
+    await addRemote(name, url);
+    console.log(s.success(`\n  ✓ ${name} eklendi!`));
+    await sleep(600);
+  }
 
-    switch (action) {
-      case "add":
-        const { name } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "name",
-            message: c.muted("isim:"),
-            default: "origin",
-            validate: (v) => v.length > 0,
-          },
-        ]);
-        const { url } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "url",
-            message: c.muted("url:"),
-            validate: (v) => v.length > 0,
-          },
-        ]);
-        try {
-          await addRemote(name, url);
-          console.log(c.success(`\n  ✓ ${name} eklendi`));
-          await sleep(600);
-        } catch (err) {
-          console.log(c.error("  " + err.message));
-          await pause();
-        }
-        break;
-
-      case "url":
-        if (remotes.length === 0) {
-          console.log(c.muted("  remote yok"));
-          await pause();
-        } else {
-          const { remoteName } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "remoteName",
-              message: c.muted("remote:"),
-              choices: remotes.map((r) => r.name),
-            },
-          ]);
-          const { newUrl } = await inquirer.prompt([
-            {
-              type: "input",
-              name: "newUrl",
-              message: c.muted("yeni url:"),
-              validate: (v) => v.length > 0,
-            },
-          ]);
-          try {
-            await setRemoteUrl(remoteName, newUrl);
-            console.log(c.success(`\n  ✓ güncellendi`));
-            await sleep(600);
-          } catch (err) {
-            console.log(c.error("  " + err.message));
-            await pause();
-          }
-        }
-        break;
-
-      case "remove":
-        if (remotes.length === 0) {
-          console.log(c.muted("  remote yok"));
-          await pause();
-        } else {
-          const { toRemove } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "toRemove",
-              message: c.muted("sil:"),
-              choices: remotes.map((r) => r.name),
-            },
-          ]);
-          const { confirm } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "confirm",
-              message: c.error(`${toRemove} silinsin mi?`),
-              default: false,
-            },
-          ]);
-          if (confirm) {
-            await removeRemote(toRemove);
-            console.log(c.success(`  ✓ silindi`));
-            await sleep(600);
-          }
-        }
-        break;
-
-      case "back":
-        inMenu = false;
-        break;
-    }
+  if (action === "remove" && remotes.length > 0) {
+    const { toRemove } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "toRemove",
+        message: s.muted("Hangi remote silinsin?"),
+        choices: remotes.map((r) => r.name),
+      },
+    ]);
+    await removeRemote(toRemove);
+    console.log(s.success(`\n  ✓ ${toRemove} silindi!`));
+    await sleep(600);
   }
 }
 
@@ -1911,13 +1332,13 @@ async function viewRemote() {
 // STATS
 // ═══════════════════════════════════════════════════════════════
 
-async function viewStats() {
+async function doStats() {
   clear();
   header();
-  section("stats");
+  console.log(s.bold("  İstatistikler\n"));
 
   const spin = ora({
-    text: c.muted(" hesaplanıyor..."),
+    text: s.muted(" Hesaplanıyor..."),
     spinner: "dots",
   }).start();
 
@@ -1925,498 +1346,280 @@ async function viewStats() {
     const stats = await getRepoStats();
     spin.stop();
 
-    console.log(c.muted("  genel\n"));
-    console.log(`  ${c.primary(stats.totalCommits)} commit`);
-    console.log(`  ${c.primary(stats.branches)} branch`);
-    console.log(`  ${c.primary(stats.remoteBranches)} remote branch`);
-    console.log(`  ${c.primary(stats.tags)} tag\n`);
+    console.log(s.primary(`  ${stats.totalCommits}`) + s.text(" commit"));
+    console.log(s.primary(`  ${stats.branches}`) + s.text(" branch"));
+    console.log(s.primary(`  ${stats.tags}`) + s.text(" tag"));
+    console.log();
 
     if (stats.firstCommit) {
-      console.log(c.muted("  tarih\n"));
       console.log(
-        `  ilk: ${c.white(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR"))}`,
+        s.muted("  İlk commit: ") +
+          s.text(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR")),
       );
       console.log(
-        `  son: ${c.white(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR"))}\n`,
+        s.muted("  Son commit: ") +
+          s.text(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR")),
       );
+      console.log();
     }
 
+    // Top contributors
     const authors = Object.entries(stats.authors)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-
     if (authors.length > 0) {
-      console.log(c.muted("  katkıda bulunanlar\n"));
+      console.log(s.muted("  Top katkıda bulunanlar:"));
       authors.forEach(([name, count]) => {
         const bar = "█".repeat(
-          Math.min(Math.round((count / stats.totalCommits) * 20), 20),
+          Math.min(Math.round((count / stats.totalCommits) * 15), 15),
         );
-        console.log(`  ${c.white(name.padEnd(20))} ${c.primary(bar)} ${count}`);
+        console.log(`  ${s.primary(bar)} ${name} (${count})`);
       });
-      console.log("");
     }
   } catch (err) {
-    spin.fail(c.error(" " + err.message));
+    spin.fail(s.error(` ${err.message}`));
   }
 
+  console.log();
   await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
-// REBASE (Interactive)
+// SEARCH
 // ═══════════════════════════════════════════════════════════════
 
-async function viewRebase() {
+async function doSearch() {
   clear();
   header();
-  section("rebase");
+  console.log(s.bold("  Commit Ara\n"));
 
-  const log = await getCommitLog(10);
-
-  if (log.all.length < 2) {
-    console.log(c.muted("  yeterli commit yok\n"));
-    await pause();
-    return;
-  }
-
-  console.log(c.muted("  son commitler:\n"));
-  log.all.slice(0, 5).forEach((commit, i) => {
-    console.log(
-      `  ${c.primary(commit.hash.substring(0, 7))} ${truncate(commit.message, 40)}`,
-    );
-  });
-  console.log("");
-
-  const { action } = await inquirer.prompt([
+  const { query } = await inquirer.prompt([
     {
-      type: "list",
-      name: "action",
-      message: c.muted("›"),
-      choices: [
-        { name: c.warning("  squash (birleştir)"), value: "squash" },
-        { name: c.error("  drop (sil)"), value: "drop" },
-        { name: c.muted("  geri"), value: "back" },
-      ],
+      type: "input",
+      name: "query",
+      message: s.muted("Aranacak kelime:"),
+      validate: (v) => v.length > 0,
     },
   ]);
 
-  if (action === "back") return;
+  const spin = ora({ text: s.muted(" Aranıyor..."), spinner: "dots" }).start();
 
-  if (action === "squash") {
-    const { count } = await inquirer.prompt([
-      {
-        type: "number",
-        name: "count",
-        message: c.muted("kaç commit birleştirilsin?"),
-        default: 2,
-        validate: (v) => v >= 2 && v <= log.all.length,
-      },
-    ]);
+  try {
+    const results = await searchCommits(query);
+    spin.stop();
 
-    console.log(c.muted("\n  birleştirilecek commitler:"));
-    log.all.slice(0, count).forEach((cmt) => {
-      console.log(c.muted(`  - ${cmt.message}`));
-    });
-
-    const { message } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "message",
-        message: c.muted("yeni mesaj:"),
-        validate: (v) => v.length > 0,
-      },
-    ]);
-
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: c.warning("squash uygulansın mı?"),
-        default: false,
-      },
-    ]);
-
-    if (confirm) {
-      const spin = ora({
-        text: c.muted(" squashing..."),
-        spinner: "dots",
-      }).start();
-      try {
-        await squashCommits(count, message);
-        spin.succeed(c.success(" squash tamamlandı"));
-      } catch (err) {
-        spin.fail(c.error(" " + err.message));
-      }
-      await pause();
+    if (results.all.length === 0) {
+      console.log(s.muted("\n  Sonuç bulunamadı.\n"));
+    } else {
+      console.log(s.muted(`\n  ${results.all.length} sonuç:\n`));
+      results.all.slice(0, 10).forEach((commit) => {
+        console.log(
+          `  ${s.primary(commit.hash.substring(0, 7))} ${s.text(truncate(commit.message, 50))}`,
+        );
+        console.log(
+          s.muted(`         ${commit.author_name} · ${timeAgo(commit.date)}\n`),
+        );
+      });
     }
+  } catch (err) {
+    spin.fail(s.error(` ${err.message}`));
   }
 
-  if (action === "drop") {
-    console.log(c.error("\n  ⚠ son commit silinecek:"));
-    console.log(c.white(`  ${log.all[0].message}\n`));
-
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: c.error("geri alınamaz! emin misin?"),
-        default: false,
-      },
-    ]);
-
-    if (confirm) {
-      const spin = ora({
-        text: c.muted(" dropping..."),
-        spinner: "dots",
-      }).start();
-      try {
-        await dropLastCommit();
-        spin.succeed(c.success(" commit silindi"));
-      } catch (err) {
-        spin.fail(c.error(" " + err.message));
-      }
-      await pause();
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CONFLICT
-// ═══════════════════════════════════════════════════════════════
-
-async function viewConflict() {
-  clear();
-  header();
-  section("conflict");
-
-  const conflicts = await getConflictDetails();
-
-  if (conflicts.length === 0) {
-    console.log(c.success("  ✓ çakışma yok\n"));
-    await pause();
-    return;
-  }
-
-  console.log(c.error(`  ${conflicts.length} dosyada çakışma:\n`));
-  conflicts.forEach((f) => console.log(c.warning("  ⚠ " + f)));
-  console.log("");
-
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: c.muted("›"),
-      choices: [
-        { name: c.success("  dosya seç ve çöz"), value: "resolve" },
-        { name: "  tümünü ours (bizim) yap", value: "ours-all" },
-        { name: "  tümünü theirs (onların) yap", value: "theirs-all" },
-        { name: c.error("  merge iptal"), value: "abort" },
-        { name: c.muted("  geri"), value: "back" },
-      ],
-    },
-  ]);
-
-  if (action === "back") return;
-
-  if (action === "resolve") {
-    const { file } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "file",
-        message: c.muted("dosya:"),
-        choices: conflicts,
-      },
-    ]);
-
-    const { resolution } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "resolution",
-        message: c.muted("çözüm:"),
-        choices: [
-          { name: c.success("  ours (bizim versiyonu kullan)"), value: "ours" },
-          {
-            name: c.primary("  theirs (onların versiyonunu kullan)"),
-            value: "theirs",
-          },
-        ],
-      },
-    ]);
-
-    try {
-      if (resolution === "ours") {
-        await acceptOurs(file);
-      } else {
-        await acceptTheirs(file);
-      }
-      console.log(c.success(`\n  ✓ ${file} çözüldü`));
-      await sleep(600);
-    } catch (err) {
-      console.log(c.error("  " + err.message));
-      await pause();
-    }
-  }
-
-  if (action === "ours-all") {
-    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-    try {
-      for (const file of conflicts) {
-        await acceptOurs(file);
-      }
-      spin.succeed(c.success(` ${conflicts.length} dosya çözüldü (ours)`));
-    } catch (err) {
-      spin.fail(c.error(" " + err.message));
-    }
-    await pause();
-  }
-
-  if (action === "theirs-all") {
-    const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
-    try {
-      for (const file of conflicts) {
-        await acceptTheirs(file);
-      }
-      spin.succeed(c.success(` ${conflicts.length} dosya çözüldü (theirs)`));
-    } catch (err) {
-      spin.fail(c.error(" " + err.message));
-    }
-    await pause();
-  }
-
-  if (action === "abort") {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: c.error("merge iptal edilsin mi?"),
-        default: false,
-      },
-    ]);
-
-    if (confirm) {
-      try {
-        await abortMerge();
-        console.log(c.success("\n  ✓ merge iptal edildi"));
-      } catch (err) {
-        console.log(c.error("  " + err.message));
-      }
-      await pause();
-    }
-  }
+  await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
 // BLAME
 // ═══════════════════════════════════════════════════════════════
 
-async function viewBlame() {
+async function doBlame() {
   clear();
   header();
-  section("blame");
+  console.log(s.bold("  Blame\n"));
+
+  const files = await getTrackedFiles();
+
+  if (files.length === 0) {
+    console.log(s.muted("  Tracked dosya yok.\n"));
+    await pause();
+    return;
+  }
+
+  const { file } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "file",
+      message: s.muted("Dosya seç:"),
+      choices: files.slice(0, 30),
+      pageSize: 15,
+    },
+  ]);
 
   const spin = ora({
-    text: c.muted(" dosyalar yükleniyor..."),
+    text: s.muted(" Yükleniyor..."),
     spinner: "dots",
   }).start();
 
   try {
-    const files = await getTrackedFiles();
-    spin.stop();
-
-    if (files.length === 0) {
-      console.log(c.muted("  dosya yok\n"));
-      await pause();
-      return;
-    }
-
-    const { file } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "file",
-        message: c.muted("dosya seç:"),
-        choices: [
-          ...files.slice(0, 50),
-          ...(files.length > 50
-            ? [c.muted(`... +${files.length - 50} dosya`)]
-            : []),
-        ],
-        pageSize: Math.max(getHeight() - 8, 15),
-      },
-    ]);
-
-    if (file.startsWith("...")) return;
-
-    const blameSpin = ora({
-      text: c.muted(" blame yükleniyor..."),
-      spinner: "dots",
-    }).start();
     const blame = await getBlame(file);
-    blameSpin.stop();
+    spin.stop();
 
     clear();
-    header();
-    section(`blame: ${file}`);
+    console.log(s.bold(`\n  ${file}\n`));
 
-    const lineCount = Math.min(blame.length, getHeight() - 10);
-
-    blame.slice(0, lineCount).forEach((b, i) => {
-      const lineNum = c.muted(String(i + 1).padStart(4));
-      const hash = c.primary(b.hash.substring(0, 7));
-      const author = c.muted(truncate(b.author || "", 12).padEnd(12));
-      const code = truncate(b.line || "", getWidth() - 35);
+    blame.slice(0, rows() - 5).forEach((b, i) => {
+      const lineNum = s.muted(String(i + 1).padStart(4));
+      const hash = s.primary((b.hash || "").substring(0, 7));
+      const author = s.muted(truncate(b.author || "", 10).padEnd(10));
+      const code = truncate(b.line || "", cols() - 30);
       console.log(`${lineNum} ${hash} ${author} ${code}`);
     });
-
-    if (blame.length > lineCount) {
-      console.log(c.muted(`\n  ... +${blame.length - lineCount} satır daha`));
-    }
-
-    console.log("");
   } catch (err) {
-    spin.stop();
-    console.log(c.error("  " + err.message));
+    spin.fail(s.error(` ${err.message}`));
   }
 
+  console.log();
   await pause();
 }
 
 // ═══════════════════════════════════════════════════════════════
-// WORKTREE
+// CONFLICT
 // ═══════════════════════════════════════════════════════════════
 
-async function viewWorktree() {
-  let inMenu = true;
+async function doConflict() {
+  clear();
+  header();
+  console.log(s.bold("  Conflict Çözücü\n"));
 
-  while (inMenu) {
-    clear();
-    header();
-    section("worktree");
+  const conflicts = await getConflictDetails();
 
-    const worktrees = await listWorktrees();
+  if (conflicts.length === 0) {
+    console.log(s.success("  ✓ Conflict yok!\n"));
+    await pause();
+    return;
+  }
 
-    if (worktrees.length > 0) {
-      worktrees.forEach((wt) => {
-        const branchName = wt.branch || c.muted("(detached)");
-        console.log(c.primary(`  📁 ${wt.path}`));
-        console.log(c.muted(`     ${branchName}\n`));
-      });
-    }
+  console.log(s.error(`  ${conflicts.length} dosyada conflict:\n`));
+  conflicts.forEach((f) => console.log(s.warning(`  ⚠ ${f}`)));
+  console.log();
 
-    const { action } = await inquirer.prompt([
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: s.muted("Ne yapayım?"),
+      choices: [
+        {
+          name: s.success("  Tümünü 'ours' yap (bizim versiyon)"),
+          value: "ours",
+        },
+        {
+          name: s.primary("  Tümünü 'theirs' yap (gelen versiyon)"),
+          value: "theirs",
+        },
+        { name: s.error("  Merge iptal"), value: "abort" },
+        { name: s.muted("  ← Geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "ours") {
+    for (const file of conflicts) await acceptOurs(file);
+    console.log(s.success("\n  ✓ Tüm conflict'ler 'ours' olarak çözüldü!"));
+    await sleep(600);
+  }
+
+  if (action === "theirs") {
+    for (const file of conflicts) await acceptTheirs(file);
+    console.log(s.success("\n  ✓ Tüm conflict'ler 'theirs' olarak çözüldü!"));
+    await sleep(600);
+  }
+
+  if (action === "abort") {
+    await abortMerge();
+    console.log(s.warning("\n  Merge iptal edildi."));
+    await sleep(600);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+async function doSettings() {
+  clear();
+  header();
+  console.log(s.bold("  Ayarlar\n"));
+
+  const config = getConfig();
+  const lm = await checkLMStudioConnection();
+
+  console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
+  console.log(s.muted("  Model: ") + s.text(config.model));
+  console.log(
+    s.muted("  AI Durumu: ") +
+      (lm.connected ? s.success("Bağlı ✓") : s.error("Bağlı değil ✗")),
+  );
+  console.log();
+
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: s.muted("Ne yapayım?"),
+      choices: [
+        { name: s.text("  URL Değiştir"), value: "url" },
+        { name: s.text("  Model Değiştir"), value: "model" },
+        { name: s.muted("  ← Geri"), value: "back" },
+      ],
+    },
+  ]);
+
+  if (action === "back") return;
+
+  if (action === "url") {
+    const { url } = await inquirer.prompt([
       {
-        type: "list",
-        name: "action",
-        message: c.muted("›"),
-        choices: [
-          { name: c.success("  yeni worktree"), value: "add" },
-          { name: c.error("  sil"), value: "remove" },
-          { type: "separator", line: " " },
-          { name: c.muted("  geri"), value: "back" },
-        ],
+        type: "input",
+        name: "url",
+        message: s.muted("Yeni URL:"),
+        default: config.lmStudioUrl,
       },
     ]);
-
-    switch (action) {
-      case "add":
-        const branches = await getBranches();
-        const available = branches.all.filter((b) => !b.startsWith("remotes/"));
-
-        const { type } = await inquirer.prompt([
-          {
-            type: "list",
-            name: "type",
-            message: c.muted("›"),
-            choices: [
-              { name: "  mevcut branch", value: "existing" },
-              { name: "  yeni branch oluştur", value: "new" },
-            ],
-          },
-        ]);
-
-        const { worktreePath } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "worktreePath",
-            message: c.muted("dizin yolu:"),
-            validate: (v) => v.length > 0,
-          },
-        ]);
-
-        try {
-          if (type === "existing") {
-            const { branch } = await inquirer.prompt([
-              {
-                type: "list",
-                name: "branch",
-                message: c.muted("branch:"),
-                choices: available,
-              },
-            ]);
-            await addWorktree(worktreePath, branch);
-          } else {
-            const { newBranch } = await inquirer.prompt([
-              {
-                type: "input",
-                name: "newBranch",
-                message: c.muted("yeni branch adı:"),
-                validate: (v) => v.length > 0 && !v.includes(" "),
-              },
-            ]);
-            await addWorktreeNewBranch(worktreePath, newBranch);
-          }
-          console.log(c.success("\n  ✓ worktree oluşturuldu"));
-          await sleep(600);
-        } catch (err) {
-          console.log(c.error("  " + err.message));
-          await pause();
-        }
-        break;
-
-      case "remove":
-        const removable = worktrees.filter((_, i) => i > 0); // İlk worktree ana repo
-        if (removable.length === 0) {
-          console.log(c.muted("  silinecek worktree yok"));
-          await pause();
-        } else {
-          const { toRemove } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "toRemove",
-              message: c.muted("sil:"),
-              choices: removable.map((wt) => ({
-                name: `  ${wt.path} (${wt.branch || "detached"})`,
-                value: wt.path,
-              })),
-            },
-          ]);
-
-          const { confirm } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "confirm",
-              message: c.error("worktree silinsin mi?"),
-              default: false,
-            },
-          ]);
-
-          if (confirm) {
-            try {
-              await removeWorktree(toRemove);
-              console.log(c.success("\n  ✓ silindi"));
-              await sleep(600);
-            } catch (err) {
-              console.log(c.error("  " + err.message));
-              await pause();
-            }
-          }
-        }
-        break;
-
-      case "back":
-        inMenu = false;
-        break;
-    }
+    saveConfig({ ...config, lmStudioUrl: url });
+    console.log(s.success("\n  ✓ Kaydedildi!"));
+    await sleep(600);
   }
+
+  if (action === "model") {
+    const { model } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "model",
+        message: s.muted("Model adı:"),
+        default: config.model,
+      },
+    ]);
+    saveConfig({ ...config, model });
+    console.log(s.success("\n  ✓ Kaydedildi!"));
+    await sleep(600);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPER
+// ═══════════════════════════════════════════════════════════════
+
+async function pause() {
+  await inquirer.prompt([
+    {
+      type: "input",
+      name: "x",
+      message: s.dim("Enter'a bas..."),
+    },
+  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2424,7 +1627,7 @@ async function viewWorktree() {
 // ═══════════════════════════════════════════════════════════════
 
 async function quickStatus() {
-  await viewStatus();
+  await doStatus();
 }
 
 async function quickCommit(message) {
@@ -2432,14 +1635,14 @@ async function quickCommit(message) {
     const status = await getGitStatus();
     if (status.staged.length === 0) await stageAll();
     await createCommit(message);
-    console.log(c.success("\n  ✓ commit\n"));
+    console.log(s.success("\n  ✓ Commit yapıldı!\n"));
   } else {
-    await viewCommit();
+    await doCommit();
   }
 }
 
 async function quickPush() {
-  await viewPush();
+  await doPush();
 }
 
 module.exports = { startApp, quickStatus, quickCommit, quickPush };
