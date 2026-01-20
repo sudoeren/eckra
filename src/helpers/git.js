@@ -329,6 +329,27 @@ async function getOtherBranchCommits(branch, count = 20) {
   return await git.log([`${current}..${branch}`, "-n", count.toString()]);
 }
 
+/**
+ * Remove a remote
+ */
+async function removeRemote(name) {
+  return await git.removeRemote(name);
+}
+
+/**
+ * Rename a remote
+ */
+async function renameRemote(oldName, newName) {
+  return await git.raw(["remote", "rename", oldName, newName]);
+}
+
+/**
+ * Set remote URL
+ */
+async function setRemoteUrl(name, url) {
+  return await git.raw(["remote", "set-url", name, url]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -373,4 +394,7 @@ module.exports = {
   searchCommitsByAuthor,
   cherryPick,
   getOtherBranchCommits,
+  removeRemote,
+  renameRemote,
+  setRemoteUrl,
 };

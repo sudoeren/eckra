@@ -37,6 +37,9 @@ const {
   searchCommitsByAuthor,
   cherryPick,
   getOtherBranchCommits,
+  removeRemote,
+  renameRemote,
+  setRemoteUrl,
 } = require("../helpers/git");
 
 const {
@@ -173,6 +176,7 @@ async function startApp() {
       { name: c.success("  hızlı işlem"), value: "quick" },
       { name: "  ara", value: "search" },
       { name: "  cherry-pick", value: "cherry" },
+      { name: "  remote", value: "remote" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -233,6 +237,9 @@ async function startApp() {
         break;
       case "cherry":
         await viewCherryPick();
+        break;
+      case "remote":
+        await viewRemote();
         break;
       case "undo":
         await viewUndo();
@@ -1684,6 +1691,142 @@ async function viewCherryPick() {
   }
 
   await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REMOTE
+// ═══════════════════════════════════════════════════════════════
+
+async function viewRemote() {
+  let inMenu = true;
+
+  while (inMenu) {
+    clear();
+    header();
+    section("remote");
+
+    const remotes = await getRemotes();
+
+    if (remotes.length > 0) {
+      remotes.forEach(r => {
+        console.log(c.primary(`  ${r.name}`));
+        console.log(c.muted(`    fetch: ${r.refs.fetch || "-"}`));
+        console.log(c.muted(`    push:  ${r.refs.push || "-"}\n`));
+      });
+    } else {
+      console.log(c.muted("  remote yok\n"));
+    }
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: c.muted("›"),
+        choices: [
+          { name: c.success("  ekle"), value: "add" },
+          { name: "  url değiştir", value: "url" },
+          { name: c.error("  sil"), value: "remove" },
+          { type: "separator", line: " " },
+          { name: c.muted("  geri"), value: "back" },
+        ],
+      },
+    ]);
+
+    switch (action) {
+      case "add":
+        const { name } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "name",
+            message: c.muted("isim:"),
+            default: "origin",
+            validate: v => v.length > 0,
+          },
+        ]);
+        const { url } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "url",
+            message: c.muted("url:"),
+            validate: v => v.length > 0,
+          },
+        ]);
+        try {
+          await addRemote(name, url);
+          console.log(c.success(`\n  ✓ ${name} eklendi`));
+          await sleep(600);
+        } catch (err) {
+          console.log(c.error("  " + err.message));
+          await pause();
+        }
+        break;
+
+      case "url":
+        if (remotes.length === 0) {
+          console.log(c.muted("  remote yok"));
+          await pause();
+        } else {
+          const { remoteName } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "remoteName",
+              message: c.muted("remote:"),
+              choices: remotes.map(r => r.name),
+            },
+          ]);
+          const { newUrl } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "newUrl",
+              message: c.muted("yeni url:"),
+              validate: v => v.length > 0,
+            },
+          ]);
+          try {
+            await setRemoteUrl(remoteName, newUrl);
+            console.log(c.success(`\n  ✓ güncellendi`));
+            await sleep(600);
+          } catch (err) {
+            console.log(c.error("  " + err.message));
+            await pause();
+          }
+        }
+        break;
+
+      case "remove":
+        if (remotes.length === 0) {
+          console.log(c.muted("  remote yok"));
+          await pause();
+        } else {
+          const { toRemove } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "toRemove",
+              message: c.muted("sil:"),
+              choices: remotes.map(r => r.name),
+            },
+          ]);
+          const { confirm } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "confirm",
+              message: c.error(`${toRemove} silinsin mi?`),
+              default: false,
+            },
+          ]);
+          if (confirm) {
+            await removeRemote(toRemove);
+            console.log(c.success(`  ✓ silindi`));
+            await sleep(600);
+          }
+        }
+        break;
+
+      case "back":
+        inMenu = false;
+        break;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
