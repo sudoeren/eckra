@@ -314,6 +314,21 @@ async function searchCommitsByAuthor(author, count = 20) {
   return await git.log(["--author=" + author, "-n", count.toString()]);
 }
 
+/**
+ * Cherry-pick a commit
+ */
+async function cherryPick(commitHash) {
+  return await git.raw(["cherry-pick", commitHash]);
+}
+
+/**
+ * Get commits from other branches (not in current)
+ */
+async function getOtherBranchCommits(branch, count = 20) {
+  const current = (await git.branch()).current;
+  return await git.log([`${current}..${branch}`, "-n", count.toString()]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -356,4 +371,6 @@ module.exports = {
   pushTags,
   searchCommits,
   searchCommitsByAuthor,
+  cherryPick,
+  getOtherBranchCommits,
 };

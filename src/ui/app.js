@@ -35,6 +35,8 @@ const {
   pushTags,
   searchCommits,
   searchCommitsByAuthor,
+  cherryPick,
+  getOtherBranchCommits,
 } = require("../helpers/git");
 
 const {
@@ -170,6 +172,7 @@ async function startApp() {
       { name: "  gitignore", value: "gitignore" },
       { name: c.success("  hızlı işlem"), value: "quick" },
       { name: "  ara", value: "search" },
+      { name: "  cherry-pick", value: "cherry" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -227,6 +230,9 @@ async function startApp() {
         break;
       case "search":
         await viewSearch();
+        break;
+      case "cherry":
+        await viewCherryPick();
         break;
       case "undo":
         await viewUndo();
@@ -1603,6 +1609,78 @@ async function viewSearch() {
     }
   } catch (err) {
     spin.fail(c.error(" " + err.message));
+  }
+
+  await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHERRY-PICK
+// ═══════════════════════════════════════════════════════════════
+
+async function viewCherryPick() {
+  clear();
+  header();
+  section("cherry-pick");
+
+  const branches = await getBranches();
+  const current = branches.current;
+  const others = branches.all.filter(b => b !== current && !b.startsWith("remotes/"));
+
+  if (others.length === 0) {
+    console.log(c.muted("  başka branch yok\n"));
+    await pause();
+    return;
+  }
+
+  const { sourceBranch } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "sourceBranch",
+      message: c.muted("kaynak branch:"),
+      choices: [...others, { name: c.muted("  geri"), value: "back" }],
+    },
+  ]);
+
+  if (sourceBranch === "back") return;
+
+  const spin = ora({ text: c.muted(" ..."), spinner: "dots" }).start();
+
+  try {
+    const commits = await getOtherBranchCommits(sourceBranch);
+    spin.stop();
+
+    if (commits.all.length === 0) {
+      console.log(c.muted("  alınacak commit yok\n"));
+      await pause();
+      return;
+    }
+
+    const { commit } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "commit",
+        message: c.muted("commit seç:"),
+        choices: [
+          ...commits.all.map(cmt => ({
+            name: `  ${c.primary(cmt.hash.substring(0, 7))} ${truncate(cmt.message, 40)}`,
+            value: cmt.hash,
+          })),
+          { name: c.muted("  geri"), value: "back" },
+        ],
+        pageSize: Math.max(getHeight() - 8, 10),
+      },
+    ]);
+
+    if (commit === "back") return;
+
+    const pickSpin = ora({ text: c.muted(" cherry-picking..."), spinner: "dots" }).start();
+    await cherryPick(commit);
+    pickSpin.succeed(c.success(" cherry-picked ✓"));
+  } catch (err) {
+    if (err.message) {
+      console.log(c.error("\n  " + err.message));
+    }
   }
 
   await pause();
