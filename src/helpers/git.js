@@ -269,6 +269,37 @@ async function amendCommit(message) {
   return await git.commit(message, ["--amend"]);
 }
 
+/**
+ * List all tags
+ */
+async function listTags() {
+  return await git.tags();
+}
+
+/**
+ * Create a new tag
+ */
+async function createTag(tagName, message = null) {
+  if (message) {
+    return await git.addAnnotatedTag(tagName, message);
+  }
+  return await git.addTag(tagName);
+}
+
+/**
+ * Delete a tag
+ */
+async function deleteTag(tagName) {
+  return await git.tag(["-d", tagName]);
+}
+
+/**
+ * Push tags to remote
+ */
+async function pushTags() {
+  return await git.pushTags();
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -305,4 +336,8 @@ module.exports = {
   undoLastCommit,
   getLastCommit,
   amendCommit,
+  listTags,
+  createTag,
+  deleteTag,
+  pushTags,
 };

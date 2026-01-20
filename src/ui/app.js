@@ -27,6 +27,10 @@ const {
   amendCommit,
   getUnstagedDiff,
   getFileDiff,
+  listTags,
+  createTag,
+  deleteTag,
+  pushTags,
 } = require("../helpers/git");
 
 const {
@@ -158,6 +162,7 @@ async function startApp() {
       { name: "  log", value: "log" },
       { name: "  stash", value: "stash" },
       { name: "  diff", value: "diff" },
+      { name: "  tag", value: "tag" },
       { name: c.warning("  undo"), value: "undo" },
       { name: c.primary("  amend"), value: "amend" },
       { type: "separator", line: c.muted("  " + line()) },
@@ -203,6 +208,9 @@ async function startApp() {
         break;
       case "diff":
         await viewDiff();
+        break;
+      case "tag":
+        await viewTag();
         break;
       case "undo":
         await viewUndo();
@@ -1122,6 +1130,126 @@ async function viewDiff() {
   console.log(formatDiff(diff));
   console.log("");
   await pause();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAG
+// ═══════════════════════════════════════════════════════════════
+
+async function viewTag() {
+  let inMenu = true;
+
+  while (inMenu) {
+    clear();
+    header();
+    section("tag");
+
+    const tags = await listTags();
+    
+    if (tags.all.length > 0) {
+      tags.all.forEach((t) => console.log(c.primary("  🏷  " + t)));
+      console.log("");
+    } else {
+      console.log(c.muted("  tag yok\n"));
+    }
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: c.muted("›"),
+        choices: [
+          { name: c.success("  yeni"), value: "new" },
+          { name: "  push tags", value: "push" },
+          { name: c.error("  sil"), value: "delete" },
+          { type: "separator", line: " " },
+          { name: c.muted("  geri"), value: "back" },
+        ],
+      },
+    ]);
+
+    switch (action) {
+      case "new":
+        const { name } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "name",
+            message: c.muted("isim (örn: v1.0.0):"),
+            validate: (v) => v.length > 0,
+          },
+        ]);
+        
+        const { withMessage } = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "withMessage",
+            message: c.muted("açıklama ekle?"),
+            default: false,
+          },
+        ]);
+
+        let tagMsg = null;
+        if (withMessage) {
+          const { msg } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "msg",
+              message: c.muted("açıklama:"),
+            },
+          ]);
+          tagMsg = msg;
+        }
+
+        try {
+          await createTag(name, tagMsg);
+          console.log(c.success(`\n  ✓ ${name}`));
+          await sleep(600);
+        } catch (err) {
+          console.log(c.error("  " + err.message));
+          await pause();
+        }
+        break;
+
+      case "push":
+        const spin = ora({ text: c.muted(" pushing tags..."), spinner: "dots" }).start();
+        try {
+          await pushTags();
+          spin.succeed(c.success(" tags pushed"));
+        } catch (err) {
+          spin.fail(c.error(" " + err.message));
+        }
+        await pause();
+        break;
+
+      case "delete":
+        if (tags.all.length === 0) {
+          console.log(c.muted("  silinecek tag yok"));
+          await pause();
+        } else {
+          const { tagToDelete } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "tagToDelete",
+              message: c.muted("sil:"),
+              choices: tags.all,
+            },
+          ]);
+          try {
+            await deleteTag(tagToDelete);
+            console.log(c.success(`  ✓ silindi`));
+            await sleep(600);
+          } catch (err) {
+            console.log(c.error("  " + err.message));
+            await pause();
+          }
+        }
+        break;
+
+      case "back":
+        inMenu = false;
+        break;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
