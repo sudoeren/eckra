@@ -110,19 +110,19 @@ function truncate(str, max) {
 
 function timeAgo(date) {
   const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
-  if (seconds < 60) return "şimdi";
-  if (seconds < 3600) return Math.floor(seconds / 60) + " dk";
-  if (seconds < 86400) return Math.floor(seconds / 3600) + " saat";
-  if (seconds < 604800) return Math.floor(seconds / 86400) + " gün";
-  return Math.floor(seconds / 604800) + " hafta";
+  if (seconds < 60) return "now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + " min";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + " hr";
+  if (seconds < 604800) return Math.floor(seconds / 86400) + " days";
+  return Math.floor(seconds / 604800) + " weeks";
 }
 
 function box(content, title = "") {
   const width = Math.min(cols() - 4, 70);
   const top = title
     ? s.dim("╭─") +
-      s.muted(` ${title} `) +
-      s.dim("─".repeat(width - title.length - 5) + "╮")
+    s.muted(` ${title} `) +
+    s.dim("─".repeat(width - title.length - 5) + "╮")
     : s.dim("╭" + "─".repeat(width - 2) + "╮");
   const bottom = s.dim("╰" + "─".repeat(width - 2) + "╯");
   const lines = content.split("\n").map((line) => {
@@ -161,7 +161,7 @@ async function getStatusInfo() {
 }
 
 function statusLine(info) {
-  if (!info) return s.error("  ✗ git repository değil\n");
+  if (!info) return s.error("  ✗ not a git repository\n");
 
   const parts = [s.primary(`${icons.branch} ${info.branch}`)];
 
@@ -195,34 +195,34 @@ async function startApp() {
     console.log(statusLine(info));
 
     if (!info) {
-      console.log(s.muted("  Git repository'de değilsiniz."));
+      console.log(s.muted("  You are not in a Git repository."));
       console.log(
-        s.muted("  Bir git projesine gidin veya 'git init' çalıştırın.\n"),
+        s.muted("  Navigate to a git project or run 'git init'.\n"),
       );
       await inquirer.prompt([
-        { type: "input", name: "x", message: s.muted("Enter'a bas...") },
+        { type: "input", name: "x", message: s.muted("Press Enter...") },
       ]);
       return;
     }
 
-    // Akıllı menü - duruma göre seçenekler
+    // Smart menu - options based on current state
     const choices = [];
 
-    // Conflict varsa öncelik
+    // Conflict priority
     if (info.conflicts > 0) {
-      choices.push({ name: s.error("  ⚠ Conflict Çöz"), value: "conflict" });
+      choices.push({ name: s.error("  ⚠ Resolve Conflict"), value: "conflict" });
       choices.push({
         type: "separator",
         line: s.dim("  ─────────────────────"),
       });
     }
 
-    // Ana işlemler
+    // Main actions
     if (info.modified > 0 || info.untracked > 0) {
       choices.push({
         name:
           `  ${s.success("+")} Stage` +
-          s.muted(` (${info.modified + info.untracked} dosya)`),
+          s.muted(` (${info.modified + info.untracked} files)`),
         value: "stage",
       });
     }
@@ -241,19 +241,19 @@ async function startApp() {
 
     choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
 
-    choices.push({ name: `  ${s.text("◎")} Durum`, value: "status" });
+    choices.push({ name: `  ${s.text("◎")} Status`, value: "status" });
     choices.push({ name: `  ${s.text("⎇")} Branch`, value: "branch" });
     choices.push({ name: `  ${s.text("◷")} Log`, value: "log" });
-    choices.push({ name: `  ${s.text("⋯")} Daha Fazla`, value: "more" });
+    choices.push({ name: `  ${s.text("⋯")} More`, value: "more" });
 
     choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
-    choices.push({ name: s.muted("  ✕ Çıkış"), value: "exit" });
+    choices.push({ name: s.muted("  ✕ Exit"), value: "exit" });
 
     const { action } = await inquirer.prompt([
       {
         type: "list",
         name: "action",
-        message: s.muted("Ne yapmak istersin?"),
+        message: s.muted("What would you like to do?"),
         choices,
         pageSize: 15,
         loop: false,
@@ -295,7 +295,7 @@ async function startApp() {
   }
 
   clear();
-  console.log(s.muted("\n  👋 Görüşürüz!\n"));
+  console.log(s.muted("\n  👋 Goodbye!\n"));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -311,12 +311,12 @@ async function doStage(info) {
   const files = [...status.modified, ...status.not_added];
 
   if (files.length === 0) {
-    console.log(s.muted("  Değişiklik yok.\n"));
+    console.log(s.muted("  No changes.\n"));
     await pause();
     return;
   }
 
-  // Dosyaları kategorize et
+  // Categorize files
   const modifiedFiles = status.modified.map((f) => ({
     name: `  ${s.warning("~")} ${f}`,
     value: f,
@@ -333,11 +333,11 @@ async function doStage(info) {
     {
       type: "list",
       name: "action",
-      message: s.muted("Ne yapayım?"),
+      message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  ✓ Tümünü Stage Et"), value: "all" },
-        { name: s.text("  ◉ Dosya Seç"), value: "select" },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.success("  ✓ Stage All"), value: "all" },
+        { name: s.text("  ◉ Select Files"), value: "select" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -347,15 +347,15 @@ async function doStage(info) {
   if (action === "all") {
     const spin = ora({ text: s.muted(" Staging..."), spinner: "dots" }).start();
     await stageAll();
-    spin.succeed(s.success(" Tümü staged!"));
+    spin.succeed(s.success(" All staged!"));
     await sleep(500);
 
-    // Direkt commit'e yönlendir
+    // Redirect to commit
     const { goCommit } = await inquirer.prompt([
       {
         type: "confirm",
         name: "goCommit",
-        message: s.muted("Commit yapmak ister misin?"),
+        message: s.muted("Would you like to commit?"),
         default: true,
       },
     ]);
@@ -364,12 +364,12 @@ async function doStage(info) {
     return;
   }
 
-  // Dosya seç
+  // Select files
   const { selected } = await inquirer.prompt([
     {
       type: "checkbox",
       name: "selected",
-      message: s.muted("Dosyaları seç (space ile):"),
+      message: s.muted("Select files (use space):"),
       choices: [
         ...(modifiedFiles.length > 0
           ? [{ type: "separator", line: s.muted("  Modified") }]
@@ -386,13 +386,13 @@ async function doStage(info) {
 
   if (selected.length > 0) {
     await stageFiles(selected);
-    console.log(s.success(`\n  ✓ ${selected.length} dosya staged!`));
+    console.log(s.success(`\n  ✓ ${selected.length} files staged!`));
 
     const { goCommit } = await inquirer.prompt([
       {
         type: "confirm",
         name: "goCommit",
-        message: s.muted("Commit yapmak ister misin?"),
+        message: s.muted("Would you like to commit?"),
         default: true,
       },
     ]);
@@ -412,24 +412,24 @@ async function doCommit(info) {
 
   let status = info?.status || (await getGitStatus());
 
-  // Hiç değişiklik yoksa
+  // No changes at all
   if (
     status.staged.length === 0 &&
     status.modified.length === 0 &&
     status.not_added.length === 0
   ) {
-    console.log(s.muted("  Commit edilecek değişiklik yok.\n"));
+    console.log(s.muted("  No changes to commit.\n"));
     await pause();
     return;
   }
 
-  // Staged yoksa önce stage et
+  // No staged files - stage first
   if (status.staged.length === 0) {
     const { doStageFirst } = await inquirer.prompt([
       {
         type: "confirm",
         name: "doStageFirst",
-        message: s.warning("Staged dosya yok. Tümünü stage edeyim mi?"),
+        message: s.warning("No staged files. Should I stage all?"),
         default: true,
       },
     ]);
@@ -439,16 +439,16 @@ async function doCommit(info) {
     status = await getGitStatus();
   }
 
-  // Staged dosyaları göster
-  console.log(s.muted("  Commit edilecek dosyalar:"));
+  // Show staged files
+  console.log(s.muted("  Files to commit:"));
   status.staged
     .slice(0, 5)
     .forEach((f) => console.log(s.success(`    + ${f}`)));
   if (status.staged.length > 5)
-    console.log(s.muted(`    ... ve ${status.staged.length - 5} dosya daha`));
+    console.log(s.muted(`    ... and ${status.staged.length - 5} more files`));
   console.log();
 
-  // AI ile mesaj öner
+  // AI message suggestion
   let message;
   const lm = await checkLMStudioConnection();
 
@@ -457,14 +457,14 @@ async function doCommit(info) {
       {
         type: "confirm",
         name: "useAI",
-        message: s.primary("AI ile commit mesajı önereyim mi?"),
+        message: s.primary("Should I suggest a commit message with AI?"),
         default: true,
       },
     ]);
 
     if (useAI) {
       const spin = ora({
-        text: s.muted(" AI düşünüyor..."),
+        text: s.muted(" AI is thinking..."),
         spinner: "dots",
       }).start();
 
@@ -477,21 +477,21 @@ async function doCommit(info) {
         );
         spin.stop();
 
-        console.log(s.muted("\n  AI Önerileri:\n"));
+        console.log(s.muted("\n  AI Suggestions:\n"));
 
         const { selected } = await inquirer.prompt([
           {
             type: "list",
             name: "selected",
-            message: s.muted("Birini seç veya kendin yaz:"),
+            message: s.muted("Pick one or write your own:"),
             choices: [
               ...suggestions.map((msg, i) => ({
                 name: `  ${i + 1}. ${s.text(msg)}`,
                 value: msg,
               })),
               { type: "separator", line: " " },
-              { name: s.primary("  ✎ Kendim yazacağım"), value: "_custom" },
-              { name: s.muted("  ← İptal"), value: "_cancel" },
+              { name: s.primary("  ✎ I'll write my own"), value: "_custom" },
+              { name: s.muted("  ← Cancel"), value: "_cancel" },
             ],
           },
         ]);
@@ -499,32 +499,32 @@ async function doCommit(info) {
         if (selected === "_cancel") return;
         if (selected !== "_custom") message = selected;
       } catch (err) {
-        spin.fail(s.error(" AI hatası"));
+        spin.fail(s.error(" AI error"));
       }
     }
   }
 
-  // Manuel mesaj
+  // Manual message
   if (!message) {
     const { custom } = await inquirer.prompt([
       {
         type: "input",
         name: "custom",
-        message: s.muted("Commit mesajı:"),
-        validate: (v) => v.length > 0 || "Mesaj boş olamaz",
+        message: s.muted("Commit message:"),
+        validate: (v) => v.length > 0 || "Message cannot be empty",
       },
     ]);
     message = custom;
   }
 
-  // Onay
-  console.log(s.muted("\n  Mesaj: ") + s.text(message));
+  // Confirm
+  console.log(s.muted("\n  Message: ") + s.text(message));
 
   const { confirm } = await inquirer.prompt([
     {
       type: "confirm",
       name: "confirm",
-      message: s.muted("Commit yapayım mı?"),
+      message: s.muted("Should I commit?"),
       default: true,
     },
   ]);
@@ -532,7 +532,7 @@ async function doCommit(info) {
   if (!confirm) return;
 
   const spin = ora({
-    text: s.muted(" Commit yapılıyor..."),
+    text: s.muted(" Creating commit..."),
     spinner: "dots",
   }).start();
 
@@ -540,19 +540,19 @@ async function doCommit(info) {
     const result = await createCommit(message);
     spin.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
 
-    // Push öner
+    // Suggest push
     const { doPushNow } = await inquirer.prompt([
       {
         type: "confirm",
         name: "doPushNow",
-        message: s.muted("Push yapmak ister misin?"),
+        message: s.muted("Would you like to push?"),
         default: false,
       },
     ]);
 
     if (doPushNow) await doPush();
   } catch (err) {
-    spin.fail(s.error(` Hata: ${err.message}`));
+    spin.fail(s.error(` Error: ${err.message}`));
     await pause();
   }
 }
@@ -563,16 +563,16 @@ async function doCommit(info) {
 
 async function doPush() {
   const spin = ora({
-    text: s.muted(" Push yapılıyor..."),
+    text: s.muted(" Pushing..."),
     spinner: "dots",
   }).start();
 
   try {
     await pushToRemote();
-    spin.succeed(s.success(" Push başarılı!"));
+    spin.succeed(s.success(" Push successful!"));
     await sleep(800);
   } catch (err) {
-    spin.fail(s.error(" Push hatası"));
+    spin.fail(s.error(" Push error"));
 
     if (err.message.includes("no upstream")) {
       const branch = await getCurrentBranch();
@@ -580,20 +580,20 @@ async function doPush() {
         {
           type: "confirm",
           name: "setUpstream",
-          message: s.warning(`Upstream ayarlansın mı? (-u origin ${branch})`),
+          message: s.warning(`Set upstream? (-u origin ${branch})`),
           default: true,
         },
       ]);
 
       if (setUpstream) {
         const spin2 = ora({
-          text: s.muted(" Upstream ayarlanıyor..."),
+          text: s.muted(" Setting upstream..."),
           spinner: "dots",
         }).start();
         try {
           const simpleGit = require("simple-git")();
           await simpleGit.push(["-u", "origin", branch]);
-          spin2.succeed(s.success(" Push başarılı!"));
+          spin2.succeed(s.success(" Push successful!"));
         } catch (e) {
           spin2.fail(s.error(` ${e.message}`));
         }
@@ -611,7 +611,7 @@ async function doPush() {
 
 async function doPull() {
   const spin = ora({
-    text: s.muted(" Pull yapılıyor..."),
+    text: s.muted(" Pulling..."),
     spinner: "dots",
   }).start();
 
@@ -619,9 +619,9 @@ async function doPull() {
     const result = await pullFromRemote();
 
     if (result.summary?.changes > 0) {
-      spin.succeed(s.success(` ${result.summary.changes} dosya güncellendi`));
+      spin.succeed(s.success(` ${result.summary.changes} files updated`));
     } else {
-      spin.succeed(s.success(" Zaten güncel!"));
+      spin.succeed(s.success(" Already up to date!"));
     }
     await sleep(800);
   } catch (err) {
@@ -637,7 +637,7 @@ async function doPull() {
 async function doStatus() {
   clear();
   header();
-  console.log(s.bold("  Durum\n"));
+  console.log(s.bold("  Status\n"));
 
   const status = await getGitStatus();
   const branch = status.current;
@@ -674,7 +674,7 @@ async function doStatus() {
     status.not_added.length === 0 &&
     status.conflicted.length === 0
   ) {
-    console.log(s.success("  ✓ Çalışma dizini temiz!\n"));
+    console.log(s.success("  ✓ Working directory clean!\n"));
   }
 
   await pause();
@@ -696,7 +696,7 @@ async function doBranch() {
     const current = branches.current;
     const locals = branches.all.filter((b) => !b.startsWith("remotes/"));
 
-    // Branch listesi
+    // Branch list
     locals.forEach((b) => {
       if (b === current) {
         console.log(s.success(`  ● ${b}`));
@@ -710,14 +710,14 @@ async function doBranch() {
       {
         type: "list",
         name: "action",
-        message: s.muted("Ne yapayım?"),
+        message: s.muted("What should I do?"),
         choices: [
-          { name: s.success("  + Yeni Branch"), value: "new" },
-          { name: s.text("  ↔ Branch Değiştir"), value: "switch" },
+          { name: s.success("  + New Branch"), value: "new" },
+          { name: s.text("  ↔ Switch Branch"), value: "switch" },
           { name: s.text("  ⎇ Merge"), value: "merge" },
-          { name: s.error("  ✕ Branch Sil"), value: "delete" },
+          { name: s.error("  ✕ Delete Branch"), value: "delete" },
           { type: "separator", line: " " },
-          { name: s.muted("  ← Geri"), value: "back" },
+          { name: s.muted("  ← Back"), value: "back" },
         ],
       },
     ]);
@@ -728,13 +728,13 @@ async function doBranch() {
           {
             type: "input",
             name: "name",
-            message: s.muted("Branch adı:"),
+            message: s.muted("Branch name:"),
             validate: (v) => v.length > 0 && !v.includes(" "),
           },
         ]);
         try {
           await createBranch(name);
-          console.log(s.success(`\n  ✓ ${name} oluşturuldu ve geçildi!`));
+          console.log(s.success(`\n  ✓ ${name} created and switched!`));
           await sleep(600);
         } catch (err) {
           console.log(s.error(`\n  ✗ ${err.message}`));
@@ -745,20 +745,20 @@ async function doBranch() {
       case "switch":
         const others = locals.filter((b) => b !== current);
         if (others.length === 0) {
-          console.log(s.muted("\n  Başka branch yok."));
+          console.log(s.muted("\n  No other branches."));
           await pause();
         } else {
           const { target } = await inquirer.prompt([
             {
               type: "list",
               name: "target",
-              message: s.muted("Hangi branch'e geçeyim?"),
+              message: s.muted("Which branch to switch to?"),
               choices: others,
             },
           ]);
           try {
             await switchBranch(target);
-            console.log(s.success(`\n  ✓ ${target} branch'ine geçildi!`));
+            console.log(s.success(`\n  ✓ Switched to ${target} branch!`));
             await sleep(600);
           } catch (err) {
             console.log(s.error(`\n  ✗ ${err.message}`));
@@ -770,20 +770,20 @@ async function doBranch() {
       case "merge":
         const mergeable = locals.filter((b) => b !== current);
         if (mergeable.length === 0) {
-          console.log(s.muted("\n  Merge edilecek branch yok."));
+          console.log(s.muted("\n  No branches to merge."));
           await pause();
         } else {
           const { source } = await inquirer.prompt([
             {
               type: "list",
               name: "source",
-              message: s.muted("Hangi branch'i merge edeyim?"),
+              message: s.muted("Which branch to merge?"),
               choices: mergeable,
             },
           ]);
           try {
             await mergeBranch(source);
-            console.log(s.success(`\n  ✓ ${source} merge edildi!`));
+            console.log(s.success(`\n  ✓ ${source} merged!`));
             await sleep(600);
           } catch (err) {
             console.log(s.error(`\n  ✗ ${err.message}`));
@@ -795,14 +795,14 @@ async function doBranch() {
       case "delete":
         const deletable = locals.filter((b) => b !== current);
         if (deletable.length === 0) {
-          console.log(s.muted("\n  Silinecek branch yok."));
+          console.log(s.muted("\n  No branches to delete."));
           await pause();
         } else {
           const { toDelete } = await inquirer.prompt([
             {
               type: "list",
               name: "toDelete",
-              message: s.muted("Hangi branch'i sileyim?"),
+              message: s.muted("Which branch to delete?"),
               choices: deletable,
             },
           ]);
@@ -810,14 +810,14 @@ async function doBranch() {
             {
               type: "confirm",
               name: "confirm",
-              message: s.error(`${toDelete} silinsin mi?`),
+              message: s.error(`Delete ${toDelete}?`),
               default: false,
             },
           ]);
           if (confirm) {
             try {
               await deleteBranch(toDelete);
-              console.log(s.success(`\n  ✓ ${toDelete} silindi!`));
+              console.log(s.success(`\n  ✓ ${toDelete} deleted!`));
               await sleep(600);
             } catch (err) {
               console.log(s.error(`\n  ✗ ${err.message}`));
@@ -841,12 +841,12 @@ async function doBranch() {
 async function doLog() {
   clear();
   header();
-  console.log(s.bold("  Commit Geçmişi\n"));
+  console.log(s.bold("  Commit History\n"));
 
   const log = await getCommitLog(15);
 
   if (log.all.length === 0) {
-    console.log(s.muted("  Henüz commit yok.\n"));
+    console.log(s.muted("  No commits yet.\n"));
     await pause();
     return;
   }
@@ -863,7 +863,7 @@ async function doLog() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MORE (Gelişmiş Özellikler)
+// MORE (Advanced Features)
 // ═══════════════════════════════════════════════════════════════
 
 async function doMore() {
@@ -872,31 +872,31 @@ async function doMore() {
   while (inMenu) {
     clear();
     header();
-    console.log(s.bold("  Daha Fazla\n"));
+    console.log(s.bold("  More Options\n"));
 
     const { action } = await inquirer.prompt([
       {
         type: "list",
         name: "action",
-        message: s.muted("Ne yapmak istersin?"),
+        message: s.muted("What would you like to do?"),
         choices: [
-          { name: s.warning("  ↩ Undo (Son commit'i geri al)"), value: "undo" },
+          { name: s.warning("  ↩ Undo (Revert last commit)"), value: "undo" },
           {
-            name: s.primary("  ✎ Amend (Commit mesajını düzelt)"),
+            name: s.primary("  ✎ Amend (Fix commit message)"),
             value: "amend",
           },
-          { name: s.text("  ≋ Diff (Değişiklikleri gör)"), value: "diff" },
+          { name: s.text("  ≋ Diff (View changes)"), value: "diff" },
           { type: "separator", line: " " },
           { name: s.text("  📦 Stash"), value: "stash" },
           { name: s.text("  🏷 Tag"), value: "tag" },
           { name: s.text("  🔗 Remote"), value: "remote" },
           { type: "separator", line: " " },
-          { name: s.text("  📊 İstatistikler"), value: "stats" },
-          { name: s.text("  🔍 Commit Ara"), value: "search" },
+          { name: s.text("  📊 Statistics"), value: "stats" },
+          { name: s.text("  🔍 Search Commits"), value: "search" },
           { name: s.text("  📋 Blame"), value: "blame" },
           { type: "separator", line: " " },
-          { name: s.text("  ⚙ Ayarlar"), value: "settings" },
-          { name: s.muted("  ← Ana Menü"), value: "back" },
+          { name: s.text("  ⚙ Settings"), value: "settings" },
+          { name: s.muted("  ← Main Menu"), value: "back" },
         ],
         pageSize: 15,
       },
@@ -952,12 +952,12 @@ async function doUndo() {
   const lastCommit = await getLastCommit();
 
   if (!lastCommit) {
-    console.log(s.muted("  Geri alınacak commit yok.\n"));
+    console.log(s.muted("  No commit to undo.\n"));
     await pause();
     return;
   }
 
-  console.log(s.muted("  Son commit:"));
+  console.log(s.muted("  Last commit:"));
   console.log(
     s.text(`  ${lastCommit.hash.substring(0, 7)} - ${lastCommit.message}`),
   );
@@ -969,19 +969,19 @@ async function doUndo() {
     {
       type: "confirm",
       name: "confirm",
-      message: s.warning("Bu commit geri alınsın mı? (değişiklikler korunur)"),
+      message: s.warning("Undo this commit? (changes will be preserved)"),
       default: false,
     },
   ]);
 
   if (confirm) {
     const spin = ora({
-      text: s.muted(" Geri alınıyor..."),
+      text: s.muted(" Undoing..."),
       spinner: "dots",
     }).start();
     await undoLastCommit();
     spin.succeed(
-      s.success(" Commit geri alındı! Değişiklikler staged olarak kaldı."),
+      s.success(" Commit undone! Changes are still staged."),
     );
     await pause();
   }
@@ -999,19 +999,19 @@ async function doAmend() {
   const lastCommit = await getLastCommit();
 
   if (!lastCommit) {
-    console.log(s.muted("  Düzenlenecek commit yok.\n"));
+    console.log(s.muted("  No commit to amend.\n"));
     await pause();
     return;
   }
 
-  console.log(s.muted("  Mevcut mesaj:"));
+  console.log(s.muted("  Current message:"));
   console.log(s.text(`  "${lastCommit.message}"\n`));
 
   const { newMessage } = await inquirer.prompt([
     {
       type: "input",
       name: "newMessage",
-      message: s.muted("Yeni mesaj:"),
+      message: s.muted("New message:"),
       default: lastCommit.message,
       validate: (v) => v.length > 0,
     },
@@ -1019,11 +1019,11 @@ async function doAmend() {
 
   if (newMessage !== lastCommit.message) {
     const spin = ora({
-      text: s.muted(" Güncelleniyor..."),
+      text: s.muted(" Updating..."),
       spinner: "dots",
     }).start();
     await amendCommit(newMessage);
-    spin.succeed(s.success(" Commit mesajı güncellendi!"));
+    spin.succeed(s.success(" Commit message updated!"));
     await sleep(600);
   }
 }
@@ -1040,7 +1040,7 @@ async function doDiff() {
   const status = await getGitStatus();
 
   if (status.staged.length === 0 && status.modified.length === 0) {
-    console.log(s.muted("  Değişiklik yok.\n"));
+    console.log(s.muted("  No changes.\n"));
     await pause();
     return;
   }
@@ -1049,7 +1049,7 @@ async function doDiff() {
     {
       type: "list",
       name: "type",
-      message: s.muted("Hangi değişiklikleri göstereyim?"),
+      message: s.muted("Which changes to show?"),
       choices: [
         {
           name: s.success(`  Staged (${status.staged.length})`),
@@ -1059,7 +1059,7 @@ async function doDiff() {
           name: s.warning(`  Unstaged (${status.modified.length})`),
           value: "unstaged",
         },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -1070,7 +1070,7 @@ async function doDiff() {
     type === "staged" ? await getStagedDiff() : await getUnstagedDiff();
 
   if (!diff) {
-    console.log(s.muted("\n  Diff yok.\n"));
+    console.log(s.muted("\n  No diff.\n"));
     await pause();
     return;
   }
@@ -1078,7 +1078,7 @@ async function doDiff() {
   clear();
   console.log();
 
-  // Renkli diff
+  // Colored diff
   diff.split("\n").forEach((line) => {
     if (line.startsWith("+") && !line.startsWith("+++")) {
       console.log(s.success(line));
@@ -1115,18 +1115,18 @@ async function doStash() {
       });
       console.log();
     } else {
-      console.log(s.muted("  Stash yok.\n"));
+      console.log(s.muted("  No stashes.\n"));
     }
 
     const { action } = await inquirer.prompt([
       {
         type: "list",
         name: "action",
-        message: s.muted("Ne yapayım?"),
+        message: s.muted("What should I do?"),
         choices: [
-          { name: s.success("  + Stash Kaydet"), value: "save" },
-          { name: s.primary("  ↓ Stash Uygula (pop)"), value: "pop" },
-          { name: s.muted("  ← Geri"), value: "back" },
+          { name: s.success("  + Save Stash"), value: "save" },
+          { name: s.primary("  ↓ Apply Stash (pop)"), value: "pop" },
+          { name: s.muted("  ← Back"), value: "back" },
         ],
       },
     ]);
@@ -1135,30 +1135,30 @@ async function doStash() {
       case "save":
         const status = await getGitStatus();
         if (status.modified.length === 0 && status.not_added.length === 0) {
-          console.log(s.muted("\n  Stash edilecek değişiklik yok."));
+          console.log(s.muted("\n  No changes to stash."));
           await pause();
         } else {
           const { message } = await inquirer.prompt([
             {
               type: "input",
               name: "message",
-              message: s.muted("Stash mesajı (opsiyonel):"),
+              message: s.muted("Stash message (optional):"),
             },
           ]);
           await stashChanges(message || null);
-          console.log(s.success("\n  ✓ Değişiklikler stash'lendi!"));
+          console.log(s.success("\n  ✓ Changes stashed!"));
           await sleep(600);
         }
         break;
 
       case "pop":
         if (stashes.all.length === 0) {
-          console.log(s.muted("\n  Pop edilecek stash yok."));
+          console.log(s.muted("\n  No stash to pop."));
           await pause();
         } else {
           try {
             await popStash();
-            console.log(s.success("\n  ✓ Stash uygulandı!"));
+            console.log(s.success("\n  ✓ Stash applied!"));
             await sleep(600);
           } catch (err) {
             console.log(s.error(`\n  ✗ ${err.message}`));
@@ -1189,19 +1189,19 @@ async function doTag() {
     tags.all.slice(0, 10).forEach((t) => console.log(s.primary(`  🏷 ${t}`)));
     console.log();
   } else {
-    console.log(s.muted("  Tag yok.\n"));
+    console.log(s.muted("  No tags.\n"));
   }
 
   const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
-      message: s.muted("Ne yapayım?"),
+      message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + Yeni Tag"), value: "new" },
+        { name: s.success("  + New Tag"), value: "new" },
         { name: s.primary("  ↑ Push Tags"), value: "push" },
-        { name: s.error("  ✕ Tag Sil"), value: "delete" },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.error("  ✕ Delete Tag"), value: "delete" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -1213,18 +1213,18 @@ async function doTag() {
       {
         type: "input",
         name: "name",
-        message: s.muted("Tag adı (örn: v1.0.0):"),
+        message: s.muted("Tag name (e.g. v1.0.0):"),
         validate: (v) => v.length > 0,
       },
     ]);
     await createTag(name);
-    console.log(s.success(`\n  ✓ ${name} oluşturuldu!`));
+    console.log(s.success(`\n  ✓ ${name} created!`));
     await sleep(600);
   }
 
   if (action === "push") {
     const spin = ora({
-      text: s.muted(" Push tags..."),
+      text: s.muted(" Pushing tags..."),
       spinner: "dots",
     }).start();
     try {
@@ -1238,19 +1238,19 @@ async function doTag() {
 
   if (action === "delete") {
     if (tags.all.length === 0) {
-      console.log(s.muted("\n  Silinecek tag yok."));
+      console.log(s.muted("\n  No tags to delete."));
       await pause();
     } else {
       const { toDelete } = await inquirer.prompt([
         {
           type: "list",
           name: "toDelete",
-          message: s.muted("Hangi tag silinsin?"),
+          message: s.muted("Which tag to delete?"),
           choices: tags.all,
         },
       ]);
       await deleteTag(toDelete);
-      console.log(s.success(`\n  ✓ ${toDelete} silindi!`));
+      console.log(s.success(`\n  ✓ ${toDelete} deleted!`));
       await sleep(600);
     }
   }
@@ -1273,18 +1273,18 @@ async function doRemote() {
       console.log(s.muted(`    ${r.refs.fetch || "-"}\n`));
     });
   } else {
-    console.log(s.muted("  Remote yok.\n"));
+    console.log(s.muted("  No remotes.\n"));
   }
 
   const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
-      message: s.muted("Ne yapayım?"),
+      message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + Remote Ekle"), value: "add" },
-        { name: s.error("  ✕ Remote Sil"), value: "remove" },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.success("  + Add Remote"), value: "add" },
+        { name: s.error("  ✕ Remove Remote"), value: "remove" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -1296,7 +1296,7 @@ async function doRemote() {
       {
         type: "input",
         name: "name",
-        message: s.muted("Remote adı:"),
+        message: s.muted("Remote name:"),
         default: "origin",
       },
     ]);
@@ -1309,7 +1309,7 @@ async function doRemote() {
       },
     ]);
     await addRemote(name, url);
-    console.log(s.success(`\n  ✓ ${name} eklendi!`));
+    console.log(s.success(`\n  ✓ ${name} added!`));
     await sleep(600);
   }
 
@@ -1318,12 +1318,12 @@ async function doRemote() {
       {
         type: "list",
         name: "toRemove",
-        message: s.muted("Hangi remote silinsin?"),
+        message: s.muted("Which remote to remove?"),
         choices: remotes.map((r) => r.name),
       },
     ]);
     await removeRemote(toRemove);
-    console.log(s.success(`\n  ✓ ${toRemove} silindi!`));
+    console.log(s.success(`\n  ✓ ${toRemove} removed!`));
     await sleep(600);
   }
 }
@@ -1335,10 +1335,10 @@ async function doRemote() {
 async function doStats() {
   clear();
   header();
-  console.log(s.bold("  İstatistikler\n"));
+  console.log(s.bold("  Statistics\n"));
 
   const spin = ora({
-    text: s.muted(" Hesaplanıyor..."),
+    text: s.muted(" Calculating..."),
     spinner: "dots",
   }).start();
 
@@ -1346,19 +1346,19 @@ async function doStats() {
     const stats = await getRepoStats();
     spin.stop();
 
-    console.log(s.primary(`  ${stats.totalCommits}`) + s.text(" commit"));
-    console.log(s.primary(`  ${stats.branches}`) + s.text(" branch"));
-    console.log(s.primary(`  ${stats.tags}`) + s.text(" tag"));
+    console.log(s.primary(`  ${stats.totalCommits}`) + s.text(" commits"));
+    console.log(s.primary(`  ${stats.branches}`) + s.text(" branches"));
+    console.log(s.primary(`  ${stats.tags}`) + s.text(" tags"));
     console.log();
 
     if (stats.firstCommit) {
       console.log(
-        s.muted("  İlk commit: ") +
-          s.text(new Date(stats.firstCommit.date).toLocaleDateString("tr-TR")),
+        s.muted("  First commit: ") +
+        s.text(new Date(stats.firstCommit.date).toLocaleDateString("en-US")),
       );
       console.log(
-        s.muted("  Son commit: ") +
-          s.text(new Date(stats.lastCommit.date).toLocaleDateString("tr-TR")),
+        s.muted("  Last commit: ") +
+        s.text(new Date(stats.lastCommit.date).toLocaleDateString("en-US")),
       );
       console.log();
     }
@@ -1368,7 +1368,7 @@ async function doStats() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
     if (authors.length > 0) {
-      console.log(s.muted("  Top katkıda bulunanlar:"));
+      console.log(s.muted("  Top contributors:"));
       authors.forEach(([name, count]) => {
         const bar = "█".repeat(
           Math.min(Math.round((count / stats.totalCommits) * 15), 15),
@@ -1391,27 +1391,27 @@ async function doStats() {
 async function doSearch() {
   clear();
   header();
-  console.log(s.bold("  Commit Ara\n"));
+  console.log(s.bold("  Search Commits\n"));
 
   const { query } = await inquirer.prompt([
     {
       type: "input",
       name: "query",
-      message: s.muted("Aranacak kelime:"),
+      message: s.muted("Search term:"),
       validate: (v) => v.length > 0,
     },
   ]);
 
-  const spin = ora({ text: s.muted(" Aranıyor..."), spinner: "dots" }).start();
+  const spin = ora({ text: s.muted(" Searching..."), spinner: "dots" }).start();
 
   try {
     const results = await searchCommits(query);
     spin.stop();
 
     if (results.all.length === 0) {
-      console.log(s.muted("\n  Sonuç bulunamadı.\n"));
+      console.log(s.muted("\n  No results found.\n"));
     } else {
-      console.log(s.muted(`\n  ${results.all.length} sonuç:\n`));
+      console.log(s.muted(`\n  ${results.all.length} results:\n`));
       results.all.slice(0, 10).forEach((commit) => {
         console.log(
           `  ${s.primary(commit.hash.substring(0, 7))} ${s.text(truncate(commit.message, 50))}`,
@@ -1440,7 +1440,7 @@ async function doBlame() {
   const files = await getTrackedFiles();
 
   if (files.length === 0) {
-    console.log(s.muted("  Tracked dosya yok.\n"));
+    console.log(s.muted("  No tracked files.\n"));
     await pause();
     return;
   }
@@ -1449,14 +1449,14 @@ async function doBlame() {
     {
       type: "list",
       name: "file",
-      message: s.muted("Dosya seç:"),
+      message: s.muted("Select file:"),
       choices: files.slice(0, 30),
       pageSize: 15,
     },
   ]);
 
   const spin = ora({
-    text: s.muted(" Yükleniyor..."),
+    text: s.muted(" Loading..."),
     spinner: "dots",
   }).start();
 
@@ -1489,17 +1489,17 @@ async function doBlame() {
 async function doConflict() {
   clear();
   header();
-  console.log(s.bold("  Conflict Çözücü\n"));
+  console.log(s.bold("  Conflict Resolver\n"));
 
   const conflicts = await getConflictDetails();
 
   if (conflicts.length === 0) {
-    console.log(s.success("  ✓ Conflict yok!\n"));
+    console.log(s.success("  ✓ No conflicts!\n"));
     await pause();
     return;
   }
 
-  console.log(s.error(`  ${conflicts.length} dosyada conflict:\n`));
+  console.log(s.error(`  ${conflicts.length} files with conflicts:\n`));
   conflicts.forEach((f) => console.log(s.warning(`  ⚠ ${f}`)));
   console.log();
 
@@ -1507,18 +1507,18 @@ async function doConflict() {
     {
       type: "list",
       name: "action",
-      message: s.muted("Ne yapayım?"),
+      message: s.muted("What should I do?"),
       choices: [
         {
-          name: s.success("  Tümünü 'ours' yap (bizim versiyon)"),
+          name: s.success("  Accept all 'ours' (our version)"),
           value: "ours",
         },
         {
-          name: s.primary("  Tümünü 'theirs' yap (gelen versiyon)"),
+          name: s.primary("  Accept all 'theirs' (their version)"),
           value: "theirs",
         },
-        { name: s.error("  Merge iptal"), value: "abort" },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.error("  Abort merge"), value: "abort" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -1527,19 +1527,19 @@ async function doConflict() {
 
   if (action === "ours") {
     for (const file of conflicts) await acceptOurs(file);
-    console.log(s.success("\n  ✓ Tüm conflict'ler 'ours' olarak çözüldü!"));
+    console.log(s.success("\n  ✓ All conflicts resolved as 'ours'!"));
     await sleep(600);
   }
 
   if (action === "theirs") {
     for (const file of conflicts) await acceptTheirs(file);
-    console.log(s.success("\n  ✓ Tüm conflict'ler 'theirs' olarak çözüldü!"));
+    console.log(s.success("\n  ✓ All conflicts resolved as 'theirs'!"));
     await sleep(600);
   }
 
   if (action === "abort") {
     await abortMerge();
-    console.log(s.warning("\n  Merge iptal edildi."));
+    console.log(s.warning("\n  Merge aborted."));
     await sleep(600);
   }
 }
@@ -1551,7 +1551,7 @@ async function doConflict() {
 async function doSettings() {
   clear();
   header();
-  console.log(s.bold("  Ayarlar\n"));
+  console.log(s.bold("  Settings\n"));
 
   const config = getConfig();
   const lm = await checkLMStudioConnection();
@@ -1559,8 +1559,8 @@ async function doSettings() {
   console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
   console.log(s.muted("  Model: ") + s.text(config.model));
   console.log(
-    s.muted("  AI Durumu: ") +
-      (lm.connected ? s.success("Bağlı ✓") : s.error("Bağlı değil ✗")),
+    s.muted("  AI Status: ") +
+    (lm.connected ? s.success("Connected ✓") : s.error("Not connected ✗")),
   );
   console.log();
 
@@ -1568,11 +1568,11 @@ async function doSettings() {
     {
       type: "list",
       name: "action",
-      message: s.muted("Ne yapayım?"),
+      message: s.muted("What should I do?"),
       choices: [
-        { name: s.text("  URL Değiştir"), value: "url" },
-        { name: s.text("  Model Değiştir"), value: "model" },
-        { name: s.muted("  ← Geri"), value: "back" },
+        { name: s.text("  Change URL"), value: "url" },
+        { name: s.text("  Change Model"), value: "model" },
+        { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
@@ -1584,12 +1584,12 @@ async function doSettings() {
       {
         type: "input",
         name: "url",
-        message: s.muted("Yeni URL:"),
+        message: s.muted("New URL:"),
         default: config.lmStudioUrl,
       },
     ]);
     saveConfig({ ...config, lmStudioUrl: url });
-    console.log(s.success("\n  ✓ Kaydedildi!"));
+    console.log(s.success("\n  ✓ Saved!"));
     await sleep(600);
   }
 
@@ -1598,12 +1598,12 @@ async function doSettings() {
       {
         type: "input",
         name: "model",
-        message: s.muted("Model adı:"),
+        message: s.muted("Model name:"),
         default: config.model,
       },
     ]);
     saveConfig({ ...config, model });
-    console.log(s.success("\n  ✓ Kaydedildi!"));
+    console.log(s.success("\n  ✓ Saved!"));
     await sleep(600);
   }
 }
@@ -1617,7 +1617,7 @@ async function pause() {
     {
       type: "input",
       name: "x",
-      message: s.dim("Enter'a bas..."),
+      message: s.dim("Press Enter..."),
     },
   ]);
 }
@@ -1635,7 +1635,7 @@ async function quickCommit(message) {
     const status = await getGitStatus();
     if (status.staged.length === 0) await stageAll();
     await createCommit(message);
-    console.log(s.success("\n  ✓ Commit yapıldı!\n"));
+    console.log(s.success("\n  ✓ Commit done!\n"));
   } else {
     await doCommit();
   }

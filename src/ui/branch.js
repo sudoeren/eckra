@@ -19,10 +19,10 @@ async function branchMenu() {
     const current = branches.current;
 
     // Show branches
-    console.log(chalk.cyan("\n🌿 Branchler:"));
+    console.log(chalk.cyan("\n🌿 Branches:"));
 
     const table = new Table({
-      head: [chalk.cyan("Branch"), chalk.cyan("Durum")],
+      head: [chalk.cyan("Branch"), chalk.cyan("Status")],
       colWidths: [40, 20],
       style: { head: [], border: ["gray"] },
     });
@@ -34,7 +34,7 @@ async function branchMenu() {
         const isCurrent = branch === current;
         table.push([
           isCurrent ? chalk.green("* " + branch) : chalk.white("  " + branch),
-          isCurrent ? chalk.green("aktif") : "",
+          isCurrent ? chalk.green("active") : "",
         ]);
       });
 
@@ -44,7 +44,7 @@ async function branchMenu() {
     const remoteBranches = branches.all.filter((b) => b.startsWith("remotes/"));
     if (remoteBranches.length > 0) {
       console.log(
-        chalk.gray(`\n   📡 ${remoteBranches.length} uzak branch mevcut\n`),
+        chalk.gray(`\n   📡 ${remoteBranches.length} remote branches available\n`),
       );
     }
 
@@ -52,14 +52,14 @@ async function branchMenu() {
       {
         type: "list",
         name: "action",
-        message: "Branch işlemi:",
+        message: "Branch operation:",
         choices: [
-          { name: chalk.green("➕ Yeni branch oluştur"), value: "create" },
-          { name: chalk.blue("🔄 Branch değiştir"), value: "switch" },
-          { name: chalk.yellow("🔀 Branch birleştir (merge)"), value: "merge" },
-          { name: chalk.red("🗑️  Branch sil"), value: "delete" },
+          { name: chalk.green("➕ Create new branch"), value: "create" },
+          { name: chalk.blue("🔄 Switch branch"), value: "switch" },
+          { name: chalk.yellow("🔀 Merge branch"), value: "merge" },
+          { name: chalk.red("🗑️  Delete branch"), value: "delete" },
           new inquirer.Separator(),
-          { name: chalk.gray("↩️  Ana menüye dön"), value: "back" },
+          { name: chalk.gray("↩️  Return to main menu"), value: "back" },
         ],
       },
     ]);
@@ -89,24 +89,24 @@ async function createNewBranch() {
     {
       type: "input",
       name: "branchName",
-      message: "Yeni branch adı:",
+      message: "New branch name:",
       validate: (input) => {
-        if (!input) return "Branch adı boş olamaz";
-        if (input.includes(" ")) return "Branch adı boşluk içeremez";
+        if (!input) return "Branch name cannot be empty";
+        if (input.includes(" ")) return "Branch name cannot contain spaces";
         return true;
       },
     },
   ]);
 
-  const spinner = ora(`Branch "${branchName}" oluşturuluyor...`).start();
+  const spinner = ora(`Creating branch "${branchName}"...`).start();
 
   try {
     await createBranch(branchName);
     spinner.succeed(
-      chalk.green(`Branch "${branchName}" oluşturuldu ve geçiş yapıldı!`),
+      chalk.green(`Branch "${branchName}" created and switched to!`),
     );
   } catch (error) {
-    spinner.fail(chalk.red("Branch oluşturulamadı: " + error.message));
+    spinner.fail(chalk.red("Failed to create branch: " + error.message));
   }
 }
 
@@ -119,7 +119,7 @@ async function switchToBranch() {
   );
 
   if (localBranches.length === 0) {
-    console.log(chalk.yellow("\n⚠️  Geçiş yapılacak başka branch yok.\n"));
+    console.log(chalk.yellow("\n⚠️  No other branch to switch to.\n"));
     return;
   }
 
@@ -127,29 +127,29 @@ async function switchToBranch() {
     {
       type: "list",
       name: "targetBranch",
-      message: "Geçiş yapılacak branch:",
+      message: "Branch to switch to:",
       choices: [
         ...localBranches.map((b) => ({ name: b, value: b })),
         new inquirer.Separator(),
-        { name: chalk.gray("İptal"), value: null },
+        { name: chalk.gray("Cancel"), value: null },
       ],
     },
   ]);
 
   if (!targetBranch) return;
 
-  const spinner = ora(`"${targetBranch}" branchine geçiliyor...`).start();
+  const spinner = ora(`Switching to "${targetBranch}" branch...`).start();
 
   try {
     await switchBranch(targetBranch);
-    spinner.succeed(chalk.green(`"${targetBranch}" branchine geçildi!`));
+    spinner.succeed(chalk.green(`Switched to "${targetBranch}" branch!`));
   } catch (error) {
-    spinner.fail(chalk.red("Geçiş yapılamadı: " + error.message));
+    spinner.fail(chalk.red("Failed to switch: " + error.message));
 
     if (error.message.includes("uncommitted")) {
       console.log(
         chalk.yellow(
-          "\n⚠️  Commit edilmemiş değişiklikler var. Önce commit yapın veya stash edin.\n",
+          "\n⚠️  You have uncommitted changes. Please commit or stash them first.\n",
         ),
       );
     }
@@ -165,7 +165,7 @@ async function mergeBranchMenu() {
   );
 
   if (localBranches.length === 0) {
-    console.log(chalk.yellow("\n⚠️  Birleştirilecek başka branch yok.\n"));
+    console.log(chalk.yellow("\n⚠️  No other branch to merge.\n"));
     return;
   }
 
@@ -173,11 +173,11 @@ async function mergeBranchMenu() {
     {
       type: "list",
       name: "sourceBranch",
-      message: `Hangi branchi "${current}" ile birleştirmek istiyorsunuz?`,
+      message: `Which branch do you want to merge with "${current}"?`,
       choices: [
         ...localBranches.map((b) => ({ name: b, value: b })),
         new inquirer.Separator(),
-        { name: chalk.gray("İptal"), value: null },
+        { name: chalk.gray("Cancel"), value: null },
       ],
     },
   ]);
@@ -188,20 +188,20 @@ async function mergeBranchMenu() {
     {
       type: "confirm",
       name: "confirm",
-      message: `"${sourceBranch}" → "${current}" birleştirmek istiyor musunuz?`,
+      message: `Do you want to merge "${sourceBranch}" → "${current}"?`,
       default: true,
     },
   ]);
 
   if (!confirm) return;
 
-  const spinner = ora(`"${sourceBranch}" birleştiriliyor...`).start();
+  const spinner = ora(`Merging "${sourceBranch}"...`).start();
 
   try {
     await mergeBranch(sourceBranch);
-    spinner.succeed(chalk.green(`"${sourceBranch}" başarıyla birleştirildi!`));
+    spinner.succeed(chalk.green(`"${sourceBranch}" merged successfully!`));
   } catch (error) {
-    spinner.fail(chalk.red("Merge başarısız: " + error.message));
+    spinner.fail(chalk.red("Merge failed: " + error.message));
 
     if (
       error.message.includes("conflict") ||
@@ -209,7 +209,7 @@ async function mergeBranchMenu() {
     ) {
       console.log(
         chalk.yellow(
-          "\n⚠️  Merge conflict oluştu. Çakışmaları manuel olarak çözmeniz gerekiyor.\n",
+          "\n⚠️  Merge conflict occurred. You need to resolve conflicts manually.\n",
         ),
       );
     }
@@ -225,7 +225,7 @@ async function deleteBranchMenu() {
   );
 
   if (localBranches.length === 0) {
-    console.log(chalk.yellow("\n⚠️  Silinecek başka branch yok.\n"));
+    console.log(chalk.yellow("\n⚠️  No other branch to delete.\n"));
     return;
   }
 
@@ -233,11 +233,11 @@ async function deleteBranchMenu() {
     {
       type: "list",
       name: "targetBranch",
-      message: "Silinecek branch:",
+      message: "Branch to delete:",
       choices: [
         ...localBranches.map((b) => ({ name: chalk.red(b), value: b })),
         new inquirer.Separator(),
-        { name: chalk.gray("İptal"), value: null },
+        { name: chalk.gray("Cancel"), value: null },
       ],
     },
   ]);
@@ -248,44 +248,44 @@ async function deleteBranchMenu() {
     {
       type: "confirm",
       name: "confirm",
-      message: `"${targetBranch}" branchini silmek istediğinizden emin misiniz?`,
+      message: `Are you sure you want to delete "${targetBranch}" branch?`,
       default: false,
     },
   ]);
 
   if (!confirm) return;
 
-  const spinner = ora(`"${targetBranch}" siliniyor...`).start();
+  const spinner = ora(`Deleting "${targetBranch}"...`).start();
 
   try {
     await deleteBranch(targetBranch);
-    spinner.succeed(chalk.green(`"${targetBranch}" silindi!`));
+    spinner.succeed(chalk.green(`"${targetBranch}" deleted!`));
   } catch (error) {
     if (error.message.includes("not fully merged")) {
-      spinner.warn(chalk.yellow("Branch henüz birleştirilmemiş."));
+      spinner.warn(chalk.yellow("Branch is not fully merged yet."));
 
       const { forceDelete } = await inquirer.prompt([
         {
           type: "confirm",
           name: "forceDelete",
-          message: "Zorla silmek istiyor musunuz? (değişiklikler kaybolabilir)",
+          message: "Do you want to force delete? (changes may be lost)",
           default: false,
         },
       ]);
 
       if (forceDelete) {
-        const forceSpinner = ora("Zorla siliniyor...").start();
+        const forceSpinner = ora("Force deleting...").start();
         try {
           await deleteBranch(targetBranch, true);
-          forceSpinner.succeed(chalk.green(`"${targetBranch}" zorla silindi!`));
+          forceSpinner.succeed(chalk.green(`"${targetBranch}" force deleted!`));
         } catch (forceError) {
           forceSpinner.fail(
-            chalk.red("Silme başarısız: " + forceError.message),
+            chalk.red("Delete failed: " + forceError.message),
           );
         }
       }
     } else {
-      spinner.fail(chalk.red("Silme başarısız: " + error.message));
+      spinner.fail(chalk.red("Delete failed: " + error.message));
     }
   }
 }

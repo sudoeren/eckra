@@ -8,12 +8,12 @@ async function showLog(count = 10) {
     {
       type: "input",
       name: "logCount",
-      message: "Kaç commit gösterilsin?",
+      message: "How many commits to show?",
       default: count.toString(),
       validate: (input) => {
         const num = parseInt(input);
-        if (isNaN(num) || num < 1) return "Geçerli bir sayı girin";
-        if (num > 100) return "Maksimum 100 commit gösterilebilir";
+        if (isNaN(num) || num < 1) return "Please enter a valid number";
+        if (num > 100) return "Maximum 100 commits can be shown";
         return true;
       },
     },
@@ -21,14 +21,14 @@ async function showLog(count = 10) {
 
   const log = await getCommitLog(parseInt(logCount));
 
-  console.log(chalk.cyan(`\n📜 Son ${log.all.length} Commit:\n`));
+  console.log(chalk.cyan(`\n📜 Last ${log.all.length} Commits:\n`));
 
   const table = new Table({
     head: [
       chalk.cyan("Hash"),
-      chalk.cyan("Tarih"),
-      chalk.cyan("Yazar"),
-      chalk.cyan("Mesaj"),
+      chalk.cyan("Date"),
+      chalk.cyan("Author"),
+      chalk.cyan("Message"),
     ],
     colWidths: [12, 20, 20, 50],
     style: { head: [], border: ["gray"] },
@@ -37,7 +37,7 @@ async function showLog(count = 10) {
 
   log.all.forEach((commit) => {
     const date = new Date(commit.date);
-    const formattedDate = date.toLocaleDateString("tr-TR", {
+    const formattedDate = date.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -90,7 +90,7 @@ async function showLog(count = 10) {
     {
       type: "confirm",
       name: "showDetails",
-      message: "Bir commit'in detaylarını görmek ister misiniz?",
+      message: "Would you like to view commit details?",
       default: false,
     },
   ]);
@@ -100,7 +100,7 @@ async function showLog(count = 10) {
       {
         type: "list",
         name: "selectedCommit",
-        message: "Commit seçin:",
+        message: "Select a commit:",
         choices: log.all.map((commit) => ({
           name: `${commit.hash.substring(0, 8)} - ${commit.message.substring(0, 50)}`,
           value: commit,
@@ -113,18 +113,18 @@ async function showLog(count = 10) {
     );
     console.log(chalk.yellow("Commit: ") + chalk.white(selectedCommit.hash));
     console.log(
-      chalk.yellow("Yazar: ") +
-        chalk.white(
-          `${selectedCommit.author_name} <${selectedCommit.author_email}>`,
-        ),
+      chalk.yellow("Author: ") +
+      chalk.white(
+        `${selectedCommit.author_name} <${selectedCommit.author_email}>`,
+      ),
     );
     console.log(
-      chalk.yellow("Tarih: ") +
-        chalk.white(new Date(selectedCommit.date).toLocaleString("tr-TR")),
+      chalk.yellow("Date: ") +
+      chalk.white(new Date(selectedCommit.date).toLocaleString("en-US")),
     );
-    console.log(chalk.yellow("Mesaj: ") + chalk.white(selectedCommit.message));
+    console.log(chalk.yellow("Message: ") + chalk.white(selectedCommit.message));
     if (selectedCommit.body) {
-      console.log(chalk.yellow("Açıklama: ") + chalk.gray(selectedCommit.body));
+      console.log(chalk.yellow("Description: ") + chalk.gray(selectedCommit.body));
     }
     console.log(
       chalk.cyan("─────────────────────────────────────────────────────\n"),

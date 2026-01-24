@@ -16,20 +16,20 @@ async function pushChanges() {
   // Check if there are commits to push
   if (status.ahead === 0 && status.tracking) {
     console.log(
-      chalk.yellow("\n⚠️  Push edilecek commit yok. Zaten güncel.\n"),
+      chalk.yellow("\n⚠️  No commits to push. Already up to date.\n"),
     );
     return;
   }
 
   // Check for remotes
   if (remotes.length === 0) {
-    console.log(chalk.red("\n⚠️  Uzak repo (remote) tanımlı değil.\n"));
+    console.log(chalk.red("\n⚠️  No remote repository defined.\n"));
 
     const { addRemote } = await inquirer.prompt([
       {
         type: "confirm",
         name: "addRemote",
-        message: "Remote eklemek ister misiniz?",
+        message: "Would you like to add a remote?",
         default: true,
       },
     ]);
@@ -39,23 +39,23 @@ async function pushChanges() {
         {
           type: "input",
           name: "remoteName",
-          message: "Remote adı:",
+          message: "Remote name:",
           default: "origin",
         },
         {
           type: "input",
           name: "remoteUrl",
           message: "Remote URL:",
-          validate: (input) => input.length > 0 || "URL boş olamaz",
+          validate: (input) => input.length > 0 || "URL cannot be empty",
         },
       ]);
 
       const { addRemote: addRemoteGit } = require("../helpers/git");
       try {
         await addRemoteGit(remoteName, remoteUrl);
-        console.log(chalk.green(`\n✓ Remote "${remoteName}" eklendi.\n`));
+        console.log(chalk.green(`\n✓ Remote "${remoteName}" added.\n`));
       } catch (error) {
-        console.log(chalk.red("Remote eklenemedi: " + error.message));
+        console.log(chalk.red("Could not add remote: " + error.message));
         return;
       }
     } else {
@@ -72,7 +72,7 @@ async function pushChanges() {
       {
         type: "list",
         name: "remote",
-        message: "Remote seçin:",
+        message: "Select remote:",
         choices: updatedRemotes.map((r) => ({
           name: `${r.name} (${r.refs.push})`,
           value: r.name,
@@ -83,12 +83,12 @@ async function pushChanges() {
   }
 
   // Confirm push
-  console.log(chalk.cyan(`\n📤 Push bilgileri:`));
+  console.log(chalk.cyan(`\n📤 Push info:`));
   console.log(chalk.gray(`   Remote: `) + chalk.white(selectedRemote));
   console.log(chalk.gray(`   Branch: `) + chalk.white(currentBranch));
   if (status.ahead) {
     console.log(
-      chalk.gray(`   Commit sayısı: `) + chalk.green(`${status.ahead} commit`),
+      chalk.gray(`   Commit count: `) + chalk.green(`${status.ahead} commits`),
     );
   }
   console.log("");
@@ -97,64 +97,64 @@ async function pushChanges() {
     {
       type: "confirm",
       name: "confirm",
-      message: `Push yapmak istiyor musunuz?`,
+      message: `Do you want to push?`,
       default: true,
     },
   ]);
 
   if (!confirm) {
-    console.log(chalk.yellow("Push iptal edildi."));
+    console.log(chalk.yellow("Push cancelled."));
     return;
   }
 
   const spinner = ora(
-    `${selectedRemote}/${currentBranch} push ediliyor...`,
+    `Pushing to ${selectedRemote}/${currentBranch}...`,
   ).start();
 
   try {
     await pushToRemote(selectedRemote, currentBranch);
-    spinner.succeed(chalk.green("Push başarılı!"));
+    spinner.succeed(chalk.green("Push successful!"));
   } catch (error) {
-    spinner.fail(chalk.red("Push başarısız!"));
+    spinner.fail(chalk.red("Push failed!"));
 
     if (error.message.includes("rejected")) {
       console.log(
-        chalk.yellow("\n⚠️  Push reddedildi. Önce pull yapmanız gerekebilir."),
+        chalk.yellow("\n⚠️  Push rejected. You may need to pull first."),
       );
 
       const { shouldPull } = await inquirer.prompt([
         {
           type: "confirm",
           name: "shouldPull",
-          message: "Pull yapmak ister misiniz?",
+          message: "Would you like to pull?",
           default: true,
         },
       ]);
 
       if (shouldPull) {
         const { pullFromRemote } = require("../helpers/git");
-        const pullSpinner = ora("Pull yapılıyor...").start();
+        const pullSpinner = ora("Pulling...").start();
         try {
           await pullFromRemote(selectedRemote, currentBranch);
-          pullSpinner.succeed("Pull başarılı!");
+          pullSpinner.succeed("Pull successful!");
 
           // Try push again
-          const retrySpinner = ora("Tekrar push ediliyor...").start();
+          const retrySpinner = ora("Retrying push...").start();
           await pushToRemote(selectedRemote, currentBranch);
-          retrySpinner.succeed(chalk.green("Push başarılı!"));
+          retrySpinner.succeed(chalk.green("Push successful!"));
         } catch (pullError) {
-          pullSpinner.fail("Pull başarısız: " + pullError.message);
+          pullSpinner.fail("Pull failed: " + pullError.message);
         }
       }
     } else if (error.message.includes("no upstream")) {
       // Set upstream and push
-      console.log(chalk.yellow("\n⚠️  Upstream branch ayarlı değil."));
+      console.log(chalk.yellow("\n⚠️  Upstream branch not set."));
 
       const { setUpstream } = await inquirer.prompt([
         {
           type: "confirm",
           name: "setUpstream",
-          message: `Upstream olarak ${selectedRemote}/${currentBranch} ayarlansın mı?`,
+          message: `Set upstream to ${selectedRemote}/${currentBranch}?`,
           default: true,
         },
       ]);
@@ -162,19 +162,19 @@ async function pushChanges() {
       if (setUpstream) {
         const simpleGit = require("simple-git")();
         const upstreamSpinner = ora(
-          "Upstream ayarlanıyor ve push ediliyor...",
+          "Setting upstream and pushing...",
         ).start();
         try {
           await simpleGit.push(["-u", selectedRemote, currentBranch]);
           upstreamSpinner.succeed(
-            chalk.green("Upstream ayarlandı ve push başarılı!"),
+            chalk.green("Upstream set and push successful!"),
           );
         } catch (upstreamError) {
-          upstreamSpinner.fail("İşlem başarısız: " + upstreamError.message);
+          upstreamSpinner.fail("Operation failed: " + upstreamError.message);
         }
       }
     } else {
-      console.log(chalk.red("Hata: " + error.message));
+      console.log(chalk.red("Error: " + error.message));
     }
   }
 }

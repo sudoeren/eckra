@@ -33,20 +33,20 @@ async function mainMenu() {
     console.log("\n" + chalk.gray("─".repeat(60)));
     console.log(
       chalk.cyan("📁 Branch: ") +
-        chalk.yellow(status.current) +
-        chalk.gray(" | ") +
-        chalk.green("✓ Staged: ") +
-        chalk.white(status.staged.length) +
-        chalk.gray(" | ") +
-        chalk.red("● Modified: ") +
-        chalk.white(status.modified.length) +
-        chalk.gray(" | ") +
-        chalk.blue("? Untracked: ") +
-        chalk.white(status.not_added.length) +
-        chalk.gray(" | ") +
-        (lmStatus.connected
-          ? chalk.green("🤖 AI: Online")
-          : chalk.red("🤖 AI: Offline")),
+      chalk.yellow(status.current) +
+      chalk.gray(" | ") +
+      chalk.green("✓ Staged: ") +
+      chalk.white(status.staged.length) +
+      chalk.gray(" | ") +
+      chalk.red("● Modified: ") +
+      chalk.white(status.modified.length) +
+      chalk.gray(" | ") +
+      chalk.blue("? Untracked: ") +
+      chalk.white(status.not_added.length) +
+      chalk.gray(" | ") +
+      (lmStatus.connected
+        ? chalk.green("🤖 AI: Online")
+        : chalk.red("🤖 AI: Offline")),
     );
     console.log(chalk.gray("─".repeat(60)) + "\n");
 
@@ -54,78 +54,78 @@ async function mainMenu() {
       {
         type: "list",
         name: "action",
-        message: "Ne yapmak istiyorsunuz?",
+        message: "What would you like to do?",
         choices: [
           {
             name:
-              chalk.green("📊 Durum Görüntüle") +
-              chalk.gray(" - Git durumunu detaylı göster"),
+              chalk.green("📊 View Status") +
+              chalk.gray(" - Show detailed Git status"),
             value: "status",
           },
           {
             name:
-              chalk.yellow("➕ Dosya Ekle (Stage)") +
-              chalk.gray(" - Değişiklikleri stage'e al"),
+              chalk.yellow("➕ Add Files (Stage)") +
+              chalk.gray(" - Add changes to stage"),
             value: "stage",
           },
           {
             name:
-              chalk.magenta("➖ Stage'den Çıkar") +
-              chalk.gray(" - Dosyaları unstage yap"),
+              chalk.magenta("➖ Unstage") +
+              chalk.gray(" - Remove files from stage"),
             value: "unstage",
           },
           new inquirer.Separator(),
           {
             name:
               chalk.cyan("💬 AI Commit") +
-              chalk.gray(" - AI ile akıllı commit mesajı oluştur"),
+              chalk.gray(" - Create smart commit message with AI"),
             value: "commit",
           },
           {
             name:
               chalk.blue("⬆️  Push") +
-              chalk.gray(" - Değişiklikleri uzak repoya gönder"),
+              chalk.gray(" - Push changes to remote repo"),
             value: "push",
           },
           {
             name:
               chalk.blue("⬇️  Pull") +
-              chalk.gray(" - Uzak repodan değişiklikleri çek"),
+              chalk.gray(" - Pull changes from remote repo"),
             value: "pull",
           },
           {
             name:
               chalk.blue("🔄 Fetch") +
-              chalk.gray(" - Uzak repo bilgilerini güncelle"),
+              chalk.gray(" - Update remote repo info"),
             value: "fetch",
           },
           new inquirer.Separator(),
           {
             name:
-              chalk.yellow("🌿 Branch Yönetimi") +
-              chalk.gray(" - Branch işlemleri"),
+              chalk.yellow("🌿 Branch Management") +
+              chalk.gray(" - Branch operations"),
             value: "branch",
           },
           {
             name:
-              chalk.gray("📜 Commit Geçmişi") +
-              chalk.gray(" - Son commitleri görüntüle"),
+              chalk.gray("📜 Commit History") +
+              chalk.gray(" - View recent commits"),
             value: "log",
           },
           {
             name:
-              chalk.gray("📦 Stash Yönetimi") +
-              chalk.gray(" - Değişiklikleri sakla/geri al"),
+              chalk.gray("📦 Stash Management") +
+              chalk.gray(" - Save/restore changes"),
             value: "stash",
           },
           new inquirer.Separator(),
           {
             name:
-              chalk.gray("⚙️  Ayarlar") +
-              chalk.gray(" - LM Studio ve uygulama ayarları"),
+              chalk.gray("⚙️  Settings") +
+              chalk.gray(" - LM Studio and app settings"),
             value: "config",
           },
-          { name: chalk.red("🚪 Çıkış"), value: "exit" },
+          { name: chalk.red("🚪 Exit"), value: "exit" },
         ],
         pageSize: 15,
       },
@@ -169,8 +169,8 @@ async function mainMenu() {
         running = false;
         console.log(
           boxen(
-            chalk.cyan("Güle güle! 👋\n") +
-              chalk.gray("Git işlemleriniz için teşekkürler."),
+            chalk.cyan("Goodbye! 👋\n") +
+            chalk.gray("Thanks for using our Git tool."),
             { padding: 1, borderStyle: "round", borderColor: "cyan" },
           ),
         );
@@ -184,7 +184,7 @@ async function stageMenu() {
   const unstaged = [...status.modified, ...status.not_added, ...status.deleted];
 
   if (unstaged.length === 0) {
-    console.log(chalk.yellow("\n⚠️  Stage edilecek değişiklik yok.\n"));
+    console.log(chalk.yellow("\n⚠️  No changes to stage.\n"));
     return;
   }
 
@@ -192,11 +192,11 @@ async function stageMenu() {
     {
       type: "list",
       name: "action",
-      message: "Stage işlemi:",
+      message: "Stage operation:",
       choices: [
-        { name: "📁 Tüm dosyaları stage'e al", value: "all" },
-        { name: "📄 Dosya seç", value: "select" },
-        { name: "↩️  Geri", value: "back" },
+        { name: "📁 Stage all files", value: "all" },
+        { name: "📄 Select files", value: "select" },
+        { name: "↩️  Back", value: "back" },
       ],
     },
   ]);
@@ -206,15 +206,15 @@ async function stageMenu() {
   const spinner = ora();
 
   if (action === "all") {
-    spinner.start("Tüm dosyalar stage ediliyor...");
+    spinner.start("Staging all files...");
     await stageAll();
-    spinner.succeed(chalk.green("Tüm dosyalar stage edildi!"));
+    spinner.succeed(chalk.green("All files staged!"));
   } else {
     const { files } = await inquirer.prompt([
       {
         type: "checkbox",
         name: "files",
-        message: "Stage edilecek dosyaları seçin:",
+        message: "Select files to stage:",
         choices: unstaged.map((file) => ({
           name: file,
           value: file,
@@ -224,9 +224,9 @@ async function stageMenu() {
     ]);
 
     if (files.length > 0) {
-      spinner.start("Dosyalar stage ediliyor...");
+      spinner.start("Staging files...");
       await stageFiles(files);
-      spinner.succeed(chalk.green(`${files.length} dosya stage edildi!`));
+      spinner.succeed(chalk.green(`${files.length} files staged!`));
     }
   }
 }
@@ -235,7 +235,7 @@ async function unstageMenu() {
   const status = await getGitStatus();
 
   if (status.staged.length === 0) {
-    console.log(chalk.yellow("\n⚠️  Stage'de dosya yok.\n"));
+    console.log(chalk.yellow("\n⚠️  No files in stage.\n"));
     return;
   }
 
@@ -243,11 +243,11 @@ async function unstageMenu() {
     {
       type: "list",
       name: "action",
-      message: "Unstage işlemi:",
+      message: "Unstage operation:",
       choices: [
-        { name: "📁 Tüm dosyaları unstage yap", value: "all" },
-        { name: "📄 Dosya seç", value: "select" },
-        { name: "↩️  Geri", value: "back" },
+        { name: "📁 Unstage all files", value: "all" },
+        { name: "📄 Select files", value: "select" },
+        { name: "↩️  Back", value: "back" },
       ],
     },
   ]);
@@ -257,15 +257,15 @@ async function unstageMenu() {
   const spinner = ora();
 
   if (action === "all") {
-    spinner.start("Tüm dosyalar unstage ediliyor...");
+    spinner.start("Unstaging all files...");
     await unstageAll();
-    spinner.succeed(chalk.green("Tüm dosyalar unstage edildi!"));
+    spinner.succeed(chalk.green("All files unstaged!"));
   } else {
     const { files } = await inquirer.prompt([
       {
         type: "checkbox",
         name: "files",
-        message: "Unstage edilecek dosyaları seçin:",
+        message: "Select files to unstage:",
         choices: status.staged.map((file) => ({
           name: file,
           value: file,
@@ -275,41 +275,41 @@ async function unstageMenu() {
     ]);
 
     if (files.length > 0) {
-      spinner.start("Dosyalar unstage ediliyor...");
+      spinner.start("Unstaging files...");
       const { unstageFiles } = require("../helpers/git");
       await unstageFiles(files);
-      spinner.succeed(chalk.green(`${files.length} dosya unstage edildi!`));
+      spinner.succeed(chalk.green(`${files.length} files unstaged!`));
     }
   }
 }
 
 async function pullMenu() {
-  const spinner = ora("Pull işlemi yapılıyor...").start();
+  const spinner = ora("Pulling changes...").start();
 
   try {
     const result = await pullFromRemote();
-    spinner.succeed(chalk.green("Pull başarılı!"));
+    spinner.succeed(chalk.green("Pull successful!"));
 
     if (result.summary) {
       console.log(
         chalk.gray(
-          `  Değişiklikler: ${result.summary.changes} dosya, +${result.summary.insertions} -${result.summary.deletions}`,
+          `  Changes: ${result.summary.changes} files, +${result.summary.insertions} -${result.summary.deletions}`,
         ),
       );
     }
   } catch (error) {
-    spinner.fail(chalk.red("Pull başarısız: " + error.message));
+    spinner.fail(chalk.red("Pull failed: " + error.message));
   }
 }
 
 async function fetchMenu() {
-  const spinner = ora("Fetch işlemi yapılıyor...").start();
+  const spinner = ora("Fetching...").start();
 
   try {
     await fetchRemote();
-    spinner.succeed(chalk.green("Fetch başarılı!"));
+    spinner.succeed(chalk.green("Fetch successful!"));
   } catch (error) {
-    spinner.fail(chalk.red("Fetch başarısız: " + error.message));
+    spinner.fail(chalk.red("Fetch failed: " + error.message));
   }
 }
 
@@ -318,12 +318,12 @@ async function stashMenu() {
     {
       type: "list",
       name: "action",
-      message: "Stash işlemi:",
+      message: "Stash operation:",
       choices: [
-        { name: "📦 Değişiklikleri stash'e al", value: "save" },
-        { name: "📤 Son stash'i geri al", value: "pop" },
-        { name: "📋 Stash listesi", value: "list" },
-        { name: "↩️  Geri", value: "back" },
+        { name: "📦 Stash changes", value: "save" },
+        { name: "📤 Pop last stash", value: "pop" },
+        { name: "📋 Stash list", value: "list" },
+        { name: "↩️  Back", value: "back" },
       ],
     },
   ]);
@@ -337,40 +337,40 @@ async function stashMenu() {
       {
         type: "input",
         name: "message",
-        message: "Stash mesajı (opsiyonel):",
+        message: "Stash message (optional):",
         default: "",
       },
     ]);
 
-    spinner.start("Değişiklikler stash ediliyor...");
+    spinner.start("Stashing changes...");
     try {
       await stashChanges(message || null);
-      spinner.succeed(chalk.green("Değişiklikler stash edildi!"));
+      spinner.succeed(chalk.green("Changes stashed!"));
     } catch (error) {
-      spinner.fail(chalk.red("Stash başarısız: " + error.message));
+      spinner.fail(chalk.red("Stash failed: " + error.message));
     }
   } else if (action === "pop") {
-    spinner.start("Stash geri alınıyor...");
+    spinner.start("Popping stash...");
     try {
       await popStash();
-      spinner.succeed(chalk.green("Stash geri alındı!"));
+      spinner.succeed(chalk.green("Stash popped!"));
     } catch (error) {
-      spinner.fail(chalk.red("Stash pop başarısız: " + error.message));
+      spinner.fail(chalk.red("Stash pop failed: " + error.message));
     }
   } else if (action === "list") {
     try {
       const stashes = await listStashes();
       if (stashes.all.length === 0) {
-        console.log(chalk.yellow("\n⚠️  Stash listesi boş.\n"));
+        console.log(chalk.yellow("\n⚠️  Stash list is empty.\n"));
       } else {
-        console.log(chalk.cyan("\n📦 Stash Listesi:"));
+        console.log(chalk.cyan("\n📦 Stash List:"));
         stashes.all.forEach((stash, index) => {
           console.log(chalk.gray(`  ${index}: `) + chalk.white(stash.message));
         });
         console.log("");
       }
     } catch (error) {
-      console.log(chalk.red("Stash listesi alınamadı: " + error.message));
+      console.log(chalk.red("Could not get stash list: " + error.message));
     }
   }
 }

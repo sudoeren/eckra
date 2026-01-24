@@ -12,8 +12,8 @@ async function checkGitRepo() {
     await getGitStatus();
     return true;
   } catch (error) {
-    console.log(chalk.red("\n  ⚠️  Bu klasör bir Git repository değil!\n"));
-    console.log(chalk.gray("  Çözüm: git init komutunu çalıştırın\n"));
+    console.log(chalk.red("\n  ⚠️  This folder is not a Git repository!\n"));
+    console.log(chalk.gray("  Solution: Run git init command\n"));
     return false;
   }
 }
@@ -26,7 +26,7 @@ program
 program
   .command("start")
   .alias("s")
-  .description("İnteraktif arayüzü başlat")
+  .description("Start interactive interface")
   .action(async () => {
     if (await checkGitRepo()) {
       await startApp();
@@ -35,7 +35,7 @@ program
 
 program
   .command("status")
-  .description("Git durumunu göster")
+  .description("Show Git status")
   .action(async () => {
     if (await checkGitRepo()) {
       await quickStatus();
@@ -45,8 +45,8 @@ program
 program
   .command("commit")
   .alias("c")
-  .description("AI destekli commit")
-  .option("-m, --message <message>", "Manuel commit mesajı")
+  .description("AI-powered commit")
+  .option("-m, --message <message>", "Manual commit message")
   .action(async (options) => {
     if (await checkGitRepo()) {
       await quickCommit(options.message);
@@ -56,7 +56,7 @@ program
 program
   .command("push")
   .alias("p")
-  .description("Push işlemi")
+  .description("Push operation")
   .action(async () => {
     if (await checkGitRepo()) {
       await quickPush();

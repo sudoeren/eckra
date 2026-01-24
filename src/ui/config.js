@@ -21,27 +21,27 @@ async function configMenu() {
     // Show current config
     console.log(
       boxen(
-        chalk.cyan.bold("⚙️  Mevcut Ayarlar\n\n") +
-          chalk.yellow("LM Studio URL: ") +
-          chalk.white(config.lmStudioUrl) +
-          "\n" +
-          chalk.yellow("Model: ") +
-          chalk.white(config.model) +
-          "\n" +
-          chalk.yellow("Dil: ") +
-          chalk.white(config.language) +
-          "\n" +
-          chalk.yellow("Otomatik Stage: ") +
-          (config.autoStage ? chalk.green("Açık") : chalk.gray("Kapalı")) +
-          "\n" +
-          chalk.yellow("Otomatik Push: ") +
-          (config.autoPush ? chalk.green("Açık") : chalk.gray("Kapalı")) +
-          "\n\n" +
-          chalk.gray("Config dosyası: " + getConfigPath()) +
-          "\n\n" +
-          (lmStatus.connected
-            ? chalk.green("✓ LM Studio bağlantısı aktif")
-            : chalk.red("✗ LM Studio bağlantısı yok")),
+        chalk.cyan.bold("⚙️  Current Settings\n\n") +
+        chalk.yellow("LM Studio URL: ") +
+        chalk.white(config.lmStudioUrl) +
+        "\n" +
+        chalk.yellow("Model: ") +
+        chalk.white(config.model) +
+        "\n" +
+        chalk.yellow("Language: ") +
+        chalk.white(config.language) +
+        "\n" +
+        chalk.yellow("Auto Stage: ") +
+        (config.autoStage ? chalk.green("On") : chalk.gray("Off")) +
+        "\n" +
+        chalk.yellow("Auto Push: ") +
+        (config.autoPush ? chalk.green("On") : chalk.gray("Off")) +
+        "\n\n" +
+        chalk.gray("Config file: " + getConfigPath()) +
+        "\n\n" +
+        (lmStatus.connected
+          ? chalk.green("✓ LM Studio connection active")
+          : chalk.red("✗ No LM Studio connection")),
         { padding: 1, borderStyle: "round", borderColor: "cyan" },
       ),
     );
@@ -50,18 +50,18 @@ async function configMenu() {
       {
         type: "list",
         name: "action",
-        message: "Ayar işlemi:",
+        message: "Settings operation:",
         choices: [
-          { name: chalk.blue("🌐 LM Studio URL değiştir"), value: "url" },
-          { name: chalk.blue("🤖 Model değiştir"), value: "model" },
-          { name: chalk.blue("🔧 Otomatik ayarları değiştir"), value: "auto" },
+          { name: chalk.blue("🌐 Change LM Studio URL"), value: "url" },
+          { name: chalk.blue("🤖 Change model"), value: "model" },
+          { name: chalk.blue("🔧 Change auto settings"), value: "auto" },
           {
-            name: chalk.yellow("🔍 LM Studio bağlantısını test et"),
+            name: chalk.yellow("🔍 Test LM Studio connection"),
             value: "test",
           },
-          { name: chalk.red("🔄 Varsayılana sıfırla"), value: "reset" },
+          { name: chalk.red("🔄 Reset to defaults"), value: "reset" },
           new inquirer.Separator(),
-          { name: chalk.gray("↩️  Geri"), value: "back" },
+          { name: chalk.gray("↩️  Back"), value: "back" },
         ],
       },
     ]);
@@ -100,7 +100,7 @@ async function changeUrl() {
       default: config.lmStudioUrl,
       validate: (input) => {
         if (!input.startsWith("http://") && !input.startsWith("https://")) {
-          return "URL http:// veya https:// ile başlamalı";
+          return "URL must start with http:// or https://";
         }
         return true;
       },
@@ -108,7 +108,7 @@ async function changeUrl() {
   ]);
 
   saveConfig({ lmStudioUrl: url });
-  console.log(chalk.green("\n✓ LM Studio URL güncellendi!\n"));
+  console.log(chalk.green("\n✓ LM Studio URL updated!\n"));
 }
 
 async function changeModel() {
@@ -123,16 +123,16 @@ async function changeModel() {
       value: m.id,
     }));
     choices.push(new inquirer.Separator());
-    choices.push({ name: chalk.yellow("Manuel gir"), value: "manual" });
+    choices.push({ name: chalk.yellow("Enter manually"), value: "manual" });
   } else {
-    choices = [{ name: "Manuel gir", value: "manual" }];
+    choices = [{ name: "Enter manually", value: "manual" }];
   }
 
   const { model } = await inquirer.prompt([
     {
       type: "list",
       name: "model",
-      message: "Model seçin:",
+      message: "Select model:",
       choices,
       default: config.model,
     },
@@ -145,7 +145,7 @@ async function changeModel() {
       {
         type: "input",
         name: "manualModel",
-        message: "Model adı:",
+        message: "Model name:",
         default: config.model,
       },
     ]);
@@ -153,7 +153,7 @@ async function changeModel() {
   }
 
   saveConfig({ model: finalModel });
-  console.log(chalk.green("\n✓ Model güncellendi!\n"));
+  console.log(chalk.green("\n✓ Model updated!\n"));
 }
 
 async function changeAutoSettings() {
@@ -163,20 +163,20 @@ async function changeAutoSettings() {
     {
       type: "checkbox",
       name: "settings",
-      message: "Otomatik ayarları seçin:",
+      message: "Select auto settings:",
       choices: [
         {
-          name: "Otomatik Stage - Commit öncesi otomatik stage",
+          name: "Auto Stage - Auto stage before commit",
           value: "autoStage",
           checked: config.autoStage,
         },
         {
-          name: "Otomatik Push - Commit sonrası otomatik push",
+          name: "Auto Push - Auto push after commit",
           value: "autoPush",
           checked: config.autoPush,
         },
         {
-          name: "Commit Prefix - Conventional Commits formatı",
+          name: "Commit Prefix - Conventional Commits format",
           value: "commitPrefix",
           checked: config.commitPrefix,
         },
@@ -190,37 +190,37 @@ async function changeAutoSettings() {
     commitPrefix: settings.includes("commitPrefix"),
   });
 
-  console.log(chalk.green("\n✓ Otomatik ayarlar güncellendi!\n"));
+  console.log(chalk.green("\n✓ Auto settings updated!\n"));
 }
 
 async function testConnection() {
-  const spinner = ora("LM Studio bağlantısı test ediliyor...").start();
+  const spinner = ora("Testing LM Studio connection...").start();
 
   const lmStatus = await checkLMStudioConnection();
 
   if (lmStatus.connected) {
-    spinner.succeed(chalk.green("LM Studio bağlantısı başarılı!"));
+    spinner.succeed(chalk.green("LM Studio connection successful!"));
 
     if (lmStatus.models && lmStatus.models.length > 0) {
-      console.log(chalk.cyan("\n📋 Mevcut modeller:"));
+      console.log(chalk.cyan("\n📋 Available models:"));
       lmStatus.models.forEach((model) => {
         console.log(chalk.gray("   • ") + chalk.white(model.id));
       });
     }
   } else {
-    spinner.fail(chalk.red("LM Studio bağlantısı başarısız!"));
-    console.log(chalk.yellow("\n⚠️  Hata: ") + chalk.white(lmStatus.error));
-    console.log(chalk.gray("\nÇözüm önerileri:"));
-    console.log(chalk.gray("  1. LM Studio'nun çalıştığından emin olun"));
+    spinner.fail(chalk.red("LM Studio connection failed!"));
+    console.log(chalk.yellow("\n⚠️  Error: ") + chalk.white(lmStatus.error));
+    console.log(chalk.gray("\nSuggested solutions:"));
+    console.log(chalk.gray("  1. Make sure LM Studio is running"));
     console.log(
       chalk.gray(
-        "  2. Server'ın başlatıldığından emin olun (LM Studio içinde)",
+        "  2. Make sure the server is started (inside LM Studio)",
       ),
     );
     console.log(
-      chalk.gray("  3. Port numarasını kontrol edin (varsayılan: 1234)"),
+      chalk.gray("  3. Check the port number (default: 1234)"),
     );
-    console.log(chalk.gray("  4. Firewall ayarlarını kontrol edin"));
+    console.log(chalk.gray("  4. Check firewall settings"));
   }
   console.log("");
 }
@@ -230,14 +230,14 @@ async function resetSettings() {
     {
       type: "confirm",
       name: "confirm",
-      message: "Tüm ayarlar varsayılana sıfırlansın mı?",
+      message: "Reset all settings to defaults?",
       default: false,
     },
   ]);
 
   if (confirm) {
     resetConfig();
-    console.log(chalk.green("\n✓ Ayarlar varsayılana sıfırlandı!\n"));
+    console.log(chalk.green("\n✓ Settings reset to defaults!\n"));
   }
 }
 

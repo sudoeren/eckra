@@ -26,8 +26,8 @@ async function aiCommit(manualMessage = null) {
     if (!hasChanges) {
       console.log(
         boxen(
-          chalk.yellow("⚠️  Commit edilecek değişiklik yok.\n\n") +
-            chalk.gray("Önce dosyalarınızı değiştirin ve stage edin."),
+          chalk.yellow("⚠️  No changes to commit.\n\n") +
+          chalk.gray("First modify your files and stage them."),
           { padding: 1, borderStyle: "round", borderColor: "yellow" },
         ),
       );
@@ -39,19 +39,19 @@ async function aiCommit(manualMessage = null) {
         type: "confirm",
         name: "shouldStage",
         message:
-          "Stage edilmiş dosya yok. Tüm değişiklikleri stage etmek ister misiniz?",
+          "No staged files. Would you like to stage all changes?",
         default: true,
       },
     ]);
 
     if (!shouldStage) {
-      console.log(chalk.yellow("İşlem iptal edildi."));
+      console.log(chalk.yellow("Operation cancelled."));
       return;
     }
 
-    const spinner = ora("Dosyalar stage ediliyor...").start();
+    const spinner = ora("Staging files...").start();
     await stageAll();
-    spinner.succeed("Tüm dosyalar stage edildi.");
+    spinner.succeed("All files staged.");
   }
 
   // Get updated status and diff
@@ -59,7 +59,7 @@ async function aiCommit(manualMessage = null) {
   const diff = await getStagedDiff();
   const stagedFiles = updatedStatus.staged;
 
-  console.log(chalk.cyan("\n📝 Stage edilmiş dosyalar:"));
+  console.log(chalk.cyan("\n📝 Staged files:"));
   stagedFiles.forEach((file) => {
     console.log(chalk.gray("   • ") + chalk.white(file));
   });
@@ -74,11 +74,11 @@ async function aiCommit(manualMessage = null) {
     if (!lmStatus.connected) {
       console.log(
         boxen(
-          chalk.yellow("⚠️  LM Studio'ya bağlanılamadı\n\n") +
-            chalk.gray(
-              "LM Studio'nun localhost:1234 portunda çalıştığından emin olun.\n",
-            ) +
-            chalk.gray("Manuel commit mesajı yazabilirsiniz."),
+          chalk.yellow("⚠️  Could not connect to LM Studio\n\n") +
+          chalk.gray(
+            "Make sure LM Studio is running on localhost:1234.\n",
+          ) +
+          chalk.gray("You can write a manual commit message."),
           { padding: 1, borderStyle: "round", borderColor: "yellow" },
         ),
       );
@@ -87,7 +87,7 @@ async function aiCommit(manualMessage = null) {
         {
           type: "confirm",
           name: "useManual",
-          message: "Manuel commit mesajı yazmak ister misiniz?",
+          message: "Would you like to write a manual commit message?",
           default: true,
         },
       ]);
@@ -100,15 +100,15 @@ async function aiCommit(manualMessage = null) {
         {
           type: "input",
           name: "message",
-          message: "Commit mesajı:",
-          validate: (input) => input.length > 0 || "Commit mesajı boş olamaz",
+          message: "Commit message:",
+          validate: (input) => input.length > 0 || "Commit message cannot be empty",
         },
       ]);
 
       commitMessage = message;
     } else {
       // Generate AI suggestions
-      const spinner = ora("AI commit mesajları oluşturuluyor...").start();
+      const spinner = ora("Generating AI commit messages...").start();
 
       try {
         const suggestions = await generateCommitSuggestions(
@@ -116,13 +116,13 @@ async function aiCommit(manualMessage = null) {
           stagedFiles,
           3,
         );
-        spinner.succeed("Commit mesajları oluşturuldu!");
+        spinner.succeed("Commit messages generated!");
 
         const { selectedMessage } = await inquirer.prompt([
           {
             type: "list",
             name: "selectedMessage",
-            message: "Bir commit mesajı seçin veya kendi mesajınızı yazın:",
+            message: "Select a commit message or write your own:",
             choices: [
               ...suggestions.map((msg, i) => ({
                 name: chalk.cyan(`${i + 1}. `) + msg,
@@ -130,20 +130,20 @@ async function aiCommit(manualMessage = null) {
               })),
               new inquirer.Separator(),
               {
-                name: chalk.yellow("✏️  Kendi mesajımı yazacağım"),
+                name: chalk.yellow("✏️  I'll write my own message"),
                 value: "custom",
               },
               {
-                name: chalk.green("🔄 Yeni öneriler oluştur"),
+                name: chalk.green("🔄 Generate new suggestions"),
                 value: "regenerate",
               },
-              { name: chalk.red("❌ İptal"), value: "cancel" },
+              { name: chalk.red("❌ Cancel"), value: "cancel" },
             ],
           },
         ]);
 
         if (selectedMessage === "cancel") {
-          console.log(chalk.yellow("İşlem iptal edildi."));
+          console.log(chalk.yellow("Operation cancelled."));
           return;
         }
 
@@ -156,9 +156,9 @@ async function aiCommit(manualMessage = null) {
             {
               type: "input",
               name: "message",
-              message: "Commit mesajı:",
+              message: "Commit message:",
               validate: (input) =>
-                input.length > 0 || "Commit mesajı boş olamaz",
+                input.length > 0 || "Commit message cannot be empty",
             },
           ]);
           commitMessage = message;
@@ -166,14 +166,14 @@ async function aiCommit(manualMessage = null) {
           commitMessage = selectedMessage;
         }
       } catch (error) {
-        spinner.fail("AI mesaj oluşturulamadı: " + error.message);
+        spinner.fail("AI message generation failed: " + error.message);
 
         const { message } = await inquirer.prompt([
           {
             type: "input",
             name: "message",
-            message: "Manuel commit mesajı:",
-            validate: (input) => input.length > 0 || "Commit mesajı boş olamaz",
+            message: "Manual commit message:",
+            validate: (input) => input.length > 0 || "Commit message cannot be empty",
           },
         ]);
         commitMessage = message;
@@ -183,7 +183,7 @@ async function aiCommit(manualMessage = null) {
 
   // Confirm and create commit
   console.log(
-    boxen(chalk.cyan("Commit Mesajı:\n\n") + chalk.white(commitMessage), {
+    boxen(chalk.cyan("Commit Message:\n\n") + chalk.white(commitMessage), {
       padding: 1,
       borderStyle: "round",
       borderColor: "cyan",
@@ -194,32 +194,32 @@ async function aiCommit(manualMessage = null) {
     {
       type: "confirm",
       name: "confirm",
-      message: "Bu mesajla commit yapmak istiyor musunuz?",
+      message: "Do you want to commit with this message?",
       default: true,
     },
   ]);
 
   if (!confirm) {
-    console.log(chalk.yellow("Commit iptal edildi."));
+    console.log(chalk.yellow("Commit cancelled."));
     return;
   }
 
-  const commitSpinner = ora("Commit oluşturuluyor...").start();
+  const commitSpinner = ora("Creating commit...").start();
 
   try {
     const result = await createCommit(commitMessage);
-    commitSpinner.succeed(chalk.green("Commit başarıyla oluşturuldu!"));
+    commitSpinner.succeed(chalk.green("Commit created successfully!"));
 
     console.log(chalk.gray(`   Commit: ${result.commit}`));
     console.log(chalk.gray(`   Branch: ${result.branch}`));
-    console.log(chalk.gray(`   Dosyalar: ${stagedFiles.length} dosya\n`));
+    console.log(chalk.gray(`   Files: ${stagedFiles.length} files\n`));
 
     // Ask to push
     const { shouldPush } = await inquirer.prompt([
       {
         type: "confirm",
         name: "shouldPush",
-        message: "Commit'i push etmek ister misiniz?",
+        message: "Would you like to push the commit?",
         default: false,
       },
     ]);
@@ -229,7 +229,7 @@ async function aiCommit(manualMessage = null) {
       await pushChanges();
     }
   } catch (error) {
-    commitSpinner.fail(chalk.red("Commit başarısız: " + error.message));
+    commitSpinner.fail(chalk.red("Commit failed: " + error.message));
   }
 }
 

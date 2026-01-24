@@ -17,10 +17,10 @@ async function showStatus() {
   console.log(
     boxen(
       chalk.cyan("🌿 Branch: ") +
-        chalk.yellow.bold(status.current) +
-        (status.tracking ? chalk.gray(` → ${status.tracking}`) : "") +
-        (status.ahead ? chalk.green(` ↑${status.ahead}`) : "") +
-        (status.behind ? chalk.red(` ↓${status.behind}`) : ""),
+      chalk.yellow.bold(status.current) +
+      (status.tracking ? chalk.gray(` → ${status.tracking}`) : "") +
+      (status.ahead ? chalk.green(` ↑${status.ahead}`) : "") +
+      (status.behind ? chalk.red(` ↓${status.behind}`) : ""),
       {
         padding: { left: 2, right: 2, top: 0, bottom: 0 },
         borderStyle: "round",
@@ -32,10 +32,10 @@ async function showStatus() {
   // Staged files
   if (status.staged.length > 0) {
     console.log(
-      chalk.green.bold("\n✓ Stage Edilmiş Dosyalar (commit'e hazır):"),
+      chalk.green.bold("\n✓ Staged Files (ready to commit):"),
     );
     const stagedTable = new Table({
-      head: [chalk.green("Dosya"), chalk.green("Durum")],
+      head: [chalk.green("File"), chalk.green("Status")],
       colWidths: [50, 15],
       style: { head: [], border: ["gray"] },
     });
@@ -55,10 +55,10 @@ async function showStatus() {
   // Modified files (not staged)
   if (status.modified.length > 0 || status.deleted.length > 0) {
     console.log(
-      chalk.red.bold("\n● Değiştirilmiş Dosyalar (stage edilmemiş):"),
+      chalk.red.bold("\n● Modified Files (not staged):"),
     );
     const modifiedTable = new Table({
-      head: [chalk.red("Dosya"), chalk.red("Durum")],
+      head: [chalk.red("File"), chalk.red("Status")],
       colWidths: [50, 15],
       style: { head: [], border: ["gray"] },
     });
@@ -82,9 +82,9 @@ async function showStatus() {
 
   // Untracked files
   if (status.not_added.length > 0) {
-    console.log(chalk.blue.bold("\n? İzlenmeyen Dosyalar (untracked):"));
+    console.log(chalk.blue.bold("\n? Untracked Files:"));
     const untrackedTable = new Table({
-      head: [chalk.blue("Dosya")],
+      head: [chalk.blue("File")],
       colWidths: [65],
       style: { head: [], border: ["gray"] },
     });
@@ -98,9 +98,9 @@ async function showStatus() {
 
   // Conflicted files
   if (status.conflicted.length > 0) {
-    console.log(chalk.yellow.bold("\n⚠️  Çakışan Dosyalar (conflict):"));
+    console.log(chalk.yellow.bold("\n⚠️  Conflicted Files:"));
     const conflictTable = new Table({
-      head: [chalk.yellow("Dosya")],
+      head: [chalk.yellow("File")],
       colWidths: [65],
       style: { head: [], border: ["gray"] },
     });
@@ -120,7 +120,7 @@ async function showStatus() {
     console.log(
       boxen(
         chalk.green(
-          "✨ Çalışma dizini temiz - commit edilecek değişiklik yok.",
+          "✨ Working directory clean - nothing to commit.",
         ),
         { padding: 1, borderStyle: "round", borderColor: "green" },
       ),
@@ -128,12 +128,12 @@ async function showStatus() {
   } else {
     console.log(chalk.gray("\n─".repeat(40)));
     console.log(
-      chalk.white("Özet: ") +
-        chalk.green(`${status.staged.length} staged`) +
-        chalk.gray(" | ") +
-        chalk.red(`${status.modified.length} modified`) +
-        chalk.gray(" | ") +
-        chalk.blue(`${status.not_added.length} untracked`),
+      chalk.white("Summary: ") +
+      chalk.green(`${status.staged.length} staged`) +
+      chalk.gray(" | ") +
+      chalk.red(`${status.modified.length} modified`) +
+      chalk.gray(" | ") +
+      chalk.blue(`${status.not_added.length} untracked`),
     );
   }
 
@@ -143,7 +143,7 @@ async function showStatus() {
     remotes.forEach((remote) => {
       console.log(
         chalk.gray(`   ${remote.name}: `) +
-          chalk.white(remote.refs.fetch || remote.refs.push),
+        chalk.white(remote.refs.fetch || remote.refs.push),
       );
     });
   }

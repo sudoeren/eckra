@@ -7,25 +7,25 @@ const { getConfig } = require("./config");
 async function generateCommitMessage(diff, filesList) {
   const config = getConfig();
 
-  const prompt = `Sen bir Git commit mesajı oluşturucususun. Aşağıdaki değişikliklere bakarak kısa, açıklayıcı ve Conventional Commits formatında bir commit mesajı oluştur.
+  const prompt = `You are a Git commit message generator. Based on the following changes, create a short, descriptive commit message in Conventional Commits format.
 
-Conventional Commits formatı:
-- feat: Yeni bir özellik
-- fix: Bir hata düzeltmesi
-- docs: Sadece dokümantasyon değişiklikleri
-- style: Kodu etkilemeyen değişiklikler (boşluk, format, noktalı virgül eksikliği vb.)
-- refactor: Hata düzeltmeyen ve özellik eklemeyen kod değişikliği
-- perf: Performansı artıran kod değişikliği
-- test: Eksik testlerin eklenmesi veya mevcut testlerin düzeltilmesi
-- chore: Build sürecine veya yardımcı araçlara yapılan değişiklikler
+Conventional Commits format:
+- feat: A new feature
+- fix: A bug fix
+- docs: Documentation only changes
+- style: Changes that do not affect the code (whitespace, formatting, missing semicolons, etc.)
+- refactor: Code change that neither fixes a bug nor adds a feature
+- perf: Code change that improves performance
+- test: Adding missing tests or correcting existing tests
+- chore: Changes to the build process or auxiliary tools
 
-Değiştirilen dosyalar:
+Changed files:
 ${filesList.join("\n")}
 
 Diff:
 ${diff.substring(0, 3000)}
 
-Sadece commit mesajını yaz, başka bir açıklama ekleme. Mesaj İngilizce olsun ve 72 karakteri geçmesin.`;
+Write only the commit message, do not add any other explanation. The message should be in English and should not exceed 72 characters.`;
 
   try {
     const response = await axios.post(
@@ -67,12 +67,12 @@ Sadece commit mesajını yaz, başka bir açıklama ekleme. Mesaj İngilizce ols
   } catch (error) {
     if (error.code === "ECONNREFUSED") {
       throw new Error(
-        `LM Studio'ya bağlanılamadı. Lütfen LM Studio'nun ${config.lmStudioUrl} adresinde çalıştığından emin olun.`,
+        `Could not connect to LM Studio. Please make sure LM Studio is running at ${config.lmStudioUrl}.`,
       );
     }
     if (error.response) {
       throw new Error(
-        `LM Studio hatası: ${error.response.status} - ${error.response.statusText}`,
+        `LM Studio error: ${error.response.status} - ${error.response.statusText}`,
       );
     }
     throw error;
@@ -107,15 +107,15 @@ async function checkLMStudioConnection() {
 async function generateCommitSuggestions(diff, filesList, count = 3) {
   const config = getConfig();
 
-  const prompt = `Sen bir Git commit mesajı oluşturucususun. Aşağıdaki değişikliklere bakarak ${count} adet farklı commit mesajı öner. Her biri Conventional Commits formatında olsun.
+  const prompt = `You are a Git commit message generator. Based on the following changes, suggest ${count} different commit messages. Each should be in Conventional Commits format.
 
-Değiştirilen dosyalar:
+Changed files:
 ${filesList.join("\n")}
 
 Diff:
 ${diff.substring(0, 3000)}
 
-${count} adet farklı commit mesajı yaz, her birini yeni satırda. Sadece mesajları yaz, numara veya açıklama ekleme.`;
+Write ${count} different commit messages, each on a new line. Write only the messages, do not add numbers or explanations.`;
 
   try {
     const response = await axios.post(
@@ -148,7 +148,7 @@ ${count} adet farklı commit mesajı yaz, her birini yeni satırda. Sadece mesaj
     if (response.data && response.data.choices && response.data.choices[0]) {
       let content = response.data.choices[0].message.content.trim();
 
-      // Backtick bloklarını temizle
+      // Clean backtick blocks
       content = content.replace(/```[\s\S]*?```/g, "");
       content = content.replace(/`/g, "");
 
@@ -156,16 +156,16 @@ ${count} adet farklı commit mesajı yaz, her birini yeni satırda. Sadece mesaj
         .split("\n")
         .map((line) => {
           let cleaned = line
-            .replace(/^\d+[\.\)\-\:]\s*/, "") // Numara kaldır
-            .replace(/^[\-\*]\s*/, "") // Liste işareti kaldır
-            .replace(/^["']|["']$/g, "") // Tırnak kaldır
+            .replace(/^\d+[\.)\-:]\s*/, "") // Remove numbers
+            .replace(/^[-*]\s*/, "") // Remove list markers
+            .replace(/^["']|["']$/g, "") // Remove quotes
             .trim();
           return cleaned;
         })
         .filter((line) => line.length > 5 && !line.startsWith("```"))
         .slice(0, count);
 
-      // Eğer boşsa varsayılan öneriler
+      // If empty, provide default suggestions
       if (suggestions.length === 0) {
         return [
           "chore: update files",
@@ -180,7 +180,7 @@ ${count} adet farklı commit mesajı yaz, her birini yeni satırda. Sadece mesaj
     throw new Error("Invalid response from LM Studio");
   } catch (error) {
     if (error.code === "ECONNREFUSED") {
-      throw new Error(`LM Studio'ya bağlanılamadı.`);
+      throw new Error(`Could not connect to LM Studio.`);
     }
     throw error;
   }
