@@ -1,0 +1,86 @@
+const { getGitStatus } = require("../../helpers/git");
+const { s, icons, header, clear, pause } = require("../common");
+
+async function getStatusInfo() {
+  try {
+    const status = await getGitStatus();
+    const branch = status.current || "master";
+    const staged = status.staged.length;
+    const modified = status.modified.length;
+    const untracked = status.not_added.length;
+    const conflicts = status.conflicted.length;
+    const clean = staged === 0 && modified === 0 && untracked === 0;
+
+    return { branch, staged, modified, untracked, conflicts, clean, status };
+  } catch {
+    return null;
+  }
+}
+
+function statusLine(info) {
+  if (!info) return s.error("  ✗ not a git repository\n");
+
+  const parts = [s.primary(`${icons.branch} ${info.branch}`)];
+
+  if (info.conflicts > 0) {
+    parts.push(s.error(`${info.conflicts} conflict`));
+  } else if (info.clean) {
+    parts.push(s.success("✓ clean"));
+  } else {
+    if (info.staged > 0) parts.push(s.success(`${icons.staged}${info.staged}`));
+    if (info.modified > 0)
+      parts.push(s.warning(`${icons.modified}${info.modified}`));
+    if (info.untracked > 0)
+      parts.push(s.muted(`${icons.untracked}${info.untracked}`));
+  }
+
+  return "  " + parts.join(s.dim(" │ ")) + "\n";
+}
+
+async function doStatus() {
+  clear();
+  header();
+  console.log(s.bold("  Status\n"));
+
+  const status = await getGitStatus();
+  const branch = status.current;
+
+  console.log(s.primary(`  Branch: ${branch}\n`));
+
+  if (status.staged.length > 0) {
+    console.log(s.success("  Staged:"));
+    status.staged.forEach((f) => console.log(s.success(`    + ${f}`)));
+    console.log();
+  }
+
+  if (status.modified.length > 0) {
+    console.log(s.warning("  Modified:"));
+    status.modified.forEach((f) => console.log(s.warning(`    ~ ${f}`)));
+    console.log();
+  }
+
+  if (status.not_added.length > 0) {
+    console.log(s.muted("  Untracked:"));
+    status.not_added.forEach((f) => console.log(s.muted(`    ? ${f}`)));
+    console.log();
+  }
+
+  if (status.conflicted.length > 0) {
+    console.log(s.error("  Conflicts:"));
+    status.conflicted.forEach((f) => console.log(s.error(`    ! ${f}`)));
+    console.log();
+  }
+
+  if (
+    status.staged.length === 0 &&
+    status.modified.length === 0 &&
+    status.not_added.length === 0 &&
+    status.conflicted.length === 0
+  ) {
+    console.log(s.success("  ✓ Working directory clean!\n"));
+  }
+
+  await pause();
+}
+
+module.exports = { doStatus, getStatusInfo, statusLine };
