@@ -104,11 +104,16 @@ async function checkLMStudioConnection() {
 /**
  * Generate multiple commit message suggestions
  */
-async function generateCommitSuggestions(diff, filesList, count = 3) {
+async function generateCommitSuggestions(diff, filesList, count = 3, instruction = null) {
   const config = getConfig();
 
-  const prompt = `You are a Git commit message generator. Based on the following changes, suggest ${count} different commit messages. Each should be in Conventional Commits format.
+  let instructionText = "";
+  if (instruction) {
+    instructionText = `\nIMPORTANT USER INSTRUCTION: ${instruction}\n`;
+  }
 
+  const prompt = `You are a Git commit message generator. Based on the following changes${instruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each should be in Conventional Commits format.
+${instructionText}
 Changed files:
 ${filesList.join("\n")}
 

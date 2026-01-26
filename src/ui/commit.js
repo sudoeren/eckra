@@ -107,6 +107,14 @@ async function aiCommit(manualMessage = null) {
 
       commitMessage = message;
     } else {
+      const { instruction } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "instruction",
+          message: "Optional: Add instruction for AI (Enter to skip):",
+        },
+      ]);
+
       // Generate AI suggestions
       const spinner = ora("Generating AI commit messages...").start();
 
@@ -115,6 +123,7 @@ async function aiCommit(manualMessage = null) {
           diff,
           stagedFiles,
           3,
+          instruction,
         );
         spinner.succeed("Commit messages generated!");
 
