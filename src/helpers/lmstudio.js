@@ -6,9 +6,13 @@ const { getConfig } = require("./config");
  */
 async function generateCommitMessage(diff, filesList) {
   const config = getConfig();
+  
+  const instructionText = config.aiInstruction 
+    ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n` 
+    : "";
 
-  const prompt = `You are a Git commit message generator. Based on the following changes, create a short, descriptive commit message in Conventional Commits format.
-
+  const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a short, descriptive commit message in Conventional Commits format.
+${instructionText}
 Conventional Commits format:
 - feat: A new feature
 - fix: A bug fix
@@ -107,12 +111,15 @@ async function checkLMStudioConnection() {
 async function generateCommitSuggestions(diff, filesList, count = 3, instruction = null) {
   const config = getConfig();
 
+  // Use config instruction if no specific instruction provided
+  const activeInstruction = instruction || config.aiInstruction;
+  
   let instructionText = "";
-  if (instruction) {
-    instructionText = `\nIMPORTANT USER INSTRUCTION: ${instruction}\n`;
+  if (activeInstruction) {
+    instructionText = `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`;
   }
 
-  const prompt = `You are a Git commit message generator. Based on the following changes${instruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each should be in Conventional Commits format.
+  const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each should be in Conventional Commits format.
 ${instructionText}
 Changed files:
 ${filesList.join("\n")}

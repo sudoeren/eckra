@@ -894,6 +894,7 @@ async function doMore() {
           { name: s.text("  📊 Statistics"), value: "stats" },
           { name: s.text("  🔍 Search Commits"), value: "search" },
           { name: s.text("  📋 Blame"), value: "blame" },
+          { name: s.text("  🌳 Worktrees"), value: "worktree" },
           { type: "separator", line: " " },
           { name: s.text("  ⚙ Settings"), value: "settings" },
           { name: s.muted("  ← Main Menu"), value: "back" },
@@ -929,6 +930,9 @@ async function doMore() {
         break;
       case "blame":
         await doBlame();
+        break;
+      case "worktree":
+        await doWorktree();
         break;
       case "settings":
         await doSettings();
@@ -1558,6 +1562,7 @@ async function doSettings() {
 
   console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
   console.log(s.muted("  Model: ") + s.text(config.model));
+  console.log(s.muted("  AI Instruction: ") + s.text(truncate(config.aiInstruction, 50)));
   console.log(
     s.muted("  AI Status: ") +
     (lm.connected ? s.success("Connected ✓") : s.error("Not connected ✗")),
@@ -1572,6 +1577,7 @@ async function doSettings() {
       choices: [
         { name: s.text("  Change URL"), value: "url" },
         { name: s.text("  Change Model"), value: "model" },
+        { name: s.text("  Change AI Instructions"), value: "instruction" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
     },
@@ -1605,6 +1611,150 @@ async function doSettings() {
     saveConfig({ ...config, model });
     console.log(s.success("\n  ✓ Saved!"));
     await sleep(600);
+  }
+
+  if (action === "instruction") {
+    const { instruction } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "instruction",
+        message: s.muted("AI System Instruction:"),
+        default: config.aiInstruction,
+      },
+    ]);
+    saveConfig({ ...config, aiInstruction: instruction });
+    console.log(s.success("\n  ✓ Saved!"));
+    await sleep(600);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKTREES
+// ═══════════════════════════════════════════════════════════════
+
+async function doWorktree() {
+  let inMenu = true;
+
+  while (inMenu) {
+    clear();
+    header();
+    console.log(s.bold("  Worktrees\n"));
+
+    const worktrees = await listWorktrees();
+
+    if (worktrees.length > 0) {
+      worktrees.forEach((wt) => {
+        console.log(s.primary(`  ${wt.path}`));
+        if (wt.branch) console.log(s.muted(`    Branch: ${wt.branch}`));
+        if (wt.head) console.log(s.muted(`    HEAD: ${wt.head}`));
+        console.log();
+      });
+    } else {
+      console.log(s.muted("  No worktrees found.\n"));
+    }
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("What should I do?"),
+        choices: [
+          { name: s.success("  + Add Worktree"), value: "add" },
+          { name: s.error("  ✕ Remove Worktree"), value: "remove" },
+          { name: s.muted("  ← Back"), value: "back" },
+        ],
+      },
+    ]);
+
+    switch (action) {
+      case "add":
+        const { path: wtPath } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "path",
+            message: s.muted("Worktree path:"),
+            validate: (v) => v.length > 0,
+          },
+        ]);
+
+        const { type } = await inquirer.prompt([
+          {
+            type: "list",
+            name: "type",
+            message: s.muted("Branch type:"),
+            choices: [
+              { name: "Existing Branch", value: "existing" },
+              { name: "New Branch", value: "new" },
+            ],
+          },
+        ]);
+
+        if (type === "existing") {
+          const branches = await getBranches();
+          const { branch } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "branch",
+              message: s.muted("Select branch:"),
+              choices: branches.all,
+            },
+          ]);
+           try {
+            await addWorktree(wtPath, branch);
+            console.log(s.success(`\n  ✓ Worktree added at ${wtPath}`));
+            await sleep(600);
+          } catch (err) {
+             console.log(s.error(`\n  ✗ ${err.message}`));
+             await pause();
+          }
+        } else {
+           const { newBranch } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "newBranch",
+              message: s.muted("New branch name:"),
+               validate: (v) => v.length > 0,
+            },
+          ]);
+          try {
+            await addWorktreeNewBranch(wtPath, newBranch);
+            console.log(s.success(`\n  ✓ Worktree created with branch ${newBranch}`));
+            await sleep(600);
+          } catch (err) {
+             console.log(s.error(`\n  ✗ ${err.message}`));
+             await pause();
+          }
+        }
+        break;
+
+      case "remove":
+        if (worktrees.length === 0) {
+           console.log(s.muted("\n  No worktrees to remove."));
+           await pause();
+        } else {
+           const { toRemove } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "toRemove",
+              message: s.muted("Select worktree to remove:"),
+              choices: worktrees.map(wt => wt.path),
+            },
+          ]);
+           try {
+            await removeWorktree(toRemove);
+            console.log(s.success(`\n  ✓ Worktree removed!`));
+            await sleep(600);
+          } catch (err) {
+             console.log(s.error(`\n  ✗ ${err.message}`));
+             await pause();
+          }
+        }
+        break;
+
+      case "back":
+        inMenu = false;
+        break;
+    }
   }
 }
 
