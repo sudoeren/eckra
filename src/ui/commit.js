@@ -13,6 +13,7 @@ const {
   generateCommitSuggestions,
   checkLMStudioConnection,
 } = require("../helpers/lmstudio");
+const { getConfig } = require("../helpers/config");
 
 async function aiCommit(manualMessage = null) {
   const status = await getGitStatus();
@@ -107,11 +108,13 @@ async function aiCommit(manualMessage = null) {
 
       commitMessage = message;
     } else {
+      const config = getConfig();
       const { instruction } = await inquirer.prompt([
         {
           type: "input",
           name: "instruction",
           message: "Optional: Add instruction for AI (Enter to skip):",
+          default: config.aiInstruction || "",
         },
       ]);
 

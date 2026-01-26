@@ -54,6 +54,7 @@ async function configMenu() {
         choices: [
           { name: chalk.blue("🌐 Change LM Studio URL"), value: "url" },
           { name: chalk.blue("🤖 Change model"), value: "model" },
+          { name: chalk.blue("📝 Change AI instruction"), value: "instruction" },
           { name: chalk.blue("🔧 Change auto settings"), value: "auto" },
           {
             name: chalk.yellow("🔍 Test LM Studio connection"),
@@ -72,6 +73,9 @@ async function configMenu() {
         break;
       case "model":
         await changeModel();
+        break;
+      case "instruction":
+        await changeInstruction();
         break;
       case "auto":
         await changeAutoSettings();
@@ -154,6 +158,22 @@ async function changeModel() {
 
   saveConfig({ model: finalModel });
   console.log(chalk.green("\n✓ Model updated!\n"));
+}
+
+async function changeInstruction() {
+  const config = getConfig();
+
+  const { instruction } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "instruction",
+      message: "Default AI Instruction (e.g., 'Use Turkish language'):",
+      default: config.aiInstruction,
+    },
+  ]);
+
+  saveConfig({ aiInstruction: instruction });
+  console.log(chalk.green("\n✓ AI instruction updated!\n"));
 }
 
 async function changeAutoSettings() {
