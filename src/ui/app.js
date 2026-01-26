@@ -60,89 +60,26 @@ const {
 
 const { getConfig, saveConfig } = require("../helpers/config");
 
-// ═══════════════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════════════
+const {
+  s,
+  icons,
+  clear,
+  sleep,
+  cols,
+  rows,
+  truncate,
+  timeAgo,
+  box,
+  header,
+  pause
+} = require("./common");
 
-const s = {
-  brand: chalk.hex("#00D9FF").bold,
-  primary: chalk.hex("#00D9FF"),
-  success: chalk.hex("#00FF88"),
-  warning: chalk.hex("#FFB800"),
-  error: chalk.hex("#FF4757"),
-  muted: chalk.hex("#6B7280"),
-  text: chalk.hex("#E5E7EB"),
-  dim: chalk.hex("#4B5563"),
-  white: chalk.white,
-  bold: chalk.bold,
-};
-
-const icons = {
-  staged: "●",
-  modified: "◐",
-  untracked: "○",
-  branch: "",
-  commit: "◆",
-  push: "↑",
-  pull: "↓",
-  check: "✓",
-  cross: "✗",
-  arrow: "→",
-  dot: "·",
-  star: "★",
-  folder: "📁",
-  tag: "🏷",
-};
-
-// ═══════════════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════════════
-
-const clear = () => console.clear();
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const cols = () => process.stdout.columns || 80;
-const rows = () => process.stdout.rows || 24;
-
-function truncate(str, max) {
-  if (!str) return "";
-  return str.length > max ? str.slice(0, max - 1) + "…" : str;
-}
-
-function timeAgo(date) {
-  const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
-  if (seconds < 60) return "now";
-  if (seconds < 3600) return Math.floor(seconds / 60) + " min";
-  if (seconds < 86400) return Math.floor(seconds / 3600) + " hr";
-  if (seconds < 604800) return Math.floor(seconds / 86400) + " days";
-  return Math.floor(seconds / 604800) + " weeks";
-}
-
-function box(content, title = "") {
-  const width = Math.min(cols() - 4, 70);
-  const top = title
-    ? s.dim("╭─") +
-    s.muted(` ${title} `) +
-    s.dim("─".repeat(width - title.length - 5) + "╮")
-    : s.dim("╭" + "─".repeat(width - 2) + "╮");
-  const bottom = s.dim("╰" + "─".repeat(width - 2) + "╯");
-  const lines = content.split("\n").map((line) => {
-    const padded = line.padEnd(width - 4);
-    return s.dim("│") + " " + padded + " " + s.dim("│");
-  });
-  return [top, ...lines, bottom].join("\n");
-}
+const { doSettings } = require("./modules/settings");
+const { doWorktree } = require("./modules/worktree");
 
 // ═══════════════════════════════════════════════════════════════
 // HEADER & STATUS
 // ═══════════════════════════════════════════════════════════════
-
-function header() {
-  console.log();
-  console.log(s.brand("  ╔═╗╔═╗╦╔═╦═╗╔═╗"));
-  console.log(s.brand("  ║╣ ║  ╠╩╗╠╦╝╠═╣"));
-  console.log(s.brand("  ╚═╝╚═╝╩ ╩╩╚═╩ ╩"));
-  console.log();
-}
 
 async function getStatusInfo() {
   try {
@@ -1546,230 +1483,6 @@ async function doConflict() {
     console.log(s.warning("\n  Merge aborted."));
     await sleep(600);
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SETTINGS
-// ═══════════════════════════════════════════════════════════════
-
-async function doSettings() {
-  clear();
-  header();
-  console.log(s.bold("  Settings\n"));
-
-  const config = getConfig();
-  const lm = await checkLMStudioConnection();
-
-  console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
-  console.log(s.muted("  Model: ") + s.text(config.model));
-  console.log(s.muted("  AI Instruction: ") + s.text(truncate(config.aiInstruction, 50)));
-  console.log(
-    s.muted("  AI Status: ") +
-    (lm.connected ? s.success("Connected ✓") : s.error("Not connected ✗")),
-  );
-  console.log();
-
-  const { action } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: s.muted("What should I do?"),
-      choices: [
-        { name: s.text("  Change URL"), value: "url" },
-        { name: s.text("  Change Model"), value: "model" },
-        { name: s.text("  Change AI Instructions"), value: "instruction" },
-        { name: s.muted("  ← Back"), value: "back" },
-      ],
-    },
-  ]);
-
-  if (action === "back") return;
-
-  if (action === "url") {
-    const { url } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "url",
-        message: s.muted("New URL:"),
-        default: config.lmStudioUrl,
-      },
-    ]);
-    saveConfig({ ...config, lmStudioUrl: url });
-    console.log(s.success("\n  ✓ Saved!"));
-    await sleep(600);
-  }
-
-  if (action === "model") {
-    const { model } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "model",
-        message: s.muted("Model name:"),
-        default: config.model,
-      },
-    ]);
-    saveConfig({ ...config, model });
-    console.log(s.success("\n  ✓ Saved!"));
-    await sleep(600);
-  }
-
-  if (action === "instruction") {
-    const { instruction } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "instruction",
-        message: s.muted("AI System Instruction:"),
-        default: config.aiInstruction,
-      },
-    ]);
-    saveConfig({ ...config, aiInstruction: instruction });
-    console.log(s.success("\n  ✓ Saved!"));
-    await sleep(600);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// WORKTREES
-// ═══════════════════════════════════════════════════════════════
-
-async function doWorktree() {
-  let inMenu = true;
-
-  while (inMenu) {
-    clear();
-    header();
-    console.log(s.bold("  Worktrees\n"));
-
-    const worktrees = await listWorktrees();
-
-    if (worktrees.length > 0) {
-      worktrees.forEach((wt) => {
-        console.log(s.primary(`  ${wt.path}`));
-        if (wt.branch) console.log(s.muted(`    Branch: ${wt.branch}`));
-        if (wt.head) console.log(s.muted(`    HEAD: ${wt.head}`));
-        console.log();
-      });
-    } else {
-      console.log(s.muted("  No worktrees found.\n"));
-    }
-
-    const { action } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "action",
-        message: s.muted("What should I do?"),
-        choices: [
-          { name: s.success("  + Add Worktree"), value: "add" },
-          { name: s.error("  ✕ Remove Worktree"), value: "remove" },
-          { name: s.muted("  ← Back"), value: "back" },
-        ],
-      },
-    ]);
-
-    switch (action) {
-      case "add":
-        const { path: wtPath } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "path",
-            message: s.muted("Worktree path:"),
-            validate: (v) => v.length > 0,
-          },
-        ]);
-
-        const { type } = await inquirer.prompt([
-          {
-            type: "list",
-            name: "type",
-            message: s.muted("Branch type:"),
-            choices: [
-              { name: "Existing Branch", value: "existing" },
-              { name: "New Branch", value: "new" },
-            ],
-          },
-        ]);
-
-        if (type === "existing") {
-          const branches = await getBranches();
-          const { branch } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "branch",
-              message: s.muted("Select branch:"),
-              choices: branches.all,
-            },
-          ]);
-           try {
-            await addWorktree(wtPath, branch);
-            console.log(s.success(`\n  ✓ Worktree added at ${wtPath}`));
-            await sleep(600);
-          } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
-          }
-        } else {
-           const { newBranch } = await inquirer.prompt([
-            {
-              type: "input",
-              name: "newBranch",
-              message: s.muted("New branch name:"),
-               validate: (v) => v.length > 0,
-            },
-          ]);
-          try {
-            await addWorktreeNewBranch(wtPath, newBranch);
-            console.log(s.success(`\n  ✓ Worktree created with branch ${newBranch}`));
-            await sleep(600);
-          } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
-          }
-        }
-        break;
-
-      case "remove":
-        if (worktrees.length === 0) {
-           console.log(s.muted("\n  No worktrees to remove."));
-           await pause();
-        } else {
-           const { toRemove } = await inquirer.prompt([
-            {
-              type: "list",
-              name: "toRemove",
-              message: s.muted("Select worktree to remove:"),
-              choices: worktrees.map(wt => wt.path),
-            },
-          ]);
-           try {
-            await removeWorktree(toRemove);
-            console.log(s.success(`\n  ✓ Worktree removed!`));
-            await sleep(600);
-          } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
-          }
-        }
-        break;
-
-      case "back":
-        inMenu = false;
-        break;
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// HELPER
-// ═══════════════════════════════════════════════════════════════
-
-async function pause() {
-  await inquirer.prompt([
-    {
-      type: "input",
-      name: "x",
-      message: s.dim("Press Enter..."),
-    },
-  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════
