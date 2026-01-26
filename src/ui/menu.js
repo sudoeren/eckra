@@ -283,6 +283,17 @@ async function unstageMenu() {
   }
 }
 
+async function waitForKey() {
+  await inquirer.prompt([
+    {
+      type: "input",
+      name: "continue",
+      message: chalk.gray("Press Enter to continue..."),
+      prefix: "",
+    },
+  ]);
+}
+
 async function pullMenu() {
   const spinner = ora("Pulling changes...").start();
 
@@ -300,6 +311,7 @@ async function pullMenu() {
   } catch (error) {
     spinner.fail(chalk.red("Pull failed: " + error.message));
   }
+  await waitForKey();
 }
 
 async function fetchMenu() {
@@ -311,6 +323,7 @@ async function fetchMenu() {
   } catch (error) {
     spinner.fail(chalk.red("Fetch failed: " + error.message));
   }
+  await waitForKey();
 }
 
 async function stashMenu() {

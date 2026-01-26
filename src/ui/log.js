@@ -130,6 +130,15 @@ async function showLog(count = 10) {
       chalk.cyan("─────────────────────────────────────────────────────\n"),
     );
   }
+
+  await inquirer.prompt([
+    {
+      type: "input",
+      name: "continue",
+      message: chalk.gray("Press Enter to return to menu..."),
+      prefix: "",
+    },
+  ]);
 }
 
 module.exports = {

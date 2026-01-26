@@ -28,6 +28,9 @@ async function configMenu() {
         chalk.yellow("Model: ") +
         chalk.white(config.model) +
         "\n" +
+        chalk.yellow("AI Instruction: ") +
+        chalk.white(config.aiInstruction ? (config.aiInstruction.length > 50 ? config.aiInstruction.substring(0, 47) + "..." : config.aiInstruction) : "Default") +
+        "\n" +
         chalk.yellow("Language: ") +
         chalk.white(config.language) +
         "\n" +
