@@ -17,6 +17,7 @@ async function doRebase() {
         { name: s.warning("  Squash last N commits"), value: "squash" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 

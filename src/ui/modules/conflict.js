@@ -28,6 +28,7 @@ async function doConflict() {
         { name: s.error("  ⚠ Abort merge"), value: "abort" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 

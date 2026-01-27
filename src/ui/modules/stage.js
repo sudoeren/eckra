@@ -43,6 +43,7 @@ async function doStage(info) {
         { name: s.warning("  ✂ Partial Stage (Beta)"), value: "partial" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 
@@ -86,6 +87,7 @@ async function doStage(info) {
         ...untrackedFiles,
       ],
       pageSize: rows() - 10,
+      loop: false,
     },
   ]);
 

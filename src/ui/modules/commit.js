@@ -93,6 +93,7 @@ async function doCommit(info) {
               { name: s.primary("  ✎ I'll write my own"), value: "_custom" },
               { name: s.muted("  ← Cancel"), value: "_cancel" },
             ],
+            loop: false,
           },
         ]);
 

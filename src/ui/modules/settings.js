@@ -45,6 +45,7 @@ async function doSettings() {
         { name: s.text("  Change AI Instructions"), value: "instruction" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 
@@ -68,7 +69,7 @@ async function doSettings() {
     saveConfig({ ...config, aiProvider: provider });
     console.log(s.success("\n  ✓ Provider changed to " + provider));
     await sleep(600);
-    return doSettings(); // Refresh
+    return;
   }
 
   if (action === "configure") {
@@ -101,7 +102,7 @@ async function doSettings() {
     saveConfig({ ...config, ...answers });
     console.log(s.success("\n  ✓ Settings saved!"));
     await sleep(600);
-    return doSettings();
+    return;
   }
 
   if (action === "instruction") {

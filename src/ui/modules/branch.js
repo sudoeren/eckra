@@ -37,6 +37,7 @@ async function doBranch() {
         { type: "separator", line: " " },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 

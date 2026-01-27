@@ -30,6 +30,7 @@ async function doStash() {
         { name: s.error("  ✕ Drop Stash"), value: "drop" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 

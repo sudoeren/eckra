@@ -28,6 +28,7 @@ async function doTag() {
         { name: s.error("  ✕ Delete Tag"), value: "delete" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 

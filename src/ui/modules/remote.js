@@ -28,6 +28,7 @@ async function doRemote() {
         { name: s.error("  ✕ Remove Remote"), value: "remove" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
+      loop: false,
     },
   ]);
 
