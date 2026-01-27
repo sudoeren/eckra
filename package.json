@@ -8,7 +8,11 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "verbose": true
   },
   "keywords": [
     "git",
@@ -36,5 +40,8 @@
   "repository": {
     "type": "git",
     "url": ""
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
