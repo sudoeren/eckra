@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
-const { getGitStatus, stageAll, stageFiles } = require("../../helpers/git");
+const { getGitStatus, stageAll, stageFiles, getFileDiff, applyPatchString } = require("../../helpers/git");
+const { parseDiff, generatePatch } = require("../../helpers/patch");
 const { s, header, clear, sleep, rows, pause } = require("../common");
 const { doCommit } = require("./commit");
 
@@ -39,12 +40,14 @@ async function doStage(info) {
       choices: [
         { name: s.success("  ✓ Stage All"), value: "all" },
         { name: s.text("  ◉ Select Files"), value: "select" },
+        { name: s.warning("  ✂ Partial Stage (Beta)"), value: "partial" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
     },
   ]);
 
   if (action === "back") return;
+  if (action === "partial") return doPartialStage(status);
 
   if (action === "all") {
     const spin = ora({ text: s.muted(" Staging..."), spinner: "dots" }).start();
@@ -101,6 +104,69 @@ async function doStage(info) {
 
     if (goCommit) await doCommit();
   }
+}
+
+async function doPartialStage(status) {
+  if (status.modified.length === 0) {
+    console.log(s.warning("\n  No modified files suitable for partial staging."));
+    console.log(s.muted("  (Untracked files cannot be partially staged)"));
+    await pause();
+    return;
+  }
+
+  // Select a file
+  const { file } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "file",
+      message: s.muted("Select file to split:"),
+      choices: status.modified.map(f => ({ name: f, value: f })),
+    },
+  ]);
+
+  const diff = await getFileDiff(file);
+  const parsedFiles = parseDiff(diff);
+  
+  if (parsedFiles.length === 0 || !parsedFiles[0].hunks.length) {
+    console.log(s.warning("  No hunks found to split."));
+    await pause();
+    return;
+  }
+
+  const targetFile = parsedFiles[0];
+  const hunks = targetFile.hunks;
+
+  const { selectedIndices } = await inquirer.prompt([
+    {
+      type: "checkbox",
+      name: "selectedIndices",
+      message: s.muted("Select hunks to stage:"),
+      choices: hunks.map((hunk, idx) => {
+        // Create a preview of the hunk
+        const preview = hunk.lines.slice(0, 4).join("\n      ");
+        const more = hunk.lines.length > 4 ? `... (+${hunk.lines.length - 4} lines)` : "";
+        return {
+          name: `${s.primary(`Hunk ${idx + 1}`)}\n      ${s.dim(preview)} ${s.dim(more)}`,
+          value: idx
+        };
+      }),
+      pageSize: rows() - 5
+    }
+  ]);
+
+  if (selectedIndices.length === 0) return;
+
+  const spin = ora({ text: s.muted(" Applying partial patch..."), spinner: "dots" }).start();
+  
+  try {
+    const patchContent = generatePatch(targetFile, selectedIndices);
+    await applyPatchString(patchContent);
+    spin.succeed(s.success(" Selected hunks staged!"));
+  } catch (error) {
+    spin.fail(s.error(" Failed to stage hunks: " + error.message));
+  }
+  
+  await sleep(1000);
 }
 
 module.exports = { doStage };

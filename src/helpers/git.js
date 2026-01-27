@@ -516,6 +516,21 @@ async function removeWorktree(path) {
   return await git.raw(["worktree", "remove", path]);
 }
 
+/**
+ * Get git graph log
+ */
+async function getGitGraph(count = 20) {
+  return await git.raw([
+    "log",
+    "--graph",
+    "--oneline",
+    "--all",
+    "-n",
+    count.toString(),
+    "--color=always" // Keep colors for display
+  ]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -577,4 +592,32 @@ module.exports = {
   addWorktree,
   addWorktreeNewBranch,
   removeWorktree,
+  getGitGraph,
+  applyPatchString,
 };
+
+/**
+ * Apply a patch string to the index (staged area)
+ */
+async function applyPatchString(patchContent) {
+  const fs = require("fs");
+  const path = require("path");
+  const os = require("os");
+  
+  const tempFile = path.join(os.tmpdir(), `eckra_patch_${Date.now()}.diff`);
+  
+  try {
+    fs.writeFileSync(tempFile, patchContent);
+    // --cached ensures we only apply to index (staging area), keeping working dir as is (if consistent)
+    // Actually for partial staging we usually want to take working dir changes and put them to stage.
+    // git apply --cached expects the patch to be relative to the index.
+    
+    await git.raw(["apply", "--cached", "--ignore-space-change", "--whitespace=nowarn", tempFile]);
+    
+    fs.unlinkSync(tempFile);
+    return true;
+  } catch (error) {
+    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    throw new Error("Failed to apply patch: " + error.message);
+  }
+}

@@ -11,6 +11,7 @@ const { doSearch } = require("./search");
 const { doBlame } = require("./blame");
 const { doWorktree } = require("./worktree");
 const { doSettings } = require("./settings");
+const { doRebase } = require("./rebase");
 
 async function doMore() {
   let inMenu = true;
@@ -31,9 +32,38 @@ async function doMore() {
             name: s.primary("  ✎ Amend (Fix commit message)"),
             value: "amend",
           },
+          { name: s.warning("  ⚡ Rebase / Squash"), value: "rebase" },
           { name: s.text("  ≋ Diff (View changes)"), value: "diff" },
           { type: "separator", line: " " },
           { name: s.text("  📦 Stash"), value: "stash" },
+          { name: s.text("  🏷 Tag"), value: "tag" },
+          { name: s.text("  🔗 Remote"), value: "remote" },
+          { type: "separator", line: " " },
+          { name: s.text("  📊 Statistics"), value: "stats" },
+          { name: s.text("  🔍 Search Commits"), value: "search" },
+          { name: s.text("  📋 Blame"), value: "blame" },
+          { name: s.text("  🌳 Worktrees"), value: "worktree" },
+          { type: "separator", line: " " },
+          { name: s.text("  ⚙ Settings"), value: "settings" },
+          { name: s.muted("  ← Main Menu"), value: "back" },
+        ],
+        pageSize: 15,
+      },
+    ]);
+
+    switch (action) {
+      case "undo":
+        await doUndo();
+        break;
+      case "amend":
+        await doAmend();
+        break;
+      case "rebase":
+        await doRebase();
+        break;
+      case "diff":
+        await doDiff();
+        break;
           { name: s.text("  🏷 Tag"), value: "tag" },
           { name: s.text("  🔗 Remote"), value: "remote" },
           { type: "separator", line: " " },
