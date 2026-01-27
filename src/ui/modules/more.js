@@ -14,84 +14,79 @@ const { doSettings } = require("./settings");
 const { doRebase } = require("./rebase");
 
 async function doMore() {
-  let inMenu = true;
+  clear();
+  header();
+  console.log(s.bold("  More Options\n"));
 
-  while (inMenu) {
-    clear();
-    header();
-    console.log(s.bold("  More Options\n"));
+  const { action } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "action",
+      message: s.muted("What would you like to do?"),
+      choices: [
+        { name: s.warning("  ↩ Undo (Revert last commit)"), value: "undo" },
+        {
+          name: s.primary("  ✎ Amend (Fix commit message)"),
+          value: "amend",
+        },
+        { name: s.warning("  ⚡ Rebase / Squash"), value: "rebase" },
+        { name: s.text("  ≋ Diff (View changes)"), value: "diff" },
+        { type: "separator", line: " " },
+        { name: s.text("  📦 Stash"), value: "stash" },
+        { name: s.text("  🏷 Tag"), value: "tag" },
+        { name: s.text("  🔗 Remote"), value: "remote" },
+        { type: "separator", line: " " },
+        { name: s.text("  📊 Statistics"), value: "stats" },
+        { name: s.text("  🔍 Search Commits"), value: "search" },
+        { name: s.text("  📋 Blame"), value: "blame" },
+        { name: s.text("  🌳 Worktrees"), value: "worktree" },
+        { type: "separator", line: " " },
+        { name: s.text("  ⚙ Settings"), value: "settings" },
+        { name: s.muted("  ← Main Menu"), value: "back" },
+      ],
+      pageSize: 15,
+    },
+  ]);
 
-    const { action } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "action",
-        message: s.muted("What would you like to do?"),
-        choices: [
-          { name: s.warning("  ↩ Undo (Revert last commit)"), value: "undo" },
-          {
-            name: s.primary("  ✎ Amend (Fix commit message)"),
-            value: "amend",
-          },
-          { name: s.warning("  ⚡ Rebase / Squash"), value: "rebase" },
-          { name: s.text("  ≋ Diff (View changes)"), value: "diff" },
-          { type: "separator", line: " " },
-          { name: s.text("  📦 Stash"), value: "stash" },
-          { name: s.text("  🏷 Tag"), value: "tag" },
-          { name: s.text("  🔗 Remote"), value: "remote" },
-          { type: "separator", line: " " },
-          { name: s.text("  📊 Statistics"), value: "stats" },
-          { name: s.text("  🔍 Search Commits"), value: "search" },
-          { name: s.text("  📋 Blame"), value: "blame" },
-          { name: s.text("  🌳 Worktrees"), value: "worktree" },
-          { type: "separator", line: " " },
-          { name: s.text("  ⚙ Settings"), value: "settings" },
-          { name: s.muted("  ← Main Menu"), value: "back" },
-        ],
-        pageSize: 15,
-      },
-    ]);
+  if (action === "back") return;
 
-    switch (action) {
-      case "undo":
-        await doUndo();
-        break;
-      case "amend":
-        await doAmend();
-        break;
-      case "rebase":
-        await doRebase();
-        break;
-      case "diff":
-        await doDiff();
-        break;
-      case "stash":
-        await doStash();
-        break;
-      case "tag":
-        await doTag();
-        break;
-      case "remote":
-        await doRemote();
-        break;
-      case "stats":
-        await doStats();
-        break;
-      case "search":
-        await doSearch();
-        break;
-      case "blame":
-        await doBlame();
-        break;
-      case "worktree":
-        await doWorktree();
-        break;
-      case "settings":
-        await doSettings();
-        break;
-      case "back":
-        inMenu = false;
-        break;
-    }
+  switch (action) {
+    case "undo":
+      await doUndo();
+      break;
+    case "amend":
+      await doAmend();
+      break;
+    case "rebase":
+      await doRebase();
+      break;
+    case "diff":
+      await doDiff();
+      break;
+    case "stash":
+      await doStash();
+      break;
+    case "tag":
+      await doTag();
+      break;
+    case "remote":
+      await doRemote();
+      break;
+    case "stats":
+      await doStats();
+      break;
+    case "search":
+      await doSearch();
+      break;
+    case "blame":
+      await doBlame();
+      break;
+    case "worktree":
+      await doWorktree();
+      break;
+    case "settings":
+      await doSettings();
+      break;
   }
 }
 
