@@ -64,31 +64,6 @@ async function doMore() {
       case "diff":
         await doDiff();
         break;
-          { name: s.text("  🏷 Tag"), value: "tag" },
-          { name: s.text("  🔗 Remote"), value: "remote" },
-          { type: "separator", line: " " },
-          { name: s.text("  📊 Statistics"), value: "stats" },
-          { name: s.text("  🔍 Search Commits"), value: "search" },
-          { name: s.text("  📋 Blame"), value: "blame" },
-          { name: s.text("  🌳 Worktrees"), value: "worktree" },
-          { type: "separator", line: " " },
-          { name: s.text("  ⚙ Settings"), value: "settings" },
-          { name: s.muted("  ← Main Menu"), value: "back" },
-        ],
-        pageSize: 15,
-      },
-    ]);
-
-    switch (action) {
-      case "undo":
-        await doUndo();
-        break;
-      case "amend":
-        await doAmend();
-        break;
-      case "diff":
-        await doDiff();
-        break;
       case "stash":
         await doStash();
         break;
