@@ -1,263 +1,96 @@
-# Eckra - AI-Powered Git Management CLI
+# Eckra
 
-<div align="center">
+Eckra is a CLI tool that wraps standard Git commands in an interactive terminal interface. It integrates with various AI models (OpenAI, Anthropic, Ollama, LM Studio) to automate commit message generation based on your diffs.
 
-```
-  ███████╗ ██████╗██╗  ██╗██████╗  █████╗
-  ██╔════╝██╔════╝██║ ██╔╝██╔══██╗██╔══██╗
-  █████╗  ██║     █████╔╝ ██████╔╝███████║
-  ██╔══╝  ██║     ██╔═██╗ ██╔══██╗██╔══██║
-  ███████╗╚██████╗██║  ██╗██║  ██║██║  ██║
-  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
-```
+It is designed to speed up routine Git tasks like staging, committing, branch management, and conflict resolution without leaving the keyboard or memorizing complex flags.
 
-**LM Studio entegrasyonu ile akıllı commit mesajları üreten Git yönetim aracı**
+## Installation
 
-[![Node.js](https://img.shields.io/badge/Node.js-14%2B-green.svg)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+You can install it globally or run it directly from the source.
 
-</div>
+### From Source
 
-## 🚀 Özellikler
+1.  Clone the repo:
+    ```bash
+    git clone https://github.com/yourusername/eckra.git
+    cd eckra
+    ```
 
-- 🤖 **AI Destekli Commit Mesajları** - LM Studio ile akıllı commit mesajları
-- 📊 **Detaylı Durum Görünümü** - Git durumunu renkli ve anlaşılır şekilde gösterir
-- 🌿 **Branch Yönetimi** - Branch oluştur, sil, birleştir, değiştir
-- 📦 **Stash Yönetimi** - Değişiklikleri kolayca sakla ve geri al
-- ⬆️ **Push/Pull İşlemleri** - Tek tuşla uzak repo senkronizasyonu
-- 📜 **Commit Geçmişi** - Renkli ve filtrelenebilir commit log
-- ⚙️ **Kolay Yapılandırma** - LM Studio ayarlarını kolayca yönet
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-## 📦 Kurulum
+3.  Link command:
+    ```bash
+    npm link
+    ```
 
-### Global Kurulum (Önerilen)
+Now you can use the `eckra` command in any directory.
 
-```bash
-npm install -g eckra
-```
+## Getting Started
 
-### Yerel Kurulum
-
-```bash
-# Repoyu klonla
-git clone <repo-url>
-cd eckra
-
-# Bağımlılıkları yükle
-npm install
-
-# Global olarak linkle
-npm link
-```
-
-## 🎯 Kullanım
-
-### İnteraktif Menü
-
-```bash
-# Ana menüyü başlat
-eckra
-
-# veya
-eckra start
-```
-
-### Komutlar
-
-```bash
-# Durum görüntüle
-eckra status
-
-# AI destekli commit
-eckra commit
-eckra c
-
-# Manuel commit mesajı ile
-eckra commit -m "feat: yeni özellik eklendi"
-
-# Push
-eckra push
-eckra p
-
-# Branch yönetimi
-eckra branch
-eckra b
-
-# Commit geçmişi
-eckra log
-eckra l
-eckra log -n 20  # Son 20 commit
-
-# Ayarlar
-eckra config
-```
-
-## ⚙️ LM Studio Yapılandırması
-
-### 1. LM Studio'yu Başlatın
-
-1. [LM Studio](https://lmstudio.ai/)'yu indirin ve kurun
-2. Bir model yükleyin (önerilen: `git-commit-message/unsloth.Q4_K_M.gguf`)
-3. "Local Server" sekmesine gidin
-4. Server'ı başlatın (varsayılan port: 1234)
-
-### 2. Eckra Ayarları
-
-```bash
-# Ayarlar menüsünü aç
-eckra config
-```
-
-Varsayılan ayarlar:
-
-- **LM Studio URL:** `http://localhost:1234`
-- **Model:** `git-commit-message/unsloth.Q4_K_M.gguf`
-
-## 📖 Kullanım Senaryoları
-
-### Senaryo 1: Hızlı AI Commit
-
-```bash
-# Değişiklik yap
-echo "yeni kod" >> dosya.js
-
-# Eckra'yı başlat
-eckra
-
-# Menüden:
-# 1. ➕ Dosya Ekle (Stage) → Tüm dosyaları stage'e al
-# 2. 💬 AI Commit → AI önerilerinden birini seç
-# 3. ⬆️ Push → Değişiklikleri gönder
-```
-
-### Senaryo 2: Branch ile Çalışma
-
-```bash
-eckra branch
-
-# Menüden:
-# 1. ➕ Yeni branch oluştur → "feature/yeni-ozellik"
-# 2. (Değişiklikler yap)
-# 3. AI Commit
-# 4. 🔀 Branch birleştir → main ile birleştir
-```
-
-### Senaryo 3: Stash Kullanımı
+Run the tool in your git repository:
 
 ```bash
 eckra
-
-# Menüden:
-# 1. 📦 Stash Yönetimi → Değişiklikleri stash'e al
-# 2. (Başka işler yap)
-# 3. 📦 Stash Yönetimi → Son stash'i geri al
 ```
 
-## 🎨 Ekran Görüntüleri
+This opens the main dashboard. You can navigate menus using arrow keys.
 
-### Ana Menü
+### Command Line Arguments
 
+If you prefer skipping the menu for specific tasks:
+
+*   `eckra status` - View changed files.
+*   `eckra commit` - Go straight to the AI commit generation flow.
+*   `eckra push` - Push current branch.
+
+## AI Configuration
+
+Eckra supports multiple AI providers. You can switch between them in the **Settings** menu.
+
+*   **LM Studio**: Default. Connects to `http://localhost:1234`. Good for offline use.
+*   **Ollama**: Connects to `http://localhost:11434`.
+*   **OpenAI**: Requires an API Key.
+*   **Anthropic**: Requires an API Key.
+
+The tool will send the `git diff` of your staged files to the selected provider to generate a Conventional Commit message.
+
+## Configuration (.eckrarc)
+
+Eckra looks for configuration in two places:
+1.  **Global**: `~/.eckra/config.json` (User defaults)
+2.  **Local**: `.eckrarc` (Project specific)
+
+Local configuration overrides global settings. This is useful if you work on different projects that require different commit styles or AI instructions.
+
+**Example `.eckrarc` content:**
+
+```json
+{
+  "aiProvider": "ollama",
+  "ollamaModel": "llama3",
+  "aiInstruction": "Keep messages under 50 chars. No punctuation at the end."
+}
 ```
-───────────────────────────────────────────────────────────
-📁 Branch: main | ✓ Staged: 2 | ● Modified: 1 | ? Untracked: 3 | 🤖 AI: Online
-───────────────────────────────────────────────────────────
 
-? Ne yapmak istiyorsunuz?
-❯ 📊 Durum Görüntüle
-  ➕ Dosya Ekle (Stage)
-  ➖ Stage'den Çıkar
-  ──────────────
-  💬 AI Commit
-  ⬆️  Push
-  ⬇️  Pull
-```
+## Features
 
-### AI Commit
+*   **Partial Staging**: Select specific file chunks (hunks) to stage.
+*   **Visual Graph**: Displays `git log --graph` inside the terminal.
+*   **Branch Management**: Create, delete, switch, and compare branches (shows ahead/behind counts).
+*   **Stash**: Interactive list to apply, pop, or drop specific stashes.
+*   **Conflict Resolution**: UI for choosing 'ours', 'theirs', or launching a manual editor for merge conflicts.
 
-```
-📝 Stage edilmiş dosyalar:
-   • src/index.js
-   • README.md
+## Development
 
-✔ Commit mesajları oluşturuldu!
+The project uses `simple-git` for Git operations and `inquirer` for the UI.
 
-? Bir commit mesajı seçin veya kendi mesajınızı yazın:
-❯ 1. feat: add new user authentication module
-  2. feat: implement login functionality with JWT tokens
-  3. feat(auth): add user authentication system
-  ──────────────
-  ✏️  Kendi mesajımı yazacağım
-  🔄 Yeni öneriler oluştur
-```
-
-## 🔧 Sorun Giderme
-
-### LM Studio Bağlantı Hatası
-
-1. LM Studio'nun çalıştığından emin olun
-2. Server'ın başlatıldığını kontrol edin
-3. Port numarasını doğrulayın:
-   ```bash
-   eckra config
-   # → LM Studio URL değiştir
-   ```
-
-### Git Repository Hatası
+To run the test suite:
 
 ```bash
-# Klasörün bir Git repo olduğundan emin olun
-git init
-
-# Veya mevcut bir repoyu klonlayın
-git clone <url>
+npm test
 ```
 
-### Commit Başarısız
-
-- Stage edilmiş dosya olduğundan emin olun
-- Git kullanıcı bilgilerinizi ayarlayın:
-  ```bash
-  git config --global user.name "Adınız"
-  git config --global user.email "email@example.com"
-  ```
-
-## 📁 Proje Yapısı
-
-```
-eckra/
-├── src/
-│   ├── index.js          # Ana CLI giriş noktası
-│   ├── helpers/
-│   │   ├── git.js        # Git işlemleri
-│   │   ├── lmstudio.js   # LM Studio API
-│   │   └── config.js     # Yapılandırma yönetimi
-│   └── ui/
-│       ├── menu.js       # Ana menü
-│       ├── status.js     # Durum görünümü
-│       ├── commit.js     # Commit işlemleri
-│       ├── push.js       # Push işlemleri
-│       ├── branch.js     # Branch yönetimi
-│       ├── log.js        # Commit geçmişi
-│       └── config.js     # Ayarlar menüsü
-├── package.json
-└── README.md
-```
-
-## 🤝 Katkıda Bulunma
-
-1. Fork yapın
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit yapın (`eckra commit` kullanın! 😉)
-4. Push yapın (`git push origin feature/amazing-feature`)
-5. Pull Request açın
-
-## 📄 Lisans
-
-MIT License - Detaylar için [LICENSE](LICENSE) dosyasına bakın.
-
-## 🙏 Teşekkürler
-
-- [LM Studio](https://lmstudio.ai/) - Yerel LLM çalıştırma
-- [simple-git](https://github.com/steveukx/git-js) - Git işlemleri
-- [inquirer](https://github.com/SBoudrias/Inquirer.js) - İnteraktif CLI
-- [chalk](https://github.com/chalk/chalk) - Terminal renklendirme
+Tests cover configuration logic, AI provider switching, and patch parsing utilities.
