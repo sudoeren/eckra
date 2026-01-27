@@ -194,8 +194,22 @@ async function stashChanges(message = null) {
 /**
  * Pop stash
  */
-async function popStash() {
-  return await git.stash(["pop"]);
+async function popStash(index = 0) {
+  return await git.stash(["pop", `stash@{${index}}`]);
+}
+
+/**
+ * Apply stash (keep it in list)
+ */
+async function applyStash(index = 0) {
+  return await git.stash(["apply", `stash@{${index}}`]);
+}
+
+/**
+ * Drop stash
+ */
+async function dropStash(index = 0) {
+  return await git.stash(["drop", `stash@{${index}}`]);
 }
 
 /**
@@ -531,6 +545,21 @@ async function getGitGraph(count = 20) {
   ]);
 }
 
+/**
+ * Compare two branches
+ */
+async function compareBranches(base, target) {
+  const ahead = await git.raw(["rev-list", "--count", `${base}..${target}`]);
+  const behind = await git.raw(["rev-list", "--count", `${target}..${base}`]);
+  const diffStat = await git.raw(["diff", "--shortstat", base, target]);
+  
+  return {
+    ahead: parseInt(ahead.trim()),
+    behind: parseInt(behind.trim()),
+    diffStat: diffStat.trim()
+  };
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -557,6 +586,8 @@ module.exports = {
   getConflictedFiles,
   stashChanges,
   popStash,
+  applyStash,
+  dropStash,
   listStashes,
   discardChanges,
   resetToCommit,
@@ -594,6 +625,7 @@ module.exports = {
   removeWorktree,
   getGitGraph,
   applyPatchString,
+  compareBranches,
 };
 
 /**

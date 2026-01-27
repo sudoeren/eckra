@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const { getGitStatus, listStashes, stashChanges, popStash } = require("../../helpers/git");
+const { getGitStatus, listStashes, stashChanges, popStash, applyStash, dropStash } = require("../../helpers/git");
 const { s, header, clear, pause, sleep } = require("../common");
 
 async function doStash() {
@@ -28,51 +28,73 @@ async function doStash() {
         message: s.muted("What should I do?"),
         choices: [
           { name: s.success("  + Save Stash"), value: "save" },
-          { name: s.primary("  ↓ Apply Stash (pop)"), value: "pop" },
+          { name: s.primary("  ↓ Pop Stash (Apply & Drop)"), value: "pop" },
+          { name: s.text("  ⟳ Apply Stash (Keep)"), value: "apply" },
+          { name: s.error("  ✕ Drop Stash"), value: "drop" },
           { name: s.muted("  ← Back"), value: "back" },
         ],
       },
     ]);
 
-    switch (action) {
-      case "save":
-        const status = await getGitStatus();
-        if (status.modified.length === 0 && status.not_added.length === 0) {
-          console.log(s.muted("\n  No changes to stash."));
-          await pause();
-        } else {
-          const { message } = await inquirer.prompt([
-            {
-              type: "input",
-              name: "message",
-              message: s.muted("Stash message (optional):"),
-            },
-          ]);
-          await stashChanges(message || null);
-          console.log(s.success("\n  ✓ Changes stashed!"));
-          await sleep(600);
-        }
-        break;
+    if (action === "back") {
+      inMenu = false;
+      return;
+    }
 
-      case "pop":
-        if (stashes.all.length === 0) {
-          console.log(s.muted("\n  No stash to pop."));
-          await pause();
-        } else {
-          try {
-            await popStash();
-            console.log(s.success("\n  ✓ Stash applied!"));
-            await sleep(600);
-          } catch (err) {
-            console.log(s.error(`\n  ✗ ${err.message}`));
-            await pause();
-          }
-        }
-        break;
+    if (action === "save") {
+      const status = await getGitStatus();
+      if (status.modified.length === 0 && status.not_added.length === 0) {
+        console.log(s.muted("\n  No changes to stash."));
+        await pause();
+      } else {
+        const { message } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "message",
+            message: s.muted("Stash message (optional):"),
+          },
+        ]);
+        await stashChanges(message || null);
+        console.log(s.success("\n  ✓ Changes stashed!"));
+        await sleep(600);
+      }
+      continue;
+    }
 
-      case "back":
-        inMenu = false;
-        break;
+    if (stashes.all.length === 0) {
+      console.log(s.muted("\n  No stashes available."));
+      await pause();
+      continue;
+    }
+
+    // Select stash index
+    const { index } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "index",
+        message: s.muted("Select stash:"),
+        choices: stashes.all.map((st, i) => ({
+          name: `${i}: ${st.message}`,
+          value: i
+        }))
+      }
+    ]);
+
+    try {
+      if (action === "pop") {
+        await popStash(index);
+        console.log(s.success("\n  ✓ Stash popped!"));
+      } else if (action === "apply") {
+        await applyStash(index);
+        console.log(s.success("\n  ✓ Stash applied!"));
+      } else if (action === "drop") {
+        await dropStash(index);
+        console.log(s.success("\n  ✓ Stash dropped!"));
+      }
+      await sleep(600);
+    } catch (err) {
+      console.log(s.error(`\n  ✗ ${err.message}`));
+      await pause();
     }
   }
 }
