@@ -1,7 +1,7 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
 const { getGitStatus, stageAll, getStagedDiff, createCommit } = require("../../helpers/git");
-const { generateCommitSuggestions, checkLMStudioConnection } = require("../../helpers/lmstudio");
+const { generateCommitSuggestions, checkAIConnection } = require("../../helpers/ai");
 const { s, header, clear, pause } = require("../common");
 const { doPush } = require("./sync");
 
@@ -50,9 +50,9 @@ async function doCommit(info) {
 
   // AI message suggestion
   let message;
-  const lm = await checkLMStudioConnection();
+  const ai = await checkAIConnection();
 
-  if (lm.connected) {
+  if (ai.connected) {
     const { useAI } = await inquirer.prompt([
       {
         type: "confirm",
@@ -99,9 +99,11 @@ async function doCommit(info) {
         if (selected === "_cancel") return;
         if (selected !== "_custom") message = selected;
       } catch (err) {
-        spin.fail(s.error(" AI error"));
+        spin.fail(s.error(" AI error: " + err.message));
       }
     }
+  } else {
+    console.log(s.warning("  AI connection not available: " + (ai.error || "Unknown error")));
   }
 
   // Manual message

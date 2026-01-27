@@ -4,9 +4,17 @@ const os = require("os");
 
 const CONFIG_DIR = path.join(os.homedir(), ".eckra");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+const LOCAL_CONFIG_FILENAME = ".eckrarc";
 
 const DEFAULT_CONFIG = {
+  aiProvider: "lmstudio",
   lmStudioUrl: "http://localhost:1234",
+  openaiApiKey: "",
+  openaiModel: "gpt-4o",
+  anthropicApiKey: "",
+  anthropicModel: "claude-3-5-sonnet-20240620",
+  ollamaUrl: "http://localhost:11434",
+  ollamaModel: "llama3",
   model: "git-commit-message/unsloth.Q4_K_M.gguf",
   language: "en",
   autoStage: false,
@@ -25,21 +33,55 @@ function ensureConfigDir() {
 }
 
 /**
+ * Find local configuration file in current or parent directories
+ */
+function findLocalConfig(startDir = process.cwd()) {
+  let currentDir = startDir;
+  while (currentDir !== path.parse(currentDir).root) {
+    const localPath = path.join(currentDir, LOCAL_CONFIG_FILENAME);
+    if (fs.existsSync(localPath)) {
+      return localPath;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  // Check root
+  const rootLocalPath = path.join(currentDir, LOCAL_CONFIG_FILENAME);
+  if (fs.existsSync(rootLocalPath)) {
+    return rootLocalPath;
+  }
+  return null;
+}
+
+/**
  * Get current configuration
  */
 function getConfig() {
   ensureConfigDir();
 
+  let config = { ...DEFAULT_CONFIG };
+
+  // 1. Global config
   if (fs.existsSync(CONFIG_FILE)) {
     try {
-      const data = fs.readFileSync(CONFIG_FILE, "utf8");
-      return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
+      const globalData = fs.readFileSync(CONFIG_FILE, "utf8");
+      config = { ...config, ...JSON.parse(globalData) };
     } catch (error) {
-      return DEFAULT_CONFIG;
+      // Silently ignore errors
     }
   }
 
-  return DEFAULT_CONFIG;
+  // 2. Local config (overrides global)
+  const localConfigPath = findLocalConfig();
+  if (localConfigPath) {
+    try {
+      const localData = fs.readFileSync(localConfigPath, "utf8");
+      config = { ...config, ...JSON.parse(localData) };
+    } catch (error) {
+      // Silently ignore errors
+    }
+  }
+
+  return config;
 }
 
 /**
