@@ -15,25 +15,17 @@ async function doConflict() {
     return;
   }
 
-  console.log(s.error(`  ${conflicts.length} files with conflicts:\n`));
-  conflicts.forEach((f) => console.log(s.warning(`  ⚠ ${f}`)));
-  console.log();
-
   const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
-      message: s.muted("What should I do?"),
+      message: s.muted(`Found ${conflicts.length} conflicted files:`),
       choices: [
-        {
-          name: s.success("  Accept all 'ours' (our version)"),
-          value: "ours",
-        },
-        {
-          name: s.primary("  Accept all 'theirs' (their version)"),
-          value: "theirs",
-        },
-        { name: s.error("  Abort merge"), value: "abort" },
+        { name: s.text("  ◉ Resolve file by file"), value: "each" },
+        { name: s.success("  ✓ Accept all 'ours'"), value: "ours" },
+        { name: s.primary("  ✓ Accept all 'theirs'"), value: "theirs" },
+        { type: "separator" },
+        { name: s.error("  ⚠ Abort merge"), value: "abort" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
     },
@@ -41,22 +33,59 @@ async function doConflict() {
 
   if (action === "back") return;
 
-  if (action === "ours") {
+  if (action === "each") {
+    for (const file of conflicts) {
+      await resolveFile(file);
+    }
+  } else if (action === "ours") {
     for (const file of conflicts) await acceptOurs(file);
     console.log(s.success("\n  ✓ All conflicts resolved as 'ours'!"));
-    await sleep(600);
-  }
-
-  if (action === "theirs") {
+  } else if (action === "theirs") {
     for (const file of conflicts) await acceptTheirs(file);
     console.log(s.success("\n  ✓ All conflicts resolved as 'theirs'!"));
-    await sleep(600);
-  }
-
-  if (action === "abort") {
+  } else if (action === "abort") {
     await abortMerge();
     console.log(s.warning("\n  Merge aborted."));
-    await sleep(600);
+  }
+
+  await sleep(600);
+}
+
+async function resolveFile(file) {
+  clear();
+  header();
+  console.log(s.bold(`  Resolving: ${file}\n`));
+
+  const { choice } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "choice",
+      message: s.muted(`How to resolve ${file}?`),
+      choices: [
+        { name: s.success("  Accept 'Ours' (Current Branch)"), value: "ours" },
+        { name: s.primary("  Accept 'Theirs' (Incoming Branch)"), value: "theirs" },
+        { name: s.warning("  Edit manually (Opens default editor)"), value: "manual" },
+        { name: s.muted("  Skip for now"), value: "skip" },
+      ],
+    },
+  ]);
+
+  if (choice === "ours") await acceptOurs(file);
+  if (choice === "theirs") await acceptTheirs(file);
+  if (choice === "manual") {
+    const { exec } = require("child_process");
+    // Try to open in VS Code, then Notepad, or fallback to environment editor
+    const editor = process.env.EDITOR || "code" || "notepad";
+    console.log(s.muted(`  Opening ${editor}...`));
+    await new Promise(resolve => exec(`${editor} ${file}`, resolve));
+    
+    await inquirer.prompt([
+      { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") }
+    ]);
+    
+    // After manual edit, we should add the file to mark as resolved
+    const { stageFiles } = require("../../helpers/git");
+    await stageFiles([file]);
   }
 }
 
