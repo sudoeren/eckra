@@ -3,7 +3,7 @@
 Eckra is a command-line interface (CLI) for Git repository management. It provides an interactive terminal interface for standard Git operations and integrates with Large Language Models (LLMs) to automate the generation of commit messages.
 
 <p align="center">
-  <img src="screenshot.png" alt="Eckra Interface" width="800">
+  <img src="screenshot.jpg" alt="Eckra Interface" width="800">
 </p>
 
 ## Overview
