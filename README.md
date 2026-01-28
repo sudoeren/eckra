@@ -101,3 +101,9 @@ npm test
 ## License
 
 This project is licensed under the MIT License.
+
+---
+
+<p align="center">
+  Developed by <b>Eren Çakar</b>
+</p>
