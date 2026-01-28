@@ -2,7 +2,9 @@
 
 Eckra is a command-line interface (CLI) for Git repository management. It provides an interactive terminal interface for standard Git operations and integrates with Large Language Models (LLMs) to automate the generation of commit messages.
 
-![Eckra Interface](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" alt="Eckra Interface" width="800">
+</p>
 
 ## Overview
 
@@ -10,29 +12,31 @@ The tool is designed to streamline version control workflows by providing a stru
 
 ## Core Features
 
-*   **Automated Commit Generation**: Uses git diff data to generate contextually relevant commit messages via configured AI providers.
-*   **Interactive Status Management**: Provides a visual interface for viewing repository status and staging changes.
-*   **Partial Staging**: Supports the selection of specific file hunks for staging.
-*   **Branch Management**: Tools for creating, deleting, and switching branches, including ahead/behind tracking.
-*   **Conflict Resolution**: Structured workflow for resolving merge conflicts.
-*   **History Visualization**: Renders commit history and branch graphs within the terminal.
+- **Automated Commit Generation**: Uses git diff data to generate contextually relevant commit messages via configured AI providers.
+- **Interactive Status Management**: Provides a visual interface for viewing repository status and staging changes.
+- **Partial Staging**: Supports the selection of specific file hunks for staging.
+- **Branch Management**: Tools for creating, deleting, and switching branches, including ahead/behind tracking.
+- **Conflict Resolution**: Structured workflow for resolving merge conflicts.
+- **History Visualization**: Renders commit history and branch graphs within the terminal.
 
 ## Installation
 
 ### Prerequisites
 
-*   Node.js (version 14.0.0 or higher)
-*   Git
+- Node.js (version 14.0.0 or higher)
+- Git
 
 ### Setup from Source
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/yourusername/eckra.git
+   git clone https://github.com/sudoeren/eckra.git
    cd eckra
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -54,20 +58,20 @@ eckra
 
 The tool also supports direct access to specific modules:
 
-*   `eckra status`: Open the status and staging interface.
-*   `eckra commit`: Initiate the AI-assisted commit flow.
-*   `eckra push`: Push changes to the remote repository.
+- `eckra status`: Open the status and staging interface.
+- `eckra commit`: Initiate the AI-assisted commit flow.
+- `eckra push`: Push changes to the remote repository.
 
 ## AI Integration
 
 Eckra can be configured to use various AI backends for commit message generation.
 
-| Provider | Endpoint | Use Case |
-| :--- | :--- | :--- |
-| LM Studio | http://localhost:1234 | Local inference and privacy |
-| Ollama | http://localhost:11434 | Local inference (Llama, Mistral, etc.) |
-| OpenAI | API | Cloud-based GPT models |
-| Anthropic | API | Cloud-based Claude models |
+| Provider  | Endpoint               | Use Case                               |
+| :-------- | :--------------------- | :------------------------------------- |
+| LM Studio | http://localhost:1234  | Local inference and privacy            |
+| Ollama    | http://localhost:11434 | Local inference (Llama, Mistral, etc.) |
+| OpenAI    | API                    | Cloud-based GPT models                 |
+| Anthropic | API                    | Cloud-based Claude models              |
 
 ## Configuration
 
