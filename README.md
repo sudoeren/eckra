@@ -1,96 +1,99 @@
 # Eckra
 
-Eckra is a CLI tool that wraps standard Git commands in an interactive terminal interface. It integrates with various AI models (OpenAI, Anthropic, Ollama, LM Studio) to automate commit message generation based on your diffs.
+Eckra is a command-line interface (CLI) for Git repository management. It provides an interactive terminal interface for standard Git operations and integrates with Large Language Models (LLMs) to automate the generation of commit messages.
 
-It is designed to speed up routine Git tasks like staging, committing, branch management, and conflict resolution without leaving the keyboard or memorizing complex flags.
+![Eckra Interface](screenshot.png)
+
+## Overview
+
+The tool is designed to streamline version control workflows by providing a structured interface for staging, committing, and branch management. It supports integration with local LLM providers such as LM Studio and Ollama, as well as cloud-based services including OpenAI and Anthropic.
+
+## Core Features
+
+*   **Automated Commit Generation**: Uses git diff data to generate contextually relevant commit messages via configured AI providers.
+*   **Interactive Status Management**: Provides a visual interface for viewing repository status and staging changes.
+*   **Partial Staging**: Supports the selection of specific file hunks for staging.
+*   **Branch Management**: Tools for creating, deleting, and switching branches, including ahead/behind tracking.
+*   **Conflict Resolution**: Structured workflow for resolving merge conflicts.
+*   **History Visualization**: Renders commit history and branch graphs within the terminal.
 
 ## Installation
 
-You can install it globally or run it directly from the source.
+### Prerequisites
 
-### From Source
+*   Node.js (version 14.0.0 or higher)
+*   Git
 
-1.  Clone the repo:
-    ```bash
-    git clone https://github.com/yourusername/eckra.git
-    cd eckra
-    ```
+### Setup from Source
 
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/eckra.git
+   cd eckra
+   ```
 
-3.  Link command:
-    ```bash
-    npm link
-    ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-Now you can use the `eckra` command in any directory.
+3. Link the application globally:
+   ```bash
+   npm link
+   ```
 
-## Getting Started
+## Usage
 
-Run the tool in your git repository:
+Execute the primary command within a Git repository to launch the dashboard:
 
 ```bash
 eckra
 ```
 
-This opens the main dashboard. You can navigate menus using arrow keys.
+### Direct Commands
 
-### Command Line Arguments
+The tool also supports direct access to specific modules:
 
-If you prefer skipping the menu for specific tasks:
+*   `eckra status`: Open the status and staging interface.
+*   `eckra commit`: Initiate the AI-assisted commit flow.
+*   `eckra push`: Push changes to the remote repository.
 
-*   `eckra status` - View changed files.
-*   `eckra commit` - Go straight to the AI commit generation flow.
-*   `eckra push` - Push current branch.
+## AI Integration
 
-## AI Configuration
+Eckra can be configured to use various AI backends for commit message generation.
 
-Eckra supports multiple AI providers. You can switch between them in the **Settings** menu.
+| Provider | Endpoint | Use Case |
+| :--- | :--- | :--- |
+| LM Studio | http://localhost:1234 | Local inference and privacy |
+| Ollama | http://localhost:11434 | Local inference (Llama, Mistral, etc.) |
+| OpenAI | API | Cloud-based GPT models |
+| Anthropic | API | Cloud-based Claude models |
 
-*   **LM Studio**: Default. Connects to `http://localhost:1234`. Good for offline use.
-*   **Ollama**: Connects to `http://localhost:11434`.
-*   **OpenAI**: Requires an API Key.
-*   **Anthropic**: Requires an API Key.
+## Configuration
 
-The tool will send the `git diff` of your staged files to the selected provider to generate a Conventional Commit message.
+Configuration is managed through JSON files. The application follows a cascading priority:
 
-## Configuration (.eckrarc)
+1.  **Global Configuration**: Located at `~/.eckra/config.json`.
+2.  **Local Configuration**: Defined in a `.eckrarc` file within the project root.
 
-Eckra looks for configuration in two places:
-1.  **Global**: `~/.eckra/config.json` (User defaults)
-2.  **Local**: `.eckrarc` (Project specific)
-
-Local configuration overrides global settings. This is useful if you work on different projects that require different commit styles or AI instructions.
-
-**Example `.eckrarc` content:**
+### Configuration Example
 
 ```json
 {
   "aiProvider": "ollama",
   "ollamaModel": "llama3",
-  "aiInstruction": "Keep messages under 50 chars. No punctuation at the end."
+  "aiInstruction": "Ensure commit messages follow Conventional Commits specification."
 }
 ```
 
-## Features
+## Development and Testing
 
-*   **Partial Staging**: Select specific file chunks (hunks) to stage.
-*   **Visual Graph**: Displays `git log --graph` inside the terminal.
-*   **Branch Management**: Create, delete, switch, and compare branches (shows ahead/behind counts).
-*   **Stash**: Interactive list to apply, pop, or drop specific stashes.
-*   **Conflict Resolution**: UI for choosing 'ours', 'theirs', or launching a manual editor for merge conflicts.
-
-## Development
-
-The project uses `simple-git` for Git operations and `inquirer` for the UI.
-
-To run the test suite:
+The project uses Jest for unit testing. To execute the test suite:
 
 ```bash
 npm test
 ```
 
-Tests cover configuration logic, AI provider switching, and patch parsing utilities.
+## License
+
+This project is licensed under the MIT License.
