@@ -14,10 +14,10 @@ async function doAbout() {
     chalk.dim("Developed by"),
     chalk.cyan("Eren Çakar"),
     "",
-    chalk.blue("https://github.com/erencakkar/eckra"),
+    chalk.blue("https://github.com/sudoeren/eckra"),
     chalk.blue("https://www.npmjs.com/package/eckra"),
     "",
-    chalk.dim("License: MIT")
+    chalk.dim("License: MIT"),
   ].join("\n");
 
   console.log(
@@ -27,8 +27,8 @@ async function doAbout() {
       borderStyle: "round",
       borderColor: "cyan",
       textAlignment: "center",
-      minWidth: 50
-    })
+      minWidth: 50,
+    }),
   );
 
   await pause();
