@@ -12,6 +12,7 @@ const { doBlame } = require("./blame");
 const { doWorktree } = require("./worktree");
 const { doSettings } = require("./settings");
 const { doRebase } = require("./rebase");
+const { doAbout } = require("./about");
 
 async function doMore() {
   clear();
@@ -42,6 +43,7 @@ async function doMore() {
         { name: s.text("  🌳 Worktrees"), value: "worktree" },
         { type: "separator", line: " " },
         { name: s.text("  ⚙ Settings"), value: "settings" },
+        { name: s.text("  ℹ About"), value: "about" },
         { name: s.muted("  ← Main Menu"), value: "back" },
       ],
       pageSize: 15,
@@ -87,6 +89,9 @@ async function doMore() {
       break;
     case "settings":
       await doSettings();
+      break;
+    case "about":
+      await doAbout();
       break;
   }
 }
