@@ -1,7 +1,7 @@
 # Eckra
 
 <p align="center">
-  <img src="screenshot.jpg" alt="eckra terminal preview" width="800">
+  <img src="https://raw.githubusercontent.com/erencakkar/eckra/master/screenshot.jpg" alt="eckra terminal preview" width="800">
 </p>
 
 <p align="center">
