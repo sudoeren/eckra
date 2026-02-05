@@ -1,109 +1,72 @@
-# Eckra
-
-Eckra is a command-line interface (CLI) for Git repository management. It provides an interactive terminal interface for standard Git operations and integrates with Large Language Models (LLMs) to automate the generation of commit messages.
+# eckra
 
 <p align="center">
-  <img src="screenshot.jpg" alt="Eckra Interface" width="800">
+  <img src="screenshot.jpg" alt="eckra terminal preview" width="800">
 </p>
 
-## Overview
+<p align="center">
+  <strong>The AI-powered Git CLI that turns "working on stuff" into meaningful commits.</strong>
+</p>
 
-The tool is designed to streamline version control workflows by providing a structured interface for staging, committing, and branch management. It supports integration with local LLM providers such as LM Studio and Ollama, as well as cloud-based services including OpenAI and Anthropic.
+<p align="center">
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra.svg?style=flat-square" alt="NPM Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/eckra.svg?style=flat-square" alt="License"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra.svg?style=flat-square" alt="NPM Downloads"></a>
+</p>
 
-## Core Features
+---
 
-- **Automated Commit Generation**: Uses git diff data to generate contextually relevant commit messages via configured AI providers.
-- **Interactive Status Management**: Provides a visual interface for viewing repository status and staging changes.
-- **Partial Staging**: Supports the selection of specific file hunks for staging.
-- **Branch Management**: Tools for creating, deleting, and switching branches, including ahead/behind tracking.
-- **Conflict Resolution**: Structured workflow for resolving merge conflicts.
-- **History Visualization**: Renders commit history and branch graphs within the terminal.
+## 💡 Overview
 
-## Installation
+**eckra** is an interactive Git management tool designed for developers who value both speed and clarity. By integrating with local LLMs via **LM Studio**, it analyzes your staged changes and suggests context-aware commit messages, ensuring your project history remains professional and descriptive without the manual overhead.
 
-### Prerequisites
+## 🚀 Key Features
 
-- Node.js (version 14.0.0 or higher)
-- Git
+-   **🤖 AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs using LM Studio.
+-   **📝 Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
+-   **🔍 Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
+-   **🎯 Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
+-   **⚡ Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
 
-### Setup from Source
+## 📦 Installation
 
-1. Clone the repository:
+Install eckra globally using npm:
 
-   ```bash
-   git clone https://github.com/sudoeren/eckra.git
-   cd eckra
-   ```
+```bash
+npm install -g eckra
+```
 
-2. Install dependencies:
+## 🛠 Usage
 
-   ```bash
-   npm install
-   ```
-
-3. Link the application globally:
-   ```bash
-   npm link
-   ```
-
-## Usage
-
-Execute the primary command within a Git repository to launch the dashboard:
+Just type `eckra` in any Git repository to launch the interactive dashboard:
 
 ```bash
 eckra
 ```
 
-### Direct Commands
+### Quick Commands
 
-The tool also supports direct access to specific modules:
+Skip the menu and jump straight into action:
 
-- `eckra status`: Open the status and staging interface.
-- `eckra commit`: Initiate the AI-assisted commit flow.
-- `eckra push`: Push changes to the remote repository.
+| Command | Action |
+| :--- | :--- |
+| `eckra commit` | Start the AI-assisted commit flow |
+| `eckra status` | Check repository status and staged files |
+| `eckra push` | Sync local commits with the remote repository |
+| `eckra branch` | Open the interactive branch manager |
 
-## AI Integration
+## ⚙️ AI Configuration
 
-Eckra can be configured to use various AI backends for commit message generation.
+By default, eckra connects to **LM Studio**'s local server:
+-   **URL**: `http://localhost:1234`
+-   **Requirement**: Ensure LM Studio is running and the "Local Server" is started with a loaded model.
 
-| Provider  | Endpoint               | Use Case                               |
-| :-------- | :--------------------- | :------------------------------------- |
-| LM Studio | http://localhost:1234  | Local inference and privacy            |
-| Ollama    | http://localhost:11434 | Local inference (Llama, Mistral, etc.) |
-| OpenAI    | API                    | Cloud-based GPT models                 |
-| Anthropic | API                    | Cloud-based Claude models              |
+## 🤝 Contributing
 
-## Configuration
+Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-Configuration is managed through JSON files. The application follows a cascading priority:
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-1.  **Global Configuration**: Located at `~/.eckra/config.json`.
-2.  **Local Configuration**: Defined in a `.eckrarc` file within the project root.
+## 📄 License
 
-### Configuration Example
-
-```json
-{
-  "aiProvider": "ollama",
-  "ollamaModel": "llama3",
-  "aiInstruction": "Ensure commit messages follow Conventional Commits specification."
-}
-```
-
-## Development and Testing
-
-The project uses Jest for unit testing. To execute the test suite:
-
-```bash
-npm test
-```
-
-## License
-
-This project is licensed under the MIT License.
-
----
-
-<p align="center">
-  Developed by <b>Eren Çakar</b>
-</p>
+Distributed under the MIT License. See `LICENSE` for more information.
