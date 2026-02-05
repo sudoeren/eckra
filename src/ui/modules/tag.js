@@ -1,6 +1,11 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
-const { listTags, createTag, deleteTag, pushTags } = require("../../helpers/git");
+const {
+  listTags,
+  createTag,
+  deleteTag,
+  pushTags,
+} = require("../../helpers/git");
 const { s, header, clear, pause, sleep } = require("../common");
 
 async function doTag() {
@@ -39,7 +44,7 @@ async function doTag() {
       {
         type: "input",
         name: "name",
-        message: s.muted("Tag name (e.g. v1.0.0):"),
+        message: s.muted("Tag name (e.g. v1.0.2):"),
         validate: (v) => v.length > 0,
       },
     ]);
