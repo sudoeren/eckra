@@ -5,6 +5,33 @@ const { generateCommitSuggestions, checkAIConnection } = require("../../helpers/
 const { s, header, clear, pause } = require("../common");
 const { doPush } = require("./sync");
 
+async function showReviewDiff() {
+  const diff = await getStagedDiff();
+  if (!diff) {
+    console.log(s.muted("\n  No staged changes to show.\n"));
+    await pause();
+    return;
+  }
+
+  clear();
+  console.log(s.bold("  Review Staged Diff\n"));
+
+  diff.split("\n").forEach((line) => {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      console.log(s.success(line));
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      console.log(s.error(line));
+    } else if (line.startsWith("@@")) {
+      console.log(s.primary(line));
+    } else {
+      console.log(s.muted(line));
+    }
+  });
+
+  console.log();
+  await pause();
+}
+
 async function doCommit(info) {
   clear();
   header();
@@ -39,30 +66,47 @@ async function doCommit(info) {
     status = await getGitStatus();
   }
 
-  // Show staged files
-  console.log(s.muted("  Files to commit:"));
-  status.staged
-    .slice(0, 5)
-    .forEach((f) => console.log(s.success(`    + ${f}`)));
-  if (status.staged.length > 5)
-    console.log(s.muted(`    ... and ${status.staged.length - 5} more files`));
-  console.log();
-
-  // AI message suggestion
   let message;
   const ai = await checkAIConnection();
 
-  if (ai.connected) {
-    const { useAI } = await inquirer.prompt([
+  while (!message) {
+    clear();
+    header();
+    console.log(s.bold("  Commit\n"));
+    console.log(s.muted("  Files to commit:"));
+    status.staged
+      .slice(0, 5)
+      .forEach((f) => console.log(s.success(`    + ${f}`)));
+    if (status.staged.length > 5)
+      console.log(s.muted(`    ... and ${status.staged.length - 5} more files`));
+    console.log();
+
+    const choices = [];
+    if (ai.connected) {
+      choices.push({ name: s.primary("  🤖 Suggest message with AI"), value: "ai" });
+    }
+    choices.push({ name: s.white("  ✎ Write my own"), value: "custom" });
+    choices.push({ name: s.success("  🔍 Review Diff"), value: "diff" });
+    choices.push({ type: "separator", line: " " });
+    choices.push({ name: s.muted("  ← Cancel"), value: "cancel" });
+
+    const { action } = await inquirer.prompt([
       {
-        type: "confirm",
-        name: "useAI",
-        message: s.primary("Should I suggest a commit message with AI?"),
-        default: true,
+        type: "list",
+        name: "action",
+        message: s.muted("Choose action:"),
+        choices,
+        loop: false,
       },
     ]);
 
-    if (useAI) {
+    if (action === "cancel") return;
+    if (action === "diff") {
+      await showReviewDiff();
+      continue;
+    }
+
+    if (action === "ai") {
       const spin = ora({
         text: s.muted(" AI is thinking..."),
         spinner: "dots",
@@ -83,41 +127,66 @@ async function doCommit(info) {
           {
             type: "list",
             name: "selected",
-            message: s.muted("Pick one or write your own:"),
+            message: s.muted("Pick one:"),
             choices: [
               ...suggestions.map((msg, i) => ({
                 name: `  ${i + 1}. ${s.text(msg)}`,
                 value: msg,
               })),
               { type: "separator", line: " " },
-              { name: s.primary("  ✎ I'll write my own"), value: "_custom" },
-              { name: s.muted("  ← Cancel"), value: "_cancel" },
+              { name: s.muted("  ← Back"), value: "_back" },
             ],
             loop: false,
           },
         ]);
 
-        if (selected === "_cancel") return;
-        if (selected !== "_custom") message = selected;
+        if (selected === "_back") continue;
+
+        const { aiAction } = await inquirer.prompt([
+          {
+            type: "list",
+            name: "aiAction",
+            message: s.muted("Action for: ") + s.text(selected),
+            choices: [
+              { name: "  ✓ Use as is", value: "use" },
+              { name: "  ✎ Edit", value: "edit" },
+              { name: "  ← Back", value: "back" },
+            ],
+          },
+        ]);
+
+        if (aiAction === "back") continue;
+        if (aiAction === "use") {
+          message = selected;
+        } else {
+          const { edited } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "edited",
+              message: s.muted("Edit commit message:"),
+              default: selected,
+              validate: (v) => v.length > 0 || "Message cannot be empty",
+            },
+          ]);
+          message = edited;
+        }
       } catch (err) {
         spin.fail(s.error(" AI error: " + err.message));
+        await pause();
       }
     }
-  } else {
-    console.log(s.warning("  AI connection not available: " + (ai.error || "Unknown error")));
-  }
 
-  // Manual message
-  if (!message) {
-    const { custom } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "custom",
-        message: s.muted("Commit message:"),
-        validate: (v) => v.length > 0 || "Message cannot be empty",
-      },
-    ]);
-    message = custom;
+    if (action === "custom") {
+      const { custom } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "custom",
+          message: s.muted("Commit message:"),
+          validate: (v) => v.length > 0 || "Message cannot be empty",
+        },
+      ]);
+      message = custom;
+    }
   }
 
   // Confirm
