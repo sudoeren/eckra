@@ -1,4 +1,4 @@
-# eckra
+# Eckra
 
 <p align="center">
   <img src="screenshot.jpg" alt="eckra terminal preview" width="800">
@@ -11,7 +11,6 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.0.1-blue.svg?style=flat-square" alt="NPM Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/eckra.svg?style=flat-square" alt="License"></a>
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra.svg?style=flat-square" alt="NPM Downloads"></a>
 </p>
 
 ---
@@ -22,11 +21,11 @@
 
 ## 🚀 Key Features
 
--   **🤖 AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs using LM Studio.
--   **📝 Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
--   **🔍 Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
--   **🎯 Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
--   **⚡ Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
+- **🤖 AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs using LM Studio.
+- **📝 Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
+- **🔍 Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
+- **🎯 Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
+- **⚡ Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
 
 ## 📦 Installation
 
@@ -48,18 +47,19 @@ eckra
 
 Skip the menu and jump straight into action:
 
-| Command | Action |
-| :--- | :--- |
-| `eckra commit` | Start the AI-assisted commit flow |
-| `eckra status` | Check repository status and staged files |
-| `eckra push` | Sync local commits with the remote repository |
-| `eckra branch` | Open the interactive branch manager |
+| Command        | Action                                        |
+| :------------- | :-------------------------------------------- |
+| `eckra commit` | Start the AI-assisted commit flow             |
+| `eckra status` | Check repository status and staged files      |
+| `eckra push`   | Sync local commits with the remote repository |
+| `eckra branch` | Open the interactive branch manager           |
 
 ## ⚙️ AI Configuration
 
 By default, eckra connects to **LM Studio**'s local server:
--   **URL**: `http://localhost:1234`
--   **Requirement**: Ensure LM Studio is running and the "Local Server" is started with a loaded model.
+
+- **URL**: `http://localhost:1234`
+- **Requirement**: Ensure LM Studio is running and the "Local Server" is started with a loaded model.
 
 ## 🤝 Contributing
 
