@@ -285,10 +285,35 @@ async function checkAIConnection() {
   }
 }
 
+/**
+ * Fetch available models from OpenRouter API
+ */
+async function fetchOpenRouterModels(apiKey) {
+  try {
+    const headers = {};
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+    const response = await axios.get("https://openrouter.ai/api/v1/models", {
+      headers,
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    return models.map(m => ({
+      id: m.id,
+      name: m.name || m.id,
+      pricing: m.pricing,
+    }));
+  } catch (error) {
+    return [];
+  }
+}
+
 module.exports = {
   generateCommitMessage,
   generateCommitSuggestions,
   checkAIConnection,
+  fetchOpenRouterModels,
   // Alias for backward compatibility
   checkLMStudioConnection: checkAIConnection,
 };
