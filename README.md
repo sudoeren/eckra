@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.0.3-blue.svg?style=flat-square" alt="NPM Version"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.0.4-blue.svg?style=flat-square" alt="NPM Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/eckra.svg?style=flat-square" alt="License"></a>
 </p>
 
@@ -60,14 +60,14 @@ eckra supports multiple AI providers. You can switch between them using the buil
 
 ### Supported Providers
 
-| Provider | Type | Default Model |
-| :--- | :--- | :--- |
-| **LM Studio** | Local | — (user-configured) |
-| **Ollama** | Local | `llama3` |
-| **OpenAI** | Cloud (API Key) | `gpt-4o` |
-| **Anthropic** | Cloud (API Key) | `claude-3-5-sonnet-20240620` |
-| **OpenRouter** | Cloud (API Key) | `openai/gpt-4o` |
-| **Google Gemini** | Cloud (API Key) | `gemini-2.0-flash` |
+| Provider          | Type            | Default Model                |
+| :---------------- | :-------------- | :--------------------------- |
+| **LM Studio**     | Local           | — (user-configured)          |
+| **Ollama**        | Local           | `llama3`                     |
+| **OpenAI**        | Cloud (API Key) | `gpt-4o`                     |
+| **Anthropic**     | Cloud (API Key) | `claude-3-5-sonnet-20240620` |
+| **OpenRouter**    | Cloud (API Key) | `openai/gpt-4o`              |
+| **Google Gemini** | Cloud (API Key) | `gemini-2.0-flash`           |
 
 ### Default Setup (LM Studio)
 
