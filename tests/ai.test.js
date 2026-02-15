@@ -109,4 +109,64 @@ describe('AI Helper', () => {
     await expect(generateCommitMessage(mockDiff, mockFiles))
       .rejects.toThrow('AI Provider Error (openai): 401');
   });
+
+  test('should call OpenRouter API correctly', async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: 'openai/gpt-4o'
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: 'feat: openrouter commit' } }]
+      }
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe('feat: openrouter commit');
+    expect(axios.post).toHaveBeenCalledWith(
+      'https://openrouter.ai/api/v1/chat/completions',
+      expect.objectContaining({
+        model: 'openai/gpt-4o',
+        messages: expect.any(Array)
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Authorization': 'Bearer sk-or-test',
+          'HTTP-Referer': 'https://github.com/eckra/eckra',
+          'X-Title': 'Eckra'
+        })
+      })
+    );
+  });
+
+  test('should call Google Gemini API correctly', async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: 'gemini',
+      geminiApiKey: 'AIza-test',
+      geminiModel: 'gemini-2.0-flash'
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        candidates: [{ content: { parts: [{ text: 'feat: gemini commit' }] } }]
+      }
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe('feat: gemini commit');
+    expect(axios.post).toHaveBeenCalledWith(
+      expect.stringContaining('generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash'),
+      expect.objectContaining({
+        contents: expect.any(Array),
+        generationConfig: expect.objectContaining({
+          temperature: expect.any(Number)
+        })
+      }),
+      expect.any(Object)
+    );
+  });
 });

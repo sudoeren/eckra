@@ -8,7 +8,7 @@ Thank you for your interest in contributing to eckra! This guide will help you g
 
 - **Node.js**: Version 14.0.0 or higher.
 - **Git**: Installed and configured on your system.
-- **LM Studio** (Optional): For AI-powered features, ensure LM Studio is running and accessible (default: `http://localhost:1234`).
+- **LM Studio** (Optional): For local AI-powered features. Other supported providers include OpenAI, Anthropic, Ollama, OpenRouter, and Google Gemini.
 
 ### Setup
 
@@ -75,7 +75,7 @@ async function doFeature(info) {
 Core business logic separated from the UI.
 
 - **`git.js`**: Wraps `simple-git` for all Git operations.
-- **`ai.js`**: Handles communication with AI providers (like LM Studio) for suggestions.
+- **`ai.js`**: Handles communication with AI providers (LM Studio, OpenAI, Anthropic, Ollama, OpenRouter, Google Gemini) for commit message suggestions.
 - **`config.js`**: Manages user configuration.
 - **`patch.js`**: Utilities for handling git patches and diffs.
 

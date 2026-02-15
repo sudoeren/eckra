@@ -22,6 +22,12 @@ async function doSettings() {
   } else if (config.aiProvider === "ollama") {
     console.log(s.muted("  URL: ") + s.text(config.ollamaUrl));
     console.log(s.muted("  Model: ") + s.text(config.ollamaModel));
+  } else if (config.aiProvider === "openrouter") {
+    console.log(s.muted("  Model: ") + s.text(config.openrouterModel));
+    console.log(s.muted("  API Key: ") + s.text(config.openrouterApiKey ? "****" + config.openrouterApiKey.slice(-4) : "None"));
+  } else if (config.aiProvider === "gemini") {
+    console.log(s.muted("  Model: ") + s.text(config.geminiModel));
+    console.log(s.muted("  API Key: ") + s.text(config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None"));
   } else {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
     console.log(s.muted("  Model: ") + s.text(config.model));
@@ -62,6 +68,8 @@ async function doSettings() {
           { name: "OpenAI", value: "openai" },
           { name: "Anthropic (Claude)", value: "anthropic" },
           { name: "Ollama (Local)", value: "ollama" },
+          { name: "OpenRouter", value: "openrouter" },
+          { name: "Google Gemini", value: "gemini" },
         ],
         default: config.aiProvider,
       },
@@ -90,6 +98,16 @@ async function doSettings() {
       questions = [
         { type: "input", name: "ollamaUrl", message: "Ollama URL:", default: config.ollamaUrl },
         { type: "input", name: "ollamaModel", message: "Model (e.g. llama3):", default: config.ollamaModel }
+      ];
+    } else if (provider === "openrouter") {
+      questions = [
+        { type: "input", name: "openrouterApiKey", message: "OpenRouter API Key:", default: config.openrouterApiKey },
+        { type: "input", name: "openrouterModel", message: "Model (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet):", default: config.openrouterModel }
+      ];
+    } else if (provider === "gemini") {
+      questions = [
+        { type: "input", name: "geminiApiKey", message: "Google Gemini API Key:", default: config.geminiApiKey },
+        { type: "input", name: "geminiModel", message: "Model (e.g. gemini-2.0-flash, gemini-2.5-pro):", default: config.geminiModel }
       ];
     } else {
       questions = [

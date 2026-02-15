@@ -53,6 +53,45 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       };
       break;
 
+    case "openrouter":
+      url = "https://openrouter.ai/api/v1/chat/completions";
+      headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${config.openrouterApiKey}`,
+        "HTTP-Referer": "https://github.com/eckra/eckra",
+        "X-Title": "Eckra",
+      };
+      body = {
+        model: config.openrouterModel || "openai/gpt-4o",
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
+
+    case "gemini":
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-2.0-flash"}:generateContent?key=${config.geminiApiKey}`;
+      headers = { "Content-Type": "application/json" };
+      // Gemini uses a different message format
+      const geminiContents = messages
+        .filter(m => m.role !== "system")
+        .map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+      const geminiSystemInstruction = messages.find(m => m.role === "system")?.content;
+      body = {
+        contents: geminiContents,
+        generationConfig: {
+          temperature,
+          maxOutputTokens: max_tokens,
+        },
+      };
+      if (geminiSystemInstruction) {
+        body.systemInstruction = { parts: [{ text: geminiSystemInstruction }] };
+      }
+      break;
+
     case "lmstudio":
     default:
       url = `${config.lmStudioUrl || "http://localhost:1234"}/v1/chat/completions`;
@@ -75,6 +114,8 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       content = response.data.content[0].text;
     } else if (provider === "ollama") {
       content = response.data.message.content;
+    } else if (provider === "gemini") {
+      content = response.data.candidates[0].content.parts[0].text;
     } else {
       content = response.data.choices[0].message.content;
     }
@@ -224,6 +265,19 @@ async function checkAIConnection() {
     } else if (provider === "anthropic") {
         if (!config.anthropicApiKey) return { connected: false, error: "Anthropic API Key is missing" };
         return { connected: true, note: "Anthropic connection assumed (listing models not supported via simple GET)" };
+    } else if (provider === "openrouter") {
+      if (!config.openrouterApiKey) return { connected: false, error: "OpenRouter API Key is missing" };
+      const response = await axios.get("https://openrouter.ai/api/v1/models", {
+        headers: { "Authorization": `Bearer ${config.openrouterApiKey}` },
+        timeout: 5000
+      });
+      return { connected: true, models: response.data?.data || [] };
+    } else if (provider === "gemini") {
+      if (!config.geminiApiKey) return { connected: false, error: "Google Gemini API Key is missing" };
+      const response = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${config.geminiApiKey}`, {
+        timeout: 5000
+      });
+      return { connected: true, models: response.data?.models || [] };
     }
     return { connected: true };
   } catch (error) {
