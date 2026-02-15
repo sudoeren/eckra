@@ -155,6 +155,7 @@ async function doSettings() {
   }
 
   console.log(s.muted("  AI Instruction: ") + s.text(truncate(config.aiInstruction || "", 50)));
+  console.log(s.muted("  Theme: ") + s.text(config.theme || "dark"));
   console.log(
     s.muted("  AI Status: ") +
     (aiStatus.connected ? s.success("Connected ✓") : s.error("Not connected ✗ (" + (aiStatus.error || "Unknown error") + ")")),
@@ -170,6 +171,7 @@ async function doSettings() {
         { name: s.text("  Change Provider"), value: "provider" },
         { name: s.text("  Configure Provider Settings"), value: "configure" },
         { name: s.text("  Change AI Instructions"), value: "instruction" },
+        { name: s.text("  Change Theme"), value: "theme" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: false,
@@ -234,6 +236,24 @@ async function doSettings() {
     ]);
     saveConfig({ ...config, aiInstruction: instruction });
     console.log(s.success("\n  ✓ Saved!"));
+    await sleep(600);
+  }
+
+  if (action === "theme") {
+    const { theme } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "theme",
+        message: s.muted("Select Theme:"),
+        choices: [
+          { name: "Dark", value: "dark" },
+          { name: "Light", value: "light" },
+        ],
+        default: config.theme || "dark",
+      },
+    ]);
+    saveConfig({ ...config, theme });
+    console.log(s.success("\n  ✓ Theme changed to " + theme));
     await sleep(600);
   }
 }

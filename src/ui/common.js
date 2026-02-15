@@ -1,22 +1,54 @@
 const chalk = require("chalk");
 const inquirer = require("inquirer");
+const { getConfig } = require("../helpers/config");
 
 // ═══════════════════════════════════════════════════════════════
-// STYLES
+// THEMES
 // ═══════════════════════════════════════════════════════════════
 
-const s = {
-  brand: chalk.hex("#00D9FF").bold,
-  primary: chalk.hex("#00D9FF"),
-  success: chalk.hex("#00FF88"),
-  warning: chalk.hex("#FFB800"),
-  error: chalk.hex("#FF4757"),
-  muted: chalk.hex("#6B7280"),
-  text: chalk.hex("#E5E7EB"),
-  dim: chalk.hex("#4B5563"),
-  white: chalk.white,
-  bold: chalk.bold,
+const themes = {
+  dark: {
+    brand: chalk.hex("#00D9FF").bold,
+    primary: chalk.hex("#00D9FF"),
+    success: chalk.hex("#00FF88"),
+    warning: chalk.hex("#FFB800"),
+    error: chalk.hex("#FF4757"),
+    muted: chalk.hex("#6B7280"),
+    text: chalk.hex("#E5E7EB"),
+    dim: chalk.hex("#4B5563"),
+    white: chalk.white,
+    bold: chalk.bold,
+  },
+  light: {
+    brand: chalk.hex("#0077B6").bold,
+    primary: chalk.hex("#0077B6"),
+    success: chalk.hex("#059669"),
+    warning: chalk.hex("#D97706"),
+    error: chalk.hex("#DC2626"),
+    muted: chalk.hex("#6B7280"),
+    text: chalk.hex("#1F2937"),
+    dim: chalk.hex("#9CA3AF"),
+    white: chalk.hex("#111827"),
+    bold: chalk.bold,
+  },
 };
+
+function getTheme() {
+  try {
+    const config = getConfig();
+    return themes[config.theme] || themes.dark;
+  } catch {
+    return themes.dark;
+  }
+}
+
+// Proxy so every access to s.primary etc. reads the current theme
+const s = new Proxy({}, {
+  get(_target, prop) {
+    const theme = getTheme();
+    return theme[prop];
+  },
+});
 
 const icons = {
   staged: "●",
