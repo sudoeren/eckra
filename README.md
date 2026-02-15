@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.0.4-blue.svg?style=flat-square" alt="NPM Version"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.0.5-blue.svg?style=flat-square" alt="NPM Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/eckra.svg?style=flat-square" alt="License"></a>
 </p>
 
