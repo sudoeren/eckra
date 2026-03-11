@@ -220,6 +220,8 @@ async function doSettings() {
           { name: "Google Gemini", value: "gemini" },
         ],
         default: config.aiProvider,
+        loop: true,
+        pageSize: 15,
       },
     ]);
 
