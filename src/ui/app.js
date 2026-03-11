@@ -118,9 +118,9 @@ async function startApp() {
         message: s.muted("What would you like to do?"),
         choices,
         pageSize: 15,
-        loop: false,
-      },
-    ]);
+        loop: true,
+        },
+        ]);
 
     switch (action) {
       case "stage":

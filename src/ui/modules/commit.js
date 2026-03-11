@@ -96,10 +96,9 @@ async function doCommit(info) {
         name: "action",
         message: s.muted("Choose action:"),
         choices,
-        loop: false,
-      },
-    ]);
-
+        loop: true,
+        },
+        ]);
     if (action === "cancel") return;
     if (action === "diff") {
       await showReviewDiff();

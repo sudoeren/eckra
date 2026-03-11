@@ -64,9 +64,9 @@ async function showStandardLog() {
       message: s.muted("Select a commit for more options:"),
       choices,
       pageSize: 15,
-      loop: false,
-    }
-  ]);
+      loop: true,
+      },
+      ]);
 
   if (selected === "back") return;
 

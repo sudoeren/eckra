@@ -49,7 +49,7 @@ async function doMore() {
         { name: s.muted("  ← Main Menu"), value: "back" },
       ],
       pageSize: 15,
-      loop: false,
+      loop: true,
     },
   ]);
 
