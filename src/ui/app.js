@@ -197,14 +197,37 @@ async function easyWorkflow() {
     return;
   }
 
-  // 2. Commit with AI (or direct commit if we have info)
-  console.log(s.muted("\n  🤖 Generating AI commit message..."));
-  await commit().doCommit();
+  // 2. Generate AI Commit Message
+  const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();
+  try {
+    const { getStagedDiff } = require("../helpers/git");
+    const { generateCommitMessage } = require("../helpers/ai");
+    
+    const diff = await getStagedDiff();
+    const status = await getGitStatus();
+    const message = await generateCommitMessage(diff, status.staged);
+    
+    spinAi.succeed(s.success(` 🤖 AI Message: ${s.text(message)}`));
 
-  // 3. Push is already part of doCommit logic (asks user), but let's make it automatic for easy mode
-  // Actually, doCommit already has a prompt for push at the end.
-  // But if the user wants true "easy" mode, we could force it.
-  // Let's keep it consistent with the user's flow but make it faster.
+    // 3. Commit
+    const spinCommit = ora({ text: s.muted(" Creating commit..."), spinner: "dots" }).start();
+    const result = await createCommit(message);
+    spinCommit.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
+
+    // 4. Push
+    const spinPush = ora({ text: s.muted(" Pushing to remote..."), spinner: "dots" }).start();
+    await sync().doPush(true); // Added true for silent/auto mode if supported, or just call it
+    spinPush.succeed(s.success(" Successfully pushed to remote!"));
+    
+    console.log(s.success("\n  ✨ Workflow complete!\n"));
+  } catch (err) {
+    spinAi.stop();
+    console.log(s.error(`\n  ❌ Error: ${err.message}`));
+    
+    // Fallback to manual commit if AI fails but we have staged files
+    console.log(s.muted("  Falling back to interactive commit...\n"));
+    await commit().doCommit();
+  }
 }
 
 module.exports = { startApp, quickStatus, quickCommit, quickPush, easyWorkflow };

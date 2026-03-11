@@ -3,29 +3,35 @@ const ora = require("ora");
 const { pushToRemote, pullFromRemote, getCurrentBranch } = require("../../helpers/git");
 const { s, clear, sleep, pause } = require("../common");
 
-async function doPush() {
+async function doPush(silent = false) {
   const spin = ora({
     text: s.muted(" Pushing..."),
     spinner: "dots",
   }).start();
 
   try {
+    const { getGitStatus } = require("../../helpers/git");
     await pushToRemote();
     spin.succeed(s.success(" Push successful!"));
-    await sleep(800);
+    if (!silent) await sleep(800);
   } catch (err) {
     spin.fail(s.error(" Push error"));
 
     if (err.message.includes("no upstream")) {
       const branch = await getCurrentBranch();
-      const { setUpstream } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "setUpstream",
-          message: s.warning(`Set upstream? (-u origin ${branch})`),
-          default: true,
-        },
-      ]);
+      let setUpstream = true;
+      
+      if (!silent) {
+        const answer = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "setUpstream",
+            message: s.warning(`Set upstream? (-u origin ${branch})`),
+            default: true,
+          },
+        ]);
+        setUpstream = answer.setUpstream;
+      }
 
       if (setUpstream) {
         const spin2 = ora({
@@ -33,8 +39,8 @@ async function doPush() {
           spinner: "dots",
         }).start();
         try {
-          const simpleGit = require("simple-git")();
-          await simpleGit.push(["-u", "origin", branch]);
+          const { getGit } = require("../../helpers/git");
+          await getGit().push(["-u", "origin", branch]);
           spin2.succeed(s.success(" Push successful!"));
         } catch (e) {
           spin2.fail(s.error(` ${e.message}`));
@@ -45,7 +51,7 @@ async function doPush() {
   ${err.message}
 `));
     }
-    await pause();
+    if (!silent) await pause();
   }
 }
 
