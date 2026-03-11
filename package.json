@@ -1,6 +1,6 @@
 {
   "name": "eckra",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "AI-powered Git management CLI with multi-provider support (OpenAI, Anthropic, OpenRouter, Gemini, Ollama, LM Studio)",
   "main": "src/index.js",
   "bin": {
@@ -41,7 +41,8 @@
     "inquirer": "^8.2.6",
     "inquirer-autocomplete-prompt": "^2.0.1",
     "ora": "^5.4.1",
-    "simple-git": "^3.21.0"
+    "simple-git": "^3.21.0",
+    "terminal-link": "^5.0.0"
   },
   "engines": {
     "node": ">=14.0.0"

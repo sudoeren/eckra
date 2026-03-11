@@ -1,5 +1,6 @@
 const boxen = require("boxen");
 const chalk = require("chalk");
+const terminalLink = require("terminal-link").default;
 const packageJson = require("../../../package.json");
 const { clear, pause } = require("../common");
 
@@ -12,7 +13,7 @@ async function doAbout() {
     chalk.gray(`version ${packageJson.version}`),
     "",
     chalk.dim("Developed by"),
-    chalk.cyan("\u001b]8;;http://erencakar.com\u0007Eren Çakar\u001b]8;;\u0007"),
+    chalk.cyan(terminalLink("Eren Çakar", "http://erencakar.com")),
     "",
     chalk.blue("https://github.com/sudoeren/eckra"),
     chalk.blue("https://www.npmjs.com/package/eckra"),
