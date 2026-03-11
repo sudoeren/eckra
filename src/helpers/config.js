@@ -124,10 +124,18 @@ function getConfigPath() {
   return CONFIG_FILE;
 }
 
+/**
+ * Check if the application is configured (config file exists)
+ */
+function isConfigured() {
+  return fs.existsSync(CONFIG_FILE);
+}
+
 module.exports = {
   getConfig,
   saveConfig,
   resetConfig,
   getConfigPath,
+  isConfigured,
   DEFAULT_CONFIG,
 };

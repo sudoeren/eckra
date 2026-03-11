@@ -8,7 +8,10 @@ const {
   getGitStatus,
   stageAll,
   createCommit,
+  isConfigured, // Import isConfigured
 } = require("../helpers/git");
+
+const configHelper = require("../helpers/config"); // Import config helper
 
 const {
   s,
@@ -32,12 +35,18 @@ const { doMore } = require("./modules/more");
 const { doConflict } = require("./modules/conflict");
 const { doBranch } = require("./modules/branch");
 const { doLog } = require("./modules/log");
+const { doOnboarding } = require("./modules/onboarding"); // Import onboarding
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 
 async function startApp() {
+  // Onboarding check
+  if (!configHelper.isConfigured()) {
+    await doOnboarding();
+  }
+
   let running = true;
 
   while (running) {
