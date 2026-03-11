@@ -34,20 +34,33 @@ const themes = {
 };
 
 function isDarkMode() {
-  // In a CLI, detecting background color is tricky. 
-  // We can use some hints:
-  const env = process.env;
+  const { execSync } = require("child_process");
   
-  // If explicitly set by user in terminal
-  if (env.COLORFGBG) {
-    const bg = env.COLORFGBG.split(";")[1];
-    if (bg) return parseInt(bg) < 8; // Colors 0-7 are dark
+  try {
+    if (process.platform === "win32") {
+      // Check Windows Registry for AppsUseLightTheme
+      const command = 'powershell.exe -Command "Get-ItemProperty -Path HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize -Name AppsUseLightTheme"';
+      const output = execSync(command, { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+      // If AppsUseLightTheme is 0, it is Dark Mode
+      return output.includes("AppsUseLightTheme : 0");
+    } else if (process.platform === "darwin") {
+      // Check macOS AppleInterfaceStyle
+      const output = execSync("defaults read -g AppleInterfaceStyle", { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+      return output.trim() === "Dark";
+    }
+  } catch (e) {
+    // If command fails, fallback to dark
   }
 
-  // Windows Terminal and most modern ones are dark by default
-  // Some apps like VSCode terminal follow editor theme
-  // We'll assume Dark unless we're on a known light environment
-  return true; 
+  // Fallback for Linux or other cases: check common env variables
+  const env = process.env;
+  if (env.COLORFGBG) {
+    const parts = env.COLORFGBG.split(";");
+    const bg = parts[parts.length - 1];
+    if (bg) return parseInt(bg) < 8;
+  }
+
+  return true; // Default to dark
 }
 
 function getTheme() {
