@@ -174,4 +174,27 @@ async function quickPush() {
   await doPush();
 }
 
-module.exports = { startApp, quickStatus, quickCommit, quickPush };
+async function easyWorkflow() {
+  const info = await getGitStatus();
+
+  // 1. Stage all
+  if (info.modified.length > 0 || info.not_added.length > 0) {
+    const spin = ora({ text: s.muted(" Staging all changes..."), spinner: "dots" }).start();
+    await stageAll();
+    spin.succeed(s.success(" All files staged!"));
+  } else if (info.staged.length === 0) {
+    console.log(s.warning("\n  ⚠️  No changes to commit."));
+    return;
+  }
+
+  // 2. Commit with AI (or direct commit if we have info)
+  console.log(s.muted("\n  🤖 Generating AI commit message..."));
+  await doCommit();
+
+  // 3. Push is already part of doCommit logic (asks user), but let's make it automatic for easy mode
+  // Actually, doCommit already has a prompt for push at the end.
+  // But if the user wants true "easy" mode, we could force it.
+  // Let's keep it consistent with the user's flow but make it faster.
+}
+
+module.exports = { startApp, quickStatus, quickCommit, quickPush, easyWorkflow };

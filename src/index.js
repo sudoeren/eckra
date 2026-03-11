@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const { Command } = require("commander");
-const { startApp, quickStatus, quickCommit, quickPush } = require("./ui/app");
+const { startApp, quickStatus, quickCommit, quickPush, easyWorkflow } = require("./ui/app");
 const { getGitStatus } = require("./helpers/git");
 const chalk = require("chalk");
 
@@ -21,7 +21,17 @@ async function checkGitRepo() {
 program
   .name("eckra")
   .description("AI-powered Git management CLI")
-  .version("1.0.8");
+  .version("1.0.5");
+
+program
+  .command("easy")
+  .alias("e")
+  .description("Full workflow: Stage all, AI commit, and Push")
+  .action(async () => {
+    if (await checkGitRepo()) {
+      await easyWorkflow();
+    }
+  });
 
 program
   .command("start")
