@@ -79,4 +79,16 @@ describe('Git Helper', () => {
     await gitHelper.cherryPick('abc1234');
     expect(mockGit.raw).toHaveBeenCalledWith(['cherry-pick', 'abc1234']);
   });
+
+  test('listSubmodules should call git.raw with submodule status', async () => {
+    mockGit.raw.mockResolvedValue(' 1234567 path/to/sub (heads/main)');
+    const submodules = await gitHelper.listSubmodules();
+    expect(mockGit.raw).toHaveBeenCalledWith(['submodule', 'status']);
+    expect(submodules[0].path).toBe('path/to/sub');
+  });
+
+  test('abortRebase should call git.rebase with --abort', async () => {
+    await gitHelper.abortRebase();
+    expect(mockGit.rebase).toHaveBeenCalledWith(['--abort']);
+  });
 });

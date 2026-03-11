@@ -65,14 +65,18 @@ async function resolveFile(file) {
       choices: [
         { name: s.success("  Accept 'Ours' (Current Branch)"), value: "ours" },
         { name: s.primary("  Accept 'Theirs' (Incoming Branch)"), value: "theirs" },
+        { name: s.warning("  Accept Both (Keep markers for manual merge)"), value: "both" },
         { name: s.warning("  Edit manually (Opens default editor)"), value: "manual" },
         { name: s.muted("  Skip for now"), value: "skip" },
       ],
     },
   ]);
 
+  const { acceptBoth } = require("../../helpers/git");
+
   if (choice === "ours") await acceptOurs(file);
   if (choice === "theirs") await acceptTheirs(file);
+  if (choice === "both") await acceptBoth(file);
   if (choice === "manual") {
     const { exec } = require("child_process");
     // Try to open in VS Code, then Notepad, or fallback to environment editor

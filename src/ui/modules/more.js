@@ -10,6 +10,7 @@ const { doStats } = require("./stats");
 const { doSearch } = require("./search");
 const { doBlame } = require("./blame");
 const { doWorktree } = require("./worktree");
+const { doSubmodule } = require("./submodule");
 const { doSettings } = require("./settings");
 const { doRebase } = require("./rebase");
 const { doAbout } = require("./about");
@@ -41,6 +42,7 @@ async function doMore() {
         { name: s.text("  🔍 Search Commits"), value: "search" },
         { name: s.text("  📋 Blame"), value: "blame" },
         { name: s.text("  🌳 Worktrees"), value: "worktree" },
+        { name: s.text("  🧩 Submodules"), value: "submodule" },
         { type: "separator", line: " " },
         { name: s.text("  ⚙ Settings"), value: "settings" },
         { name: s.text("  ℹ About"), value: "about" },
@@ -86,6 +88,9 @@ async function doMore() {
       break;
     case "worktree":
       await doWorktree();
+      break;
+    case "submodule":
+      await doSubmodule();
       break;
     case "settings":
       await doSettings();
