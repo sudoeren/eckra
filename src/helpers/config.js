@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = {
   autoStage: false,
   autoPush: false,
   commitPrefix: true,
-  theme: "dark",
+  theme: "auto",
   aiInstruction: "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };
 

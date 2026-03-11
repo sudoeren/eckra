@@ -33,10 +33,33 @@ const themes = {
   },
 };
 
+function isDarkMode() {
+  // In a CLI, detecting background color is tricky. 
+  // We can use some hints:
+  const env = process.env;
+  
+  // If explicitly set by user in terminal
+  if (env.COLORFGBG) {
+    const bg = env.COLORFGBG.split(";")[1];
+    if (bg) return parseInt(bg) < 8; // Colors 0-7 are dark
+  }
+
+  // Windows Terminal and most modern ones are dark by default
+  // Some apps like VSCode terminal follow editor theme
+  // We'll assume Dark unless we're on a known light environment
+  return true; 
+}
+
 function getTheme() {
   try {
     const config = getConfig();
-    return themes[config.theme] || themes.dark;
+    let selectedTheme = config.theme || "auto";
+
+    if (selectedTheme === "auto") {
+      selectedTheme = isDarkMode() ? "dark" : "light";
+    }
+
+    return themes[selectedTheme] || themes.dark;
   } catch {
     return themes.dark;
   }
