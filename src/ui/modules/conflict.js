@@ -30,8 +30,7 @@ async function doConflict() {
       ],
       loop: true,
       pageSize: 20,
-      },
-      ]);
+    },
   ]);
 
   if (action === "back") return;

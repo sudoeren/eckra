@@ -12,7 +12,7 @@ async function doAbout() {
     chalk.gray(`version ${packageJson.version}`),
     "",
     chalk.dim("Developed by"),
-    chalk.cyan("Eren Çakar"),
+    chalk.cyan("\u001b]8;;http://erencakar.com\u0007Eren Çakar\u001b]8;;\u0007"),
     "",
     chalk.blue("https://github.com/sudoeren/eckra"),
     chalk.blue("https://www.npmjs.com/package/eckra"),

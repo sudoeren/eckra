@@ -24,8 +24,7 @@ async function doRebase() {
       ],
       loop: true,
       pageSize: 20,
-      },
-      ]);
+    },
   ]);
 
   if (action === "back") return;
