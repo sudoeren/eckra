@@ -30,7 +30,8 @@ async function doStash() {
         { name: s.error("  ✕ Drop Stash"), value: "drop" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 10,
     },
   ]);
 
@@ -71,7 +72,9 @@ async function doStash() {
       choices: stashes.all.map((st, i) => ({
         name: `${i}: ${st.message}`,
         value: i
-      }))
+      })),
+      loop: true,
+      pageSize: 15,
     }
   ]);
 

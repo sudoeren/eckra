@@ -32,7 +32,8 @@ async function doSubmodule() {
         { type: "separator", line: " " },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 10,
     },
   ]);
 

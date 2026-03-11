@@ -37,7 +37,8 @@ async function doBranch() {
         { type: "separator", line: " " },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 15,
     },
   ]);
 
@@ -75,6 +76,8 @@ async function doBranch() {
             name: "target",
             message: s.muted("Which branch to switch to?"),
             choices: others,
+            loop: true,
+            pageSize: 15,
           },
         ]);
         try {
@@ -100,6 +103,8 @@ async function doBranch() {
             name: "target",
             message: s.muted("Compare with:"),
             choices: compareTargets,
+            loop: true,
+            pageSize: 15,
           },
         ]);
         try {
@@ -128,6 +133,8 @@ async function doBranch() {
             name: "remoteBranch",
             message: s.muted("Select remote branch:"),
             choices: remotes,
+            loop: true,
+            pageSize: 15,
           },
         ]);
         
@@ -139,7 +146,9 @@ async function doBranch() {
             choices: [
               { name: "Checkout (Track)", value: "checkout" },
               { name: "Cancel", value: "cancel" }
-            ]
+            ],
+            loop: true,
+            pageSize: 10,
           }
         ]);
 
@@ -170,6 +179,8 @@ async function doBranch() {
             name: "source",
             message: s.muted("Which branch to merge?"),
             choices: mergeable,
+            loop: true,
+            pageSize: 15,
           },
         ]);
         try {
@@ -195,6 +206,8 @@ async function doBranch() {
             name: "toDelete",
             message: s.muted("Which branch to delete?"),
             choices: deletable,
+            loop: true,
+            pageSize: 15,
           },
         ]);
         const { confirm } = await inquirer.prompt([

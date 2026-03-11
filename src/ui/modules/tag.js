@@ -33,7 +33,8 @@ async function doTag() {
         { name: s.error("  ✕ Delete Tag"), value: "delete" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 10,
     },
   ]);
 
@@ -44,7 +45,7 @@ async function doTag() {
       {
         type: "input",
         name: "name",
-        message: s.muted("Tag name (e.g. v1.1.4):"),
+        message: s.muted("Tag name (e.g. v1.1.5):"),
         validate: (v) => v.length > 0,
       },
     ]);
@@ -78,6 +79,8 @@ async function doTag() {
           name: "toDelete",
           message: s.muted("Which tag to delete?"),
           choices: tags.all,
+          loop: true,
+          pageSize: 15,
         },
       ]);
       await deleteTag(toDelete);

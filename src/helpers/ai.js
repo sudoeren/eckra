@@ -120,7 +120,7 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       content = response.data.choices[0].message.content;
     }
 
-    return content.trim();
+    return (content || "").toString().trim();
   } catch (error) {
     if (error.response) {
       throw new Error(`AI Provider Error (${provider}): ${error.response.status} - ${JSON.stringify(error.response.data)}`);

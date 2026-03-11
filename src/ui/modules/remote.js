@@ -28,7 +28,8 @@ async function doRemote() {
         { name: s.error("  ✕ Remove Remote"), value: "remove" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 10,
     },
   ]);
 
@@ -63,6 +64,8 @@ async function doRemote() {
         name: "toRemove",
         message: s.muted("Which remote to remove?"),
         choices: remotes.map((r) => r.name),
+        loop: true,
+        pageSize: 10,
       },
     ]);
     await removeRemote(toRemove);
