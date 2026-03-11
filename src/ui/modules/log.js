@@ -18,7 +18,8 @@ async function doLog() {
         { name: s.text("  Graph View (Tree)"), value: "graph" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 20,
     },
   ]);
 

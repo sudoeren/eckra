@@ -29,8 +29,9 @@ async function doConflict() {
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: true,
-      pageSize: 15,
-    },
+      pageSize: 20,
+      },
+      ]);
   ]);
 
   if (action === "back") return;

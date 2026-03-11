@@ -97,8 +97,9 @@ async function doCommit(info) {
         message: s.muted("Choose action:"),
         choices,
         loop: true,
-        },
-        ]);
+        pageSize: 20,
+      },
+    ]);
     if (action === "cancel") return;
     if (action === "diff") {
       await showReviewDiff();
@@ -135,7 +136,8 @@ async function doCommit(info) {
               { type: "separator", line: " " },
               { name: s.muted("  ← Back"), value: "_back" },
             ],
-            loop: false,
+            loop: true,
+            pageSize: 20,
           },
         ]);
 
@@ -151,6 +153,8 @@ async function doCommit(info) {
               { name: "  ✎ Edit", value: "edit" },
               { name: "  ← Back", value: "back" },
             ],
+            loop: true,
+            pageSize: 20,
           },
         ]);
 
