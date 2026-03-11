@@ -124,6 +124,9 @@ async function callProvider(
     } else if (provider === "gemini") {
       content = response.data.candidates[0].content.parts[0].text;
     } else {
+      if (!response.data.choices || response.data.choices.length === 0) {
+        throw new Error(`AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${config.openrouterModel || "openai/gpt-4o"}), insufficient credits, or safety filters.`);
+      }
       content = response.data.choices[0].message.content;
     }
 
@@ -229,6 +232,10 @@ Write ${count} different commit messages, each on a new line. Write only the mes
   try {
     const content = await callProvider(config.aiProvider, messages, 0.7, 200);
 
+    if (!content || content.trim().length < 3) {
+      throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
+    }
+
     // Clean backtick blocks
     let cleanedContent = content.replace(/```[\s\S]*?```/g, "");
     cleanedContent = cleanedContent.replace(/`/g, "");
@@ -237,8 +244,9 @@ Write ${count} different commit messages, each on a new line. Write only the mes
       .split("\n")
       .map((line) => {
         let cleaned = line
+          .trim()
           .replace(/^\d+[\.)\-:]\s*/, "") // Remove numbers
-          .replace(/^[-*]\s*/, "") // Remove list markers
+          .replace(/^[-*•]\s*/, "") // Remove list markers
           .replace(/^["']|["']$/g, "") // Remove quotes
           .trim();
         return cleaned;
@@ -247,10 +255,12 @@ Write ${count} different commit messages, each on a new line. Write only the mes
       .slice(0, count);
 
     if (suggestions.length === 0) {
-      // Fallback: try returning the raw content as a single suggestion
-      const raw = content.trim();
-      if (raw.length > 3) return [raw.split("\n")[0].trim()];
-      throw new Error("AI returned empty or invalid suggestions");
+      // Fallback: try returning the raw content as a single suggestion if it looks like a message
+      const firstLine = content.split("\n").find(l => l.trim().length > 5);
+      if (firstLine) {
+        return [firstLine.trim().replace(/^["']|["']$/g, "").slice(0, 72)];
+      }
+      throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
     }
 
     return suggestions;
