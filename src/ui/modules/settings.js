@@ -124,6 +124,8 @@ async function askProviderConfig(provider, config) {
   return answers;
 }
 
+const { doOnboarding } = require("./onboarding");
+
 async function doSettings() {
   clear();
   header();
@@ -172,6 +174,8 @@ async function doSettings() {
         { name: s.text("  Configure Provider Settings"), value: "configure" },
         { name: s.text("  Change AI Instructions"), value: "instruction" },
         { name: s.text("  Change Theme"), value: "theme" },
+        { type: "separator", line: " " },
+        { name: s.error("  ⚠ Reset & Restart Onboarding"), value: "reset" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: false,
@@ -179,6 +183,27 @@ async function doSettings() {
   ]);
 
   if (action === "back") return;
+
+  if (action === "reset") {
+    const { confirmReset } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirmReset",
+        message: s.error("Are you sure? This will delete all your API keys and settings."),
+        default: false
+      }
+    ]);
+
+    if (confirmReset) {
+      const { resetConfig } = require("../../helpers/config");
+      resetConfig();
+      console.log(s.success("\n  ✓ Settings reset to default. Starting onboarding..."));
+      await sleep(1000);
+      await doOnboarding();
+      return;
+    }
+    return;
+  }
 
   if (action === "provider") {
     const { provider } = await inquirer.prompt([
