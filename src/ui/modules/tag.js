@@ -45,7 +45,7 @@ async function doTag() {
       {
         type: "input",
         name: "name",
-        message: s.muted("Tag name (e.g. v1.1.8):"),
+        message: s.muted("Tag name (e.g. v1.1.9):"),
         validate: (v) => v.length > 0,
       },
     ]);
