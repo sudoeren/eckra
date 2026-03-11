@@ -1,6 +1,5 @@
 const boxen = require("boxen");
 const chalk = require("chalk");
-const terminalLink = require("terminal-link").default;
 const packageJson = require("../../../package.json");
 const { clear, pause } = require("../common");
 
@@ -8,17 +7,17 @@ async function doAbout() {
   clear();
 
   const content = [
-    chalk.cyan.bold("E C K R A"),
-    chalk.white("AI-Powered Git Assistant"),
-    chalk.gray(`version ${packageJson.version}`),
+    chalk.cyan.bold("ECKRA"),
+    chalk.gray("AI-Powered Git Assistant"),
+    chalk.dim("v" + packageJson.version),
     "",
-    chalk.dim("Developed by"),
-    chalk.cyan(terminalLink("Eren Çakar", "http://erencakar.com")),
+    chalk.dim("Developed by") + " " + chalk.white.bold("Eren Çakar"),
     "",
-    chalk.blue("https://github.com/sudoeren/eckra"),
-    chalk.blue("https://www.npmjs.com/package/eckra"),
+    chalk.dim("Web   ") + chalk.cyan("erencakar.com"),
+    chalk.dim("GitHub") + " " + chalk.cyan("github.com/sudoeren"),
+    chalk.dim("NPM   ") + chalk.cyan("npmjs.com/package/eckra"),
     "",
-    chalk.dim("License: MIT"),
+    chalk.dim("MIT License"),
   ].join("\n");
 
   console.log(
