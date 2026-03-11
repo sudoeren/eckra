@@ -271,10 +271,11 @@ async function doSettings() {
         name: "theme",
         message: s.muted("Select Theme:"),
         choices: [
+          { name: "Auto (Detect terminal theme)", value: "auto" },
           { name: "Dark", value: "dark" },
           { name: "Light", value: "light" },
         ],
-        default: config.theme || "dark",
+        default: config.theme || "auto",
       },
     ]);
     saveConfig({ ...config, theme });

@@ -35,7 +35,22 @@ async function doOnboarding() {
     return;
   }
 
-  // Choose provider
+  // 1. Choose Theme
+  const { theme } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "theme",
+      message: "Select your preferred theme:",
+      choices: [
+        { name: "Auto (Detect terminal theme)", value: "auto" },
+        { name: "Dark", value: "dark" },
+        { name: "Light", value: "light" }
+      ],
+      default: "auto"
+    }
+  ]);
+
+  // 2. Choose provider
   const { provider } = await inquirer.prompt([
     {
       type: "list",
@@ -52,7 +67,7 @@ async function doOnboarding() {
     }
   ]);
 
-  let configData = { aiProvider: provider };
+  let configData = { aiProvider: provider, theme };
 
   // Setup chosen provider
   if (provider === "openai") {
@@ -79,9 +94,41 @@ async function doOnboarding() {
       { type: "input", name: "ollamaModel", message: "Model name:", default: "llama3" }
     ]);
     configData = { ...configData, ...answers };
+  } else if (provider === "openrouter") {
+    const { openrouterApiKey } = await inquirer.prompt([
+      { type: "input", name: "openrouterApiKey", message: "Enter your OpenRouter API Key:", validate: v => v.length > 0 }
+    ]);
+    
+    // We can use the existing function from settings to fetch models
+    const { fetchOpenRouterModels } = require("../../helpers/ai");
+    const ora = require("ora");
+    const spinner = ora({ text: s.muted("  Fetching models from OpenRouter..."), spinner: "dots" }).start();
+    const models = await fetchOpenRouterModels(openrouterApiKey);
+    spinner.stop();
+
+    let model;
+    if (models.length > 0) {
+      const { selectedModel } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "selectedModel",
+          message: "Select OpenRouter Model:",
+          choices: models.slice(0, 20).map(m => ({ name: m.name, value: m.id })),
+          default: "openai/gpt-4o"
+        }
+      ]);
+      model = selectedModel;
+    } else {
+      const { manualModel } = await inquirer.prompt([
+        { type: "input", name: "manualModel", message: "Model ID (manual):", default: "openai/gpt-4o" }
+      ]);
+      model = manualModel;
+    }
+    configData = { ...configData, openrouterApiKey, openrouterModel: model };
   } else if (provider === "lmstudio") {
     const answers = await inquirer.prompt([
-      { type: "input", name: "lmStudioUrl", message: "LM Studio URL:", default: "http://localhost:1234" }
+      { type: "input", name: "lmStudioUrl", message: "LM Studio URL:", default: "http://localhost:1234" },
+      { type: "input", name: "model", message: "Model name/path:", default: "model-name" }
     ]);
     configData = { ...configData, ...answers };
   }
