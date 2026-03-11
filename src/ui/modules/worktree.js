@@ -34,7 +34,7 @@ async function doWorktree() {
           { name: s.muted("  ← Back"), value: "back" },
         ],
         loop: true,
-        pageSize: 10,
+        pageSize: 15,
       },
     ]);
 
@@ -59,7 +59,7 @@ async function doWorktree() {
               { name: "New Branch", value: "new" },
             ],
             loop: true,
-            pageSize: 10,
+            pageSize: 15,
           },
         ]);
 
@@ -115,7 +115,7 @@ async function doWorktree() {
               message: s.muted("Select worktree to remove:"),
               choices: worktrees.map(wt => wt.path),
               loop: true,
-              pageSize: 10,
+              pageSize: 15,
             },
           ]);
            try {

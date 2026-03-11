@@ -22,7 +22,8 @@ async function doRebase() {
         { type: "separator", line: " " },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 15,
     },
   ]);
 
@@ -56,6 +57,8 @@ async function doRebaseOnto() {
       name: "target",
       message: `Rebase ${s.primary(current)} onto:`,
       choices: otherBranches,
+      loop: true,
+      pageSize: 15,
     }
   ]);
 

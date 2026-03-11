@@ -28,7 +28,8 @@ async function doConflict() {
         { name: s.error("  ⚠ Abort merge"), value: "abort" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 15,
     },
   ]);
 
@@ -69,6 +70,8 @@ async function resolveFile(file) {
         { name: s.warning("  Edit manually (Opens default editor)"), value: "manual" },
         { name: s.muted("  Skip for now"), value: "skip" },
       ],
+      loop: true,
+      pageSize: 15,
     },
   ]);
 

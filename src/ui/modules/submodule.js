@@ -33,7 +33,7 @@ async function doSubmodule() {
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: true,
-      pageSize: 10,
+      pageSize: 15,
     },
   ]);
 

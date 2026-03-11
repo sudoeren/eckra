@@ -29,7 +29,7 @@ async function doRemote() {
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: true,
-      pageSize: 10,
+      pageSize: 15,
     },
   ]);
 
@@ -65,7 +65,7 @@ async function doRemote() {
         message: s.muted("Which remote to remove?"),
         choices: remotes.map((r) => r.name),
         loop: true,
-        pageSize: 10,
+        pageSize: 15,
       },
     ]);
     await removeRemote(toRemove);

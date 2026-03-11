@@ -148,7 +148,7 @@ async function doBranch() {
               { name: "Cancel", value: "cancel" }
             ],
             loop: true,
-            pageSize: 10,
+            pageSize: 15,
           }
         ]);
 

@@ -178,7 +178,8 @@ async function doSettings() {
         { name: s.error("  ⚠ Reset & Restart Onboarding"), value: "reset" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
-      loop: false,
+      loop: true,
+      pageSize: 15,
     },
   ]);
 
@@ -278,6 +279,8 @@ async function doSettings() {
           { name: "Light", value: "light" },
         ],
         default: config.theme || "auto",
+        loop: true,
+        pageSize: 15,
       },
     ]);
     saveConfig({ ...config, theme });
