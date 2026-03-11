@@ -560,6 +560,27 @@ async function compareBranches(base, target) {
   };
 }
 
+/**
+ * Rebase current branch onto another branch
+ */
+async function rebase(branch) {
+  return await git.rebase([branch]);
+}
+
+/**
+ * Abort rebase
+ */
+async function abortRebase() {
+  return await git.rebase(["--abort"]);
+}
+
+/**
+ * Continue rebase
+ */
+async function continueRebase() {
+  return await git.rebase(["--continue"]);
+}
+
 module.exports = {
   getGitStatus,
   getStagedFiles,
@@ -626,6 +647,9 @@ module.exports = {
   getGitGraph,
   applyPatchString,
   compareBranches,
+  rebase,
+  abortRebase,
+  continueRebase,
 };
 
 /**

@@ -231,12 +231,13 @@ Write ${count} different commit messages, each on a new line. Write only the mes
       .slice(0, count);
 
     if (suggestions.length === 0) {
-      return ["chore: update files", "refactor: improve code", "feat: add changes"];
+      throw new Error("AI returned empty or invalid suggestions");
     }
 
     return suggestions;
   } catch (error) {
-    return ["chore: update files", "refactor: improve code", "feat: add changes"];
+    // Re-throw the error so the UI can handle it
+    throw error;
   }
 }
 

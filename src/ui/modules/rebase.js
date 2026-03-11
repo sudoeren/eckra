@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
-const { getCommitLog, squashCommits, resetToCommit } = require("../../helpers/git");
+const { getCommitLog, squashCommits, rebase, abortRebase, continueRebase, getBranches, getCurrentBranch } = require("../../helpers/git");
 const { s, header, clear, pause } = require("../common");
 
 async function doRebase() {
@@ -14,7 +14,12 @@ async function doRebase() {
       name: "action",
       message: s.muted("Select operation:"),
       choices: [
+        { name: s.primary("  Rebase onto branch"), value: "rebase_onto" },
         { name: s.warning("  Squash last N commits"), value: "squash" },
+        { type: "separator", line: " " },
+        { name: s.error("  Abort Rebase"), value: "abort" },
+        { name: s.success("  Continue Rebase"), value: "continue" },
+        { type: "separator", line: " " },
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: false,
@@ -25,7 +30,69 @@ async function doRebase() {
 
   if (action === "squash") {
     await doSquash();
+  } else if (action === "rebase_onto") {
+    await doRebaseOnto();
+  } else if (action === "abort") {
+    await doAbortRebase();
+  } else if (action === "continue") {
+    await doContinueRebase();
   }
+}
+
+async function doRebaseOnto() {
+  const branches = await getBranches();
+  const current = await getCurrentBranch();
+  const otherBranches = branches.all.filter(b => b !== current);
+
+  if (otherBranches.length === 0) {
+    console.log(s.warning("  No other branches to rebase onto."));
+    await pause();
+    return;
+  }
+
+  const { target } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "target",
+      message: `Rebase ${s.primary(current)} onto:`,
+      choices: otherBranches,
+    }
+  ]);
+
+  const spin = ora({ text: s.muted(` Rebasing onto ${target}...`), spinner: "dots" }).start();
+  
+  try {
+    await rebase(target);
+    spin.succeed(s.success(` Successfully rebased onto ${target}`));
+  } catch (error) {
+    spin.fail(s.error(` Rebase failed: ${error.message}`));
+    console.log(s.muted("\n  You may need to resolve conflicts and then 'Continue Rebase'."));
+  }
+  
+  await pause();
+}
+
+async function doAbortRebase() {
+  const spin = ora({ text: s.muted(" Aborting rebase..."), spinner: "dots" }).start();
+  try {
+    await abortRebase();
+    spin.succeed(s.success(" Rebase aborted."));
+  } catch (error) {
+    spin.fail(s.error(` Failed to abort: ${error.message}`));
+  }
+  await pause();
+}
+
+async function doContinueRebase() {
+  const spin = ora({ text: s.muted(" Continuing rebase..."), spinner: "dots" }).start();
+  try {
+    await continueRebase();
+    spin.succeed(s.success(" Rebase continued."));
+  } catch (error) {
+    spin.fail(s.error(` Failed to continue: ${error.message}`));
+    console.log(s.muted("\n  Are all conflicts resolved and staged?"));
+  }
+  await pause();
 }
 
 async function doSquash() {

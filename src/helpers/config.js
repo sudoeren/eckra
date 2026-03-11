@@ -69,9 +69,12 @@ function getConfig() {
   if (fs.existsSync(CONFIG_FILE)) {
     try {
       const globalData = fs.readFileSync(CONFIG_FILE, "utf8");
-      config = { ...config, ...JSON.parse(globalData) };
+      const parsed = JSON.parse(globalData);
+      if (typeof parsed === "object" && parsed !== null) {
+        config = { ...config, ...parsed };
+      }
     } catch (error) {
-      // Silently ignore errors
+      console.warn(`\n  ⚠️  Warning: Malformed global config file at ${CONFIG_FILE}. Using defaults.\n`);
     }
   }
 
@@ -80,9 +83,12 @@ function getConfig() {
   if (localConfigPath) {
     try {
       const localData = fs.readFileSync(localConfigPath, "utf8");
-      config = { ...config, ...JSON.parse(localData) };
+      const parsed = JSON.parse(localData);
+      if (typeof parsed === "object" && parsed !== null) {
+        config = { ...config, ...parsed };
+      }
     } catch (error) {
-      // Silently ignore errors
+      console.warn(`\n  ⚠️  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`);
     }
   }
 
