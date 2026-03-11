@@ -197,36 +197,80 @@ async function easyWorkflow() {
     return;
   }
 
-  // 2. Generate AI Commit Message
-  const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();
-  try {
-    const { getStagedDiff } = require("../helpers/git");
-    const { generateCommitMessage } = require("../helpers/ai");
-    
-    const diff = await getStagedDiff();
-    const status = await getGitStatus();
-    const message = await generateCommitMessage(diff, status.staged);
-    
-    spinAi.succeed(s.success(` 🤖 AI Message: ${s.text(message)}`));
+  let finalMessage = null;
+  const { getStagedDiff } = require("../helpers/git");
+  const { generateCommitMessage } = require("../helpers/ai");
 
-    // 3. Commit
+  while (!finalMessage) {
+    const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();
+    let aiMessage = "";
+    
+    try {
+      const diff = await getStagedDiff();
+      const status = await getGitStatus();
+      aiMessage = await generateCommitMessage(diff, status.staged);
+      spinAi.stop();
+      
+      console.log(`\n  ${s.primary("🤖 AI Suggestion:")} ${s.text(aiMessage)}\n`);
+
+      const { choice } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "choice",
+          message: s.muted("Action:"),
+          choices: [
+            { name: s.success("  ✓ Looks good (Commit & Push)"), value: "approve" },
+            { name: s.primary("  ↻ Regenerate"), value: "retry" },
+            { name: s.white("  ✎ Edit / Manual"), value: "edit" },
+            { name: s.muted("  ✕ Cancel"), value: "cancel" },
+          ],
+          loop: true,
+        },
+      ]);
+
+      if (choice === "approve") {
+        finalMessage = aiMessage;
+      } else if (choice === "edit") {
+        const { edited } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "edited",
+            message: s.muted("Commit message:"),
+            default: aiMessage,
+            validate: (v) => v.length > 0 || "Message cannot be empty",
+          },
+        ]);
+        finalMessage = edited;
+      } else if (choice === "cancel") {
+        return;
+      }
+      // If retry, loop continues to generate a new message
+    } catch (err) {
+      spinAi.fail(s.error(` AI Error: ${err.message}`));
+      const { manual } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "manual",
+          message: s.muted("Enter commit message manually:"),
+          validate: (v) => v.length > 0 || "Message cannot be empty",
+        },
+      ]);
+      finalMessage = manual;
+    }
+  }
+
+  // 3. Commit & Push
+  try {
     const spinCommit = ora({ text: s.muted(" Creating commit..."), spinner: "dots" }).start();
-    const result = await createCommit(message);
+    const result = await createCommit(finalMessage);
     spinCommit.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
 
-    // 4. Push
-    const spinPush = ora({ text: s.muted(" Pushing to remote..."), spinner: "dots" }).start();
-    await sync().doPush(true); // Added true for silent/auto mode if supported, or just call it
-    spinPush.succeed(s.success(" Successfully pushed to remote!"));
+    // 4. Push (Silent/Auto mode)
+    await sync().doPush(true);
     
     console.log(s.success("\n  ✨ Workflow complete!\n"));
   } catch (err) {
-    spinAi.stop();
     console.log(s.error(`\n  ❌ Error: ${err.message}`));
-    
-    // Fallback to manual commit if AI fails but we have staged files
-    console.log(s.muted("  Falling back to interactive commit...\n"));
-    await commit().doCommit();
   }
 }
 
