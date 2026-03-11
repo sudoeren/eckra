@@ -117,7 +117,7 @@ async function startApp() {
         name: "action",
         message: s.muted("What would you like to do?"),
         choices,
-        pageSize: 15,
+        pageSize: 20,
         loop: true,
         },
         ]);

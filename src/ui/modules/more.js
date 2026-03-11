@@ -48,7 +48,7 @@ async function doMore() {
         { name: s.text("  ℹ About"), value: "about" },
         { name: s.muted("  ← Main Menu"), value: "back" },
       ],
-      pageSize: 15,
+      pageSize: 20,
       loop: true,
     },
   ]);
