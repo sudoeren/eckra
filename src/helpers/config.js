@@ -57,10 +57,14 @@ function findLocalConfig(startDir = process.cwd()) {
   return null;
 }
 
+let _cachedConfig = null;
+
 /**
  * Get current configuration
  */
 function getConfig() {
+  if (_cachedConfig) return _cachedConfig;
+
   ensureConfigDir();
 
   let config = { ...DEFAULT_CONFIG };
@@ -92,6 +96,7 @@ function getConfig() {
     }
   }
 
+  _cachedConfig = config;
   return config;
 }
 
@@ -105,6 +110,7 @@ function saveConfig(config) {
   const newConfig = { ...currentConfig, ...config };
 
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2));
+  _cachedConfig = newConfig; // Update cache
   return newConfig;
 }
 
@@ -114,6 +120,7 @@ function saveConfig(config) {
 function resetConfig() {
   ensureConfigDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
+  _cachedConfig = { ...DEFAULT_CONFIG }; // Update cache
   return DEFAULT_CONFIG;
 }
 
@@ -131,10 +138,15 @@ function isConfigured() {
   return fs.existsSync(CONFIG_FILE);
 }
 
+function resetConfigCache() {
+  _cachedConfig = null;
+}
+
 module.exports = {
   getConfig,
   saveConfig,
   resetConfig,
+  resetConfigCache, // Exported for testing
   getConfigPath,
   isConfigured,
   DEFAULT_CONFIG,

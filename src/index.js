@@ -1,15 +1,11 @@
 #!/usr/bin/env node
 
 const { Command } = require("commander");
-const {
-  startApp,
-  quickStatus,
-  quickCommit,
-  quickPush,
-  easyWorkflow,
-} = require("./ui/app");
 const { getGitStatus } = require("./helpers/git");
 const chalk = require("chalk");
+
+// Lazy load app functions
+const app = () => require("./ui/app");
 
 const program = new Command();
 
@@ -27,7 +23,7 @@ async function checkGitRepo() {
 program
   .name("eckra")
   .description("AI-powered Git management CLI")
-  .version("1.1.7");
+  .version("1.1.8");
 
 program
   .command("easy")
@@ -35,7 +31,7 @@ program
   .description("Full workflow: Stage all, AI commit, and Push")
   .action(async () => {
     if (await checkGitRepo()) {
-      await easyWorkflow();
+      await app().easyWorkflow();
     }
   });
 
@@ -45,7 +41,7 @@ program
   .description("Start interactive interface")
   .action(async () => {
     if (await checkGitRepo()) {
-      await startApp();
+      await app().startApp();
     }
   });
 
@@ -54,7 +50,7 @@ program
   .description("Show Git status")
   .action(async () => {
     if (await checkGitRepo()) {
-      await quickStatus();
+      await app().quickStatus();
     }
   });
 
@@ -65,7 +61,7 @@ program
   .option("-m, --message <message>", "Manual commit message")
   .action(async (options) => {
     if (await checkGitRepo()) {
-      await quickCommit(options.message);
+      await app().quickCommit(options.message);
     }
   });
 
@@ -75,14 +71,14 @@ program
   .description("Push operation")
   .action(async () => {
     if (await checkGitRepo()) {
-      await quickPush();
+      await app().quickPush();
     }
   });
 
 // Default - start interactive
 program.action(async () => {
   if (await checkGitRepo()) {
-    await startApp();
+    await app().startApp();
   }
 });
 

@@ -1,20 +1,27 @@
 const simpleGit = require("simple-git");
 const path = require("path");
 
-const git = simpleGit();
+let _git = null;
+
+function getGit() {
+  if (!_git) {
+    _git = simpleGit();
+  }
+  return _git;
+}
 
 /**
  * Get current git status
  */
 async function getGitStatus() {
-  return await git.status();
+  return await getGit().status();
 }
 
 /**
  * Get staged files
  */
 async function getStagedFiles() {
-  const status = await git.status();
+  const status = await getGit().status();
   return status.staged;
 }
 
@@ -22,7 +29,7 @@ async function getStagedFiles() {
  * Get unstaged files (modified but not staged)
  */
 async function getUnstagedFiles() {
-  const status = await git.status();
+  const status = await getGit().status();
   return {
     modified: status.modified,
     deleted: status.deleted,
@@ -35,14 +42,14 @@ async function getUnstagedFiles() {
  */
 async function stageFiles(files) {
   if (files.length === 0) return;
-  await git.add(files);
+  await getGit().add(files);
 }
 
 /**
  * Stage all files
  */
 async function stageAll() {
-  await git.add(".");
+  await getGit().add(".");
 }
 
 /**
@@ -50,35 +57,35 @@ async function stageAll() {
  */
 async function unstageFiles(files) {
   if (files.length === 0) return;
-  await git.reset(["HEAD", ...files]);
+  await getGit().reset(["HEAD", ...files]);
 }
 
 /**
  * Unstage all files
  */
 async function unstageAll() {
-  await git.reset(["HEAD"]);
+  await getGit().reset(["HEAD"]);
 }
 
 /**
  * Create a commit with message
  */
 async function createCommit(message) {
-  return await git.commit(message);
+  return await getGit().commit(message);
 }
 
 /**
  * Get diff for staged files
  */
 async function getStagedDiff() {
-  return await git.diff(["--cached"]);
+  return await getGit().diff(["--cached"]);
 }
 
 /**
  * Get diff for unstaged files
  */
 async function getUnstagedDiff() {
-  return await git.diff();
+  return await getGit().diff();
 }
 
 /**
@@ -86,39 +93,39 @@ async function getUnstagedDiff() {
  */
 async function getFileDiff(file, staged = false) {
   if (staged) {
-    return await git.diff(["--cached", file]);
+    return await getGit().diff(["--cached", file]);
   }
-  return await git.diff([file]);
+  return await getGit().diff([file]);
 }
 
 /**
  * Push to remote
  */
 async function pushToRemote(remote = "origin", branch = null) {
-  const currentBranch = branch || (await git.branch()).current;
-  return await git.push(remote, currentBranch);
+  const currentBranch = branch || (await getGit().branch()).current;
+  return await getGit().push(remote, currentBranch);
 }
 
 /**
  * Pull from remote
  */
 async function pullFromRemote(remote = "origin", branch = null) {
-  const currentBranch = branch || (await git.branch()).current;
-  return await git.pull(remote, currentBranch);
+  const currentBranch = branch || (await getGit().branch()).current;
+  return await getGit().pull(remote, currentBranch);
 }
 
 /**
  * Get all branches
  */
 async function getBranches() {
-  return await git.branch(["-a"]);
+  return await getGit().branch(["-a"]);
 }
 
 /**
  * Get current branch
  */
 async function getCurrentBranch() {
-  const branches = await git.branch();
+  const branches = await getGit().branch();
   return branches.current;
 }
 
@@ -126,14 +133,14 @@ async function getCurrentBranch() {
  * Create new branch
  */
 async function createBranch(branchName) {
-  return await git.checkoutLocalBranch(branchName);
+  return await getGit().checkoutLocalBranch(branchName);
 }
 
 /**
  * Switch to branch
  */
 async function switchBranch(branchName) {
-  return await git.checkout(branchName);
+  return await getGit().checkout(branchName);
 }
 
 /**
@@ -141,35 +148,35 @@ async function switchBranch(branchName) {
  */
 async function deleteBranch(branchName, force = false) {
   const flag = force ? "-D" : "-d";
-  return await git.branch([flag, branchName]);
+  return await getGit().branch([flag, branchName]);
 }
 
 /**
  * Merge branch into current
  */
 async function mergeBranch(branchName) {
-  return await git.merge([branchName]);
+  return await getGit().merge([branchName]);
 }
 
 /**
  * Get commit log
  */
 async function getCommitLog(count = 10) {
-  return await git.log(["-n", count.toString()]);
+  return await getGit().log(["-n", count.toString()]);
 }
 
 /**
  * Get remote info
  */
 async function getRemotes() {
-  return await git.getRemotes(true);
+  return await getGit().getRemotes(true);
 }
 
 /**
  * Check if there are conflicts
  */
 async function hasConflicts() {
-  const status = await git.status();
+  const status = await getGit().status();
   return status.conflicted.length > 0;
 }
 
@@ -177,7 +184,7 @@ async function hasConflicts() {
  * Get conflicted files
  */
 async function getConflictedFiles() {
-  const status = await git.status();
+  const status = await getGit().status();
   return status.conflicted;
 }
 
@@ -186,93 +193,93 @@ async function getConflictedFiles() {
  */
 async function stashChanges(message = null) {
   if (message) {
-    return await git.stash(["push", "-m", message]);
+    return await getGit().stash(["push", "-m", message]);
   }
-  return await git.stash();
+  return await getGit().stash();
 }
 
 /**
  * Pop stash
  */
 async function popStash(index = 0) {
-  return await git.stash(["pop", `stash@{${index}}`]);
+  return await getGit().stash(["pop", `stash@{${index}}`]);
 }
 
 /**
  * Apply stash (keep it in list)
  */
 async function applyStash(index = 0) {
-  return await git.stash(["apply", `stash@{${index}}`]);
+  return await getGit().stash(["apply", `stash@{${index}}`]);
 }
 
 /**
  * Drop stash
  */
 async function dropStash(index = 0) {
-  return await git.stash(["drop", `stash@{${index}}`]);
+  return await getGit().stash(["drop", `stash@{${index}}`]);
 }
 
 /**
  * List stashes
  */
 async function listStashes() {
-  return await git.stashList();
+  return await getGit().stashList();
 }
 
 /**
  * Discard changes in file
  */
 async function discardChanges(file) {
-  return await git.checkout(["--", file]);
+  return await getGit().checkout(["--", file]);
 }
 
 /**
  * Reset to specific commit
  */
 async function resetToCommit(commitHash, mode = "mixed") {
-  return await git.reset([`--${mode}`, commitHash]);
+  return await getGit().reset([`--${mode}`, commitHash]);
 }
 
 /**
  * Get file content at specific commit
  */
 async function getFileAtCommit(file, commitHash) {
-  return await git.show([`${commitHash}:${file}`]);
+  return await getGit().show([`${commitHash}:${file}`]);
 }
 
 /**
  * Initialize git repository
  */
 async function initRepo() {
-  return await git.init();
+  return await getGit().init();
 }
 
 /**
  * Add remote
  */
 async function addRemote(name, url) {
-  return await git.addRemote(name, url);
+  return await getGit().addRemote(name, url);
 }
 
 /**
  * Fetch from remote
  */
 async function fetchRemote(remote = "origin") {
-  return await git.fetch(remote);
+  return await getGit().fetch(remote);
 }
 
 /**
  * Undo last commit (soft reset - keeps changes staged)
  */
 async function undoLastCommit() {
-  return await git.reset(["--soft", "HEAD~1"]);
+  return await getGit().reset(["--soft", "HEAD~1"]);
 }
 
 /**
  * Get last commit info
  */
 async function getLastCommit() {
-  const log = await git.log(["-1"]);
+  const log = await getGit().log(["-1"]);
   return log.latest;
 }
 
@@ -280,14 +287,14 @@ async function getLastCommit() {
  * Amend last commit with new message
  */
 async function amendCommit(message) {
-  return await git.commit(message, ["--amend"]);
+  return await getGit().commit(message, ["--amend"]);
 }
 
 /**
  * List all tags
  */
 async function listTags() {
-  return await git.tags();
+  return await getGit().tags();
 }
 
 /**
@@ -295,82 +302,82 @@ async function listTags() {
  */
 async function createTag(tagName, message = null) {
   if (message) {
-    return await git.addAnnotatedTag(tagName, message);
+    return await getGit().addAnnotatedTag(tagName, message);
   }
-  return await git.addTag(tagName);
+  return await getGit().addTag(tagName);
 }
 
 /**
  * Delete a tag
  */
 async function deleteTag(tagName) {
-  return await git.tag(["-d", tagName]);
+  return await getGit().tag(["-d", tagName]);
 }
 
 /**
  * Push tags to remote
  */
 async function pushTags() {
-  return await git.pushTags();
+  return await getGit().pushTags();
 }
 
 /**
  * Search commits by message
  */
 async function searchCommits(query, count = 20) {
-  return await git.log(["--grep=" + query, "-n", count.toString(), "--all"]);
+  return await getGit().log(["--grep=" + query, "-n", count.toString(), "--all"]);
 }
 
 /**
  * Search commits by author
  */
 async function searchCommitsByAuthor(author, count = 20) {
-  return await git.log(["--author=" + author, "-n", count.toString()]);
+  return await getGit().log(["--author=" + author, "-n", count.toString()]);
 }
 
 /**
  * Cherry-pick a commit
  */
 async function cherryPick(commitHash) {
-  return await git.raw(["cherry-pick", commitHash]);
+  return await getGit().raw(["cherry-pick", commitHash]);
 }
 
 /**
  * Get commits from other branches (not in current)
  */
 async function getOtherBranchCommits(branch, count = 20) {
-  const current = (await git.branch()).current;
-  return await git.log([`${current}..${branch}`, "-n", count.toString()]);
+  const current = (await getCurrentBranch());
+  return await getGit().log([`${current}..${branch}`, "-n", count.toString()]);
 }
 
 /**
  * Remove a remote
  */
 async function removeRemote(name) {
-  return await git.removeRemote(name);
+  return await getGit().removeRemote(name);
 }
 
 /**
  * Rename a remote
  */
 async function renameRemote(oldName, newName) {
-  return await git.raw(["remote", "rename", oldName, newName]);
+  return await getGit().raw(["remote", "rename", oldName, newName]);
 }
 
 /**
  * Set remote URL
  */
 async function setRemoteUrl(name, url) {
-  return await git.raw(["remote", "set-url", name, url]);
+  return await getGit().raw(["remote", "set-url", name, url]);
 }
 
 /**
  * Get repository stats
  */
 async function getRepoStats() {
-  const log = await git.log(["--all"]);
-  const branches = await git.branch(["-a"]);
-  const tags = await git.tags();
+  const log = await getGit().log(["--all"]);
+  const branches = await getGit().branch(["-a"]);
+  const tags = await getGit().tags();
 
   // Count commits by author
   const authorStats = {};
@@ -398,29 +405,29 @@ async function getRepoStats() {
  * Squash last N commits
  */
 async function squashCommits(count, message) {
-  await git.reset(["--soft", `HEAD~${count}`]);
-  return await git.commit(message);
+  await getGit().reset(["--soft", `HEAD~${count}`]);
+  return await getGit().commit(message);
 }
 
 /**
  * Reword a commit (only works for last commit)
  */
 async function rewordLastCommit(message) {
-  return await git.commit(message, ["--amend", "-m", message]);
+  return await getGit().commit(message, ["--amend", "-m", message]);
 }
 
 /**
  * Drop last commit (hard reset)
  */
 async function dropLastCommit() {
-  return await git.reset(["--hard", "HEAD~1"]);
+  return await getGit().reset(["--hard", "HEAD~1"]);
 }
 
 /**
  * Get conflicted files with content
  */
 async function getConflictDetails() {
-  const status = await git.status();
+  const status = await getGit().status();
   return status.conflicted;
 }
 
@@ -428,30 +435,30 @@ async function getConflictDetails() {
  * Accept ours version for a file
  */
 async function acceptOurs(file) {
-  await git.checkout(["--ours", file]);
-  await git.add(file);
+  await getGit().checkout(["--ours", file]);
+  await getGit().add(file);
 }
 
 /**
  * Accept theirs version for a file
  */
 async function acceptTheirs(file) {
-  await git.checkout(["--theirs", file]);
-  await git.add(file);
+  await getGit().checkout(["--theirs", file]);
+  await getGit().add(file);
 }
 
 /**
  * Abort merge
  */
 async function abortMerge() {
-  return await git.merge(["--abort"]);
+  return await getGit().merge(["--abort"]);
 }
 
 /**
  * Get blame for a file
  */
 async function getBlame(file) {
-  const result = await git.raw(["blame", "--line-porcelain", file]);
+  const result = await getGit().raw(["blame", "--line-porcelain", file]);
   const lines = result.split("\n");
   const blameData = [];
   let current = {};
@@ -480,7 +487,7 @@ async function getBlame(file) {
  * Get tracked files
  */
 async function getTrackedFiles() {
-  const result = await git.raw(["ls-files"]);
+  const result = await getGit().raw(["ls-files"]);
   return result.split("\n").filter((f) => f.length > 0);
 }
 
@@ -488,7 +495,7 @@ async function getTrackedFiles() {
  * List worktrees
  */
 async function listWorktrees() {
-  const result = await git.raw(["worktree", "list", "--porcelain"]);
+  const result = await getGit().raw(["worktree", "list", "--porcelain"]);
   const worktrees = [];
   let current = {};
 
@@ -513,28 +520,28 @@ async function listWorktrees() {
  * Add a worktree
  */
 async function addWorktree(path, branch) {
-  return await git.raw(["worktree", "add", path, branch]);
+  return await getGit().raw(["worktree", "add", path, branch]);
 }
 
 /**
  * Add a worktree with new branch
  */
 async function addWorktreeNewBranch(path, newBranch) {
-  return await git.raw(["worktree", "add", "-b", newBranch, path]);
+  return await getGit().raw(["worktree", "add", "-b", newBranch, path]);
 }
 
 /**
  * Remove a worktree
  */
 async function removeWorktree(path) {
-  return await git.raw(["worktree", "remove", path]);
+  return await getGit().raw(["worktree", "remove", path]);
 }
 
 /**
  * Get git graph log
  */
 async function getGitGraph(count = 20) {
-  return await git.raw([
+  return await getGit().raw([
     "log",
     "--graph",
     "--oneline",
@@ -549,9 +556,9 @@ async function getGitGraph(count = 20) {
  * Compare two branches
  */
 async function compareBranches(base, target) {
-  const ahead = await git.raw(["rev-list", "--count", `${base}..${target}`]);
-  const behind = await git.raw(["rev-list", "--count", `${target}..${base}`]);
-  const diffStat = await git.raw(["diff", "--shortstat", base, target]);
+  const ahead = await getGit().raw(["rev-list", "--count", `${base}..${target}`]);
+  const behind = await getGit().raw(["rev-list", "--count", `${target}..${base}`]);
+  const diffStat = await getGit().raw(["diff", "--shortstat", base, target]);
   
   return {
     ahead: parseInt(ahead.trim()),
@@ -564,28 +571,28 @@ async function compareBranches(base, target) {
  * Rebase current branch onto another branch
  */
 async function rebase(branch) {
-  return await git.rebase([branch]);
+  return await getGit().rebase([branch]);
 }
 
 /**
  * Abort rebase
  */
 async function abortRebase() {
-  return await git.rebase(["--abort"]);
+  return await getGit().rebase(["--abort"]);
 }
 
 /**
  * Continue rebase
  */
 async function continueRebase() {
-  return await git.rebase(["--continue"]);
+  return await getGit().rebase(["--continue"]);
 }
 
 /**
  * List submodules
  */
 async function listSubmodules() {
-  const result = await git.raw(["submodule", "status"]);
+  const result = await getGit().raw(["submodule", "status"]);
   const submodules = [];
   if (!result) return submodules;
 
@@ -605,44 +612,60 @@ async function listSubmodules() {
  * Initialize submodules
  */
 async function initSubmodules() {
-  return await git.submoduleInit();
+  return await getGit().submoduleInit();
 }
 
 /**
  * Update submodules
  */
 async function updateSubmodules() {
-  return await git.submoduleUpdate(["--init", "--recursive"]);
+  return await getGit().submoduleUpdate(["--init", "--recursive"]);
 }
 
 /**
  * Accept both versions for a file (combine)
  */
 async function acceptBoth(file) {
-  // Use git show to get both versions and combine them (simplified)
-  // Real implementation is complex, but we can at least show what we're doing
-  // For now, we'll use a raw command if available, or just use ours and then theirs
-  // A common way is to use git merge-file
   const fs = require("fs");
-  const path = require("path");
   const projectRoot = process.cwd();
   const filePath = path.join(projectRoot, file);
 
   try {
-    // This is a simplified "accept both" that just keeps both markers for manual editing
-    // or we can try to use git's internal merging if possible.
-    // For a CLI, it's safer to just let the user know we're keeping both.
-    await git.checkout(["--ours", file]);
+    await getGit().checkout(["--ours", file]);
     const ours = fs.readFileSync(filePath, "utf8");
-    await git.checkout(["--theirs", file]);
+    await getGit().checkout(["--theirs", file]);
     const theirs = fs.readFileSync(filePath, "utf8");
     
     fs.writeFileSync(filePath, `<<<<<<< OURS\n${ours}\n=======\n${theirs}\n>>>>>>> THEIRS`);
-    await git.add(file);
+    await getGit().add(file);
     return true;
   } catch (error) {
     throw new Error("Failed to combine changes: " + error.message);
   }
+}
+
+/**
+ * Apply a patch string to the index (staged area)
+ */
+async function applyPatchString(patchContent) {
+  const fs = require("fs");
+  const os = require("os");
+  
+  const tempFile = path.join(os.tmpdir(), `eckra_patch_${Date.now()}.diff`);
+  
+  try {
+    fs.writeFileSync(tempFile, patchContent);
+    await getGit().raw(["apply", "--cached", "--ignore-space-change", "--whitespace=nowarn", tempFile]);
+    fs.unlinkSync(tempFile);
+    return true;
+  } catch (error) {
+    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    throw new Error("Failed to apply patch: " + error.message);
+  }
+}
+
+function resetGitCache() {
+  _git = null;
 }
 
 module.exports = {
@@ -718,30 +741,5 @@ module.exports = {
   listSubmodules,
   initSubmodules,
   updateSubmodules,
+  resetGitCache,
 };
-
-/**
- * Apply a patch string to the index (staged area)
- */
-async function applyPatchString(patchContent) {
-  const fs = require("fs");
-  const path = require("path");
-  const os = require("os");
-  
-  const tempFile = path.join(os.tmpdir(), `eckra_patch_${Date.now()}.diff`);
-  
-  try {
-    fs.writeFileSync(tempFile, patchContent);
-    // --cached ensures we only apply to index (staging area), keeping working dir as is (if consistent)
-    // Actually for partial staging we usually want to take working dir changes and put them to stage.
-    // git apply --cached expects the patch to be relative to the index.
-    
-    await git.raw(["apply", "--cached", "--ignore-space-change", "--whitespace=nowarn", tempFile]);
-    
-    fs.unlinkSync(tempFile);
-    return true;
-  } catch (error) {
-    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-    throw new Error("Failed to apply patch: " + error.message);
-  }
-}

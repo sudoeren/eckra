@@ -27,15 +27,16 @@ const {
   pause
 } = require("./common");
 
-const { doStatus, getStatusInfo, statusLine } = require("./modules/status");
-const { doStage } = require("./modules/stage");
-const { doCommit } = require("./modules/commit");
-const { doPush, doPull } = require("./modules/sync");
-const { doMore } = require("./modules/more");
-const { doConflict } = require("./modules/conflict");
-const { doBranch } = require("./modules/branch");
-const { doLog } = require("./modules/log");
-const { doOnboarding } = require("./modules/onboarding"); // Import onboarding
+// Lazy load modules
+const status = () => require("./modules/status");
+const stage = () => require("./modules/stage");
+const commit = () => require("./modules/commit");
+const sync = () => require("./modules/sync");
+const more = () => require("./modules/more");
+const conflict = () => require("./modules/conflict");
+const branch = () => require("./modules/branch");
+const log = () => require("./modules/log");
+const onboarding = () => require("./modules/onboarding");
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN APP
@@ -44,7 +45,7 @@ const { doOnboarding } = require("./modules/onboarding"); // Import onboarding
 async function startApp() {
   // Onboarding check
   if (!configHelper.isConfigured()) {
-    await doOnboarding();
+    await onboarding().doOnboarding();
   }
 
   let running = true;
@@ -53,8 +54,8 @@ async function startApp() {
     clear();
     header();
 
-    const info = await getStatusInfo();
-    console.log(statusLine(info));
+    const info = await status().getStatusInfo();
+    console.log(status().statusLine(info));
 
     if (!info) {
       console.log(s.muted("  You are not in a Git repository."));
@@ -124,31 +125,31 @@ async function startApp() {
 
     switch (action) {
       case "stage":
-        await doStage(info);
+        await stage().doStage(info);
         break;
       case "commit":
-        await doCommit(info);
+        await commit().doCommit(info);
         break;
       case "push":
-        await doPush();
+        await sync().doPush();
         break;
       case "pull":
-        await doPull();
+        await sync().doPull();
         break;
       case "status":
-        await doStatus();
+        await status().doStatus();
         break;
       case "branch":
-        await doBranch();
+        await branch().doBranch();
         break;
       case "log":
-        await doLog();
+        await log().doLog();
         break;
       case "more":
-        await doMore();
+        await more().doMore();
         break;
       case "conflict":
-        await doConflict();
+        await conflict().doConflict();
         break;
       case "exit":
         running = false;
@@ -165,22 +166,22 @@ async function startApp() {
 // ═══════════════════════════════════════════════════════════════
 
 async function quickStatus() {
-  await doStatus();
+  await status().doStatus();
 }
 
 async function quickCommit(message) {
   if (message) {
-    const status = await getGitStatus();
-    if (status.staged.length === 0) await stageAll();
+    const statusResult = await getGitStatus();
+    if (statusResult.staged.length === 0) await stageAll();
     await createCommit(message);
     console.log(s.success("\n  ✓ Commit done!\n"));
   } else {
-    await doCommit();
+    await commit().doCommit();
   }
 }
 
 async function quickPush() {
-  await doPush();
+  await sync().doPush();
 }
 
 async function easyWorkflow() {
@@ -198,7 +199,7 @@ async function easyWorkflow() {
 
   // 2. Commit with AI (or direct commit if we have info)
   console.log(s.muted("\n  🤖 Generating AI commit message..."));
-  await doCommit();
+  await commit().doCommit();
 
   // 3. Push is already part of doCommit logic (asks user), but let's make it automatic for easy mode
   // Actually, doCommit already has a prompt for push at the end.

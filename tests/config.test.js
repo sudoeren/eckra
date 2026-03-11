@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getConfig, DEFAULT_CONFIG } = require('../src/helpers/config');
+const { getConfig, DEFAULT_CONFIG, resetConfigCache } = require('../src/helpers/config');
 
 // Mock fs to avoid touching real files
 jest.mock('fs');
@@ -13,6 +13,7 @@ describe('Config Helper', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
+    resetConfigCache();
     
     // Mock os.homedir
     jest.spyOn(os, 'homedir').mockReturnValue(MOCK_HOMEDIR);

@@ -33,20 +33,26 @@ const themes = {
   },
 };
 
+let _isDark = null;
 function isDarkMode() {
+  if (_isDark !== null) return _isDark;
+  
   const { execSync } = require("child_process");
   
   try {
     if (process.platform === "win32") {
       // Check Windows Registry for AppsUseLightTheme
-      const command = 'powershell.exe -Command "Get-ItemProperty -Path HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize -Name AppsUseLightTheme"';
+      // Using reg query is FASTER than powershell
+      const command = 'reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme';
       const output = execSync(command, { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
-      // If AppsUseLightTheme is 0, it is Dark Mode
-      return output.includes("AppsUseLightTheme : 0");
+      // If AppsUseLightTheme is 0x0, it is Dark Mode
+      _isDark = output.includes("0x0");
+      return _isDark;
     } else if (process.platform === "darwin") {
       // Check macOS AppleInterfaceStyle
       const output = execSync("defaults read -g AppleInterfaceStyle", { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
-      return output.trim() === "Dark";
+      _isDark = output.trim() === "Dark";
+      return _isDark;
     }
   } catch (e) {
     // If command fails, fallback to dark
@@ -57,13 +63,20 @@ function isDarkMode() {
   if (env.COLORFGBG) {
     const parts = env.COLORFGBG.split(";");
     const bg = parts[parts.length - 1];
-    if (bg) return parseInt(bg) < 8;
+    if (bg) {
+      _isDark = parseInt(bg) < 8;
+      return _isDark;
+    }
   }
 
-  return true; // Default to dark
+  _isDark = true; // Default to dark
+  return _isDark;
 }
 
+let _cachedTheme = null;
 function getTheme() {
+  if (_cachedTheme) return _cachedTheme;
+
   try {
     const config = getConfig();
     let selectedTheme = config.theme || "auto";
@@ -72,7 +85,8 @@ function getTheme() {
       selectedTheme = isDarkMode() ? "dark" : "light";
     }
 
-    return themes[selectedTheme] || themes.dark;
+    _cachedTheme = themes[selectedTheme] || themes.dark;
+    return _cachedTheme;
   } catch {
     return themes.dark;
   }

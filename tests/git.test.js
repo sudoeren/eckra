@@ -1,5 +1,16 @@
 const simpleGit = require('simple-git');
-const gitHelper = require('../src/helpers/git');
+const { 
+  getGitStatus, 
+  stageAll, 
+  createCommit, 
+  getStagedDiff, 
+  getCurrentBranch, 
+  rebase, 
+  cherryPick, 
+  listSubmodules, 
+  abortRebase,
+  resetGitCache
+} = require('../src/helpers/git');
 
 jest.mock('simple-git');
 
@@ -7,6 +18,7 @@ describe('Git Helper', () => {
   let mockGit;
 
   beforeEach(() => {
+    resetGitCache();
     mockGit = {
       status: jest.fn(),
       add: jest.fn(),
@@ -42,53 +54,53 @@ describe('Git Helper', () => {
     const mockStatus = { current: 'main', staged: [], modified: [] };
     mockGit.status.mockResolvedValue(mockStatus);
 
-    const status = await gitHelper.getGitStatus();
+    const status = await getGitStatus();
 
     expect(status).toBe(mockStatus);
     expect(mockGit.status).toHaveBeenCalled();
   });
 
   test('stageAll should call git.add with "."', async () => {
-    await gitHelper.stageAll();
+    await stageAll();
     expect(mockGit.add).toHaveBeenCalledWith('.');
   });
 
   test('createCommit should call git.commit with message', async () => {
     const message = 'feat: test commit';
-    await gitHelper.createCommit(message);
+    await createCommit(message);
     expect(mockGit.commit).toHaveBeenCalledWith(message);
   });
 
   test('getStagedDiff should call git.diff with --cached', async () => {
-    await gitHelper.getStagedDiff();
+    await getStagedDiff();
     expect(mockGit.diff).toHaveBeenCalledWith(['--cached']);
   });
 
   test('getCurrentBranch should return current branch name', async () => {
     mockGit.branch.mockResolvedValue({ current: 'feature-abc' });
-    const branch = await gitHelper.getCurrentBranch();
+    const branch = await getCurrentBranch();
     expect(branch).toBe('feature-abc');
   });
 
   test('rebase should call git.rebase with branch', async () => {
-    await gitHelper.rebase('main');
+    await rebase('main');
     expect(mockGit.rebase).toHaveBeenCalledWith(['main']);
   });
 
   test('cherryPick should call git.raw with cherry-pick and hash', async () => {
-    await gitHelper.cherryPick('abc1234');
+    await cherryPick('abc1234');
     expect(mockGit.raw).toHaveBeenCalledWith(['cherry-pick', 'abc1234']);
   });
 
   test('listSubmodules should call git.raw with submodule status', async () => {
     mockGit.raw.mockResolvedValue(' 1234567 path/to/sub (heads/main)');
-    const submodules = await gitHelper.listSubmodules();
+    const submodules = await listSubmodules();
     expect(mockGit.raw).toHaveBeenCalledWith(['submodule', 'status']);
     expect(submodules[0].path).toBe('path/to/sub');
   });
 
   test('abortRebase should call git.rebase with --abort', async () => {
-    await gitHelper.abortRebase();
+    await abortRebase();
     expect(mockGit.rebase).toHaveBeenCalledWith(['--abort']);
   });
 });
