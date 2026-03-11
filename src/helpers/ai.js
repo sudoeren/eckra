@@ -4,7 +4,12 @@ const { getConfig } = require("./config");
 /**
  * Call the selected AI provider
  */
-async function callProvider(provider, messages, temperature = 0.3, max_tokens = 100) {
+async function callProvider(
+  provider,
+  messages,
+  temperature = 0.3,
+  max_tokens = 100,
+) {
   const config = getConfig();
   let url, headers, body;
 
@@ -13,7 +18,7 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       url = "https://api.openai.com/v1/chat/completions";
       headers = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.openaiApiKey}`,
+        Authorization: `Bearer ${config.openaiApiKey}`,
       };
       body = {
         model: config.openaiModel || "gpt-4o",
@@ -31,8 +36,8 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
         "anthropic-version": "2023-06-01",
       };
       // Anthropic messages format is slightly different (system is a separate field)
-      const systemMessage = messages.find(m => m.role === "system")?.content;
-      const userMessages = messages.filter(m => m.role !== "system");
+      const systemMessage = messages.find((m) => m.role === "system")?.content;
+      const userMessages = messages.filter((m) => m.role !== "system");
       body = {
         model: config.anthropicModel || "claude-3-5-sonnet-20240620",
         system: systemMessage,
@@ -57,7 +62,7 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       url = "https://openrouter.ai/api/v1/chat/completions";
       headers = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.openrouterApiKey}`,
+        Authorization: `Bearer ${config.openrouterApiKey}`,
         "HTTP-Referer": "https://github.com/eckra/eckra",
         "X-Title": "Eckra",
       };
@@ -74,12 +79,14 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
       headers = { "Content-Type": "application/json" };
       // Gemini uses a different message format
       const geminiContents = messages
-        .filter(m => m.role !== "system")
-        .map(m => ({
+        .filter((m) => m.role !== "system")
+        .map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         }));
-      const geminiSystemInstruction = messages.find(m => m.role === "system")?.content;
+      const geminiSystemInstruction = messages.find(
+        (m) => m.role === "system",
+      )?.content;
       body = {
         contents: geminiContents,
         generationConfig: {
@@ -108,7 +115,7 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
 
   try {
     const response = await axios.post(url, body, { headers, timeout: 30000 });
-    
+
     let content = "";
     if (provider === "anthropic") {
       content = response.data.content[0].text;
@@ -123,7 +130,9 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
     return (content || "").toString().trim();
   } catch (error) {
     if (error.response) {
-      throw new Error(`AI Provider Error (${provider}): ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(
+        `AI Provider Error (${provider}): ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+      );
     }
     throw error;
   }
@@ -134,8 +143,8 @@ async function callProvider(provider, messages, temperature = 0.3, max_tokens = 
  */
 async function generateCommitMessage(diff, filesList) {
   const config = getConfig();
-  const instructionText = config.aiInstruction 
-    ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n` 
+  const instructionText = config.aiInstruction
+    ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n`
     : "";
 
   const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a short, descriptive commit message in Conventional Commits format.
@@ -161,7 +170,8 @@ Write only the commit message, do not add any other explanation. The message sho
   const messages = [
     {
       role: "system",
-      content: "You are a helpful assistant that generates concise and meaningful Git commit messages following Conventional Commits specification.",
+      content:
+        "You are a helpful assistant that generates concise and meaningful Git commit messages following Conventional Commits specification.",
     },
     {
       role: "user",
@@ -170,7 +180,7 @@ Write only the commit message, do not add any other explanation. The message sho
   ];
 
   let message = await callProvider(config.aiProvider, messages, 0.3, 100);
-  
+
   // Clean up the message
   message = message.replace(/^["']|["']$/g, "");
   message = message.split("\n")[0]; // Take only first line
@@ -180,10 +190,15 @@ Write only the commit message, do not add any other explanation. The message sho
 /**
  * Generate multiple commit message suggestions
  */
-async function generateCommitSuggestions(diff, filesList, count = 3, instruction = null) {
+async function generateCommitSuggestions(
+  diff,
+  filesList,
+  count = 3,
+  instruction = null,
+) {
   const config = getConfig();
   const activeInstruction = instruction || config.aiInstruction;
-  
+
   let instructionText = "";
   if (activeInstruction) {
     instructionText = `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`;
@@ -202,7 +217,8 @@ Write ${count} different commit messages, each on a new line. Write only the mes
   const messages = [
     {
       role: "system",
-      content: "You are a helpful assistant that generates concise and meaningful Git commit messages.",
+      content:
+        "You are a helpful assistant that generates concise and meaningful Git commit messages.",
     },
     {
       role: "user",
@@ -212,7 +228,7 @@ Write ${count} different commit messages, each on a new line. Write only the mes
 
   try {
     const content = await callProvider(config.aiProvider, messages, 0.7, 200);
-    
+
     // Clean backtick blocks
     let cleanedContent = content.replace(/```[\s\S]*?```/g, "");
     cleanedContent = cleanedContent.replace(/`/g, "");
@@ -231,13 +247,85 @@ Write ${count} different commit messages, each on a new line. Write only the mes
       .slice(0, count);
 
     if (suggestions.length === 0) {
+      // Fallback: try returning the raw content as a single suggestion
+      const raw = content.trim();
+      if (raw.length > 3) return [raw.split("\n")[0].trim()];
       throw new Error("AI returned empty or invalid suggestions");
     }
 
     return suggestions;
   } catch (error) {
-    // Re-throw the error so the UI can handle it
     throw error;
+  }
+}
+
+/**
+ * Test a provider connection with given config values (before saving)
+ */
+async function testProviderConnection(provider, providerConfig) {
+  try {
+    if (provider === "lmstudio") {
+      const url = providerConfig.lmStudioUrl || "http://localhost:1234";
+      await axios.get(`${url}/v1/models`, { timeout: 5000 });
+      return { connected: true };
+    } else if (provider === "ollama") {
+      const url = providerConfig.ollamaUrl || "http://localhost:11434";
+      await axios.get(`${url}/api/tags`, { timeout: 5000 });
+      return { connected: true };
+    } else if (provider === "openai") {
+      const apiKey = providerConfig.openaiApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get("https://api.openai.com/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 5000,
+      });
+      return { connected: true };
+    } else if (provider === "anthropic") {
+      const apiKey = providerConfig.anthropicApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      // Anthropic doesn't have a free list endpoint; send a minimal real request
+      const res = await axios.post(
+        "https://api.anthropic.com/v1/messages",
+        {
+          model: providerConfig.anthropicModel || "claude-3-5-sonnet-20240620",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        },
+        {
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          timeout: 8000,
+        },
+      );
+      return { connected: true };
+    } else if (provider === "openrouter") {
+      const apiKey = providerConfig.openrouterApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get("https://openrouter.ai/api/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 5000,
+      });
+      return { connected: true };
+    } else if (provider === "gemini") {
+      const apiKey = providerConfig.geminiApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+        {
+          timeout: 5000,
+        },
+      );
+      return { connected: true };
+    }
+    return { connected: true };
+  } catch (error) {
+    const msg = error.response
+      ? `${error.response.status} - ${JSON.stringify(error.response.data).slice(0, 100)}`
+      : error.message;
+    return { connected: false, error: msg };
   }
 }
 
@@ -250,34 +338,48 @@ async function checkAIConnection() {
 
   try {
     if (provider === "lmstudio") {
-      const response = await axios.get(`${config.lmStudioUrl}/v1/models`, { timeout: 5000 });
+      const response = await axios.get(`${config.lmStudioUrl}/v1/models`, {
+        timeout: 5000,
+      });
       return { connected: true, models: response.data?.data || [] };
     } else if (provider === "ollama") {
-      const response = await axios.get(`${config.ollamaUrl}/api/tags`, { timeout: 5000 });
+      const response = await axios.get(`${config.ollamaUrl}/api/tags`, {
+        timeout: 5000,
+      });
       return { connected: true, models: response.data?.models || [] };
     } else if (provider === "openai") {
-      if (!config.openaiApiKey) return { connected: false, error: "OpenAI API Key is missing" };
+      if (!config.openaiApiKey)
+        return { connected: false, error: "OpenAI API Key is missing" };
       // Simple check by listing models
       const response = await axios.get("https://api.openai.com/v1/models", {
-        headers: { "Authorization": `Bearer ${config.openaiApiKey}` },
-        timeout: 5000
+        headers: { Authorization: `Bearer ${config.openaiApiKey}` },
+        timeout: 5000,
       });
       return { connected: true, models: response.data?.data || [] };
     } else if (provider === "anthropic") {
-        if (!config.anthropicApiKey) return { connected: false, error: "Anthropic API Key is missing" };
-        return { connected: true, note: "Anthropic connection assumed (listing models not supported via simple GET)" };
+      if (!config.anthropicApiKey)
+        return { connected: false, error: "Anthropic API Key is missing" };
+      return {
+        connected: true,
+        note: "Anthropic connection assumed (listing models not supported via simple GET)",
+      };
     } else if (provider === "openrouter") {
-      if (!config.openrouterApiKey) return { connected: false, error: "OpenRouter API Key is missing" };
+      if (!config.openrouterApiKey)
+        return { connected: false, error: "OpenRouter API Key is missing" };
       const response = await axios.get("https://openrouter.ai/api/v1/models", {
-        headers: { "Authorization": `Bearer ${config.openrouterApiKey}` },
-        timeout: 5000
+        headers: { Authorization: `Bearer ${config.openrouterApiKey}` },
+        timeout: 5000,
       });
       return { connected: true, models: response.data?.data || [] };
     } else if (provider === "gemini") {
-      if (!config.geminiApiKey) return { connected: false, error: "Google Gemini API Key is missing" };
-      const response = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${config.geminiApiKey}`, {
-        timeout: 5000
-      });
+      if (!config.geminiApiKey)
+        return { connected: false, error: "Google Gemini API Key is missing" };
+      const response = await axios.get(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${config.geminiApiKey}`,
+        {
+          timeout: 5000,
+        },
+      );
       return { connected: true, models: response.data?.models || [] };
     }
     return { connected: true };
@@ -300,7 +402,7 @@ async function fetchOpenRouterModels(apiKey) {
       timeout: 10000,
     });
     const models = response.data?.data || [];
-    return models.map(m => ({
+    return models.map((m) => ({
       id: m.id,
       name: m.name || m.id,
       pricing: m.pricing,
@@ -314,6 +416,7 @@ module.exports = {
   generateCommitMessage,
   generateCommitSuggestions,
   checkAIConnection,
+  testProviderConnection,
   fetchOpenRouterModels,
   // Alias for backward compatibility
   checkLMStudioConnection: checkAIConnection,

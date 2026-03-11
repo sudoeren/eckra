@@ -1,10 +1,52 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
 const { getConfig, saveConfig } = require("../../helpers/config");
-const { checkAIConnection, fetchOpenRouterModels } = require("../../helpers/ai");
+const {
+  checkAIConnection,
+  testProviderConnection,
+  fetchOpenRouterModels,
+} = require("../../helpers/ai");
 const { s, header, clear, sleep, truncate } = require("../common");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
+
+/**
+ * Test provider connection with a spinner, then save or let user decide
+ */
+async function testAndSaveProvider(provider, fullConfig, answers) {
+  const ora = require("ora");
+  const spinner = ora({
+    text: s.muted("  Testing connection..."),
+    spinner: "dots",
+  }).start();
+  const result = await testProviderConnection(provider, fullConfig);
+  spinner.stop();
+
+  if (result.connected) {
+    console.log(s.success("  ✓ Connection successful!"));
+    saveConfig({ ...fullConfig, aiProvider: provider });
+    console.log(s.success("  ✓ Provider configured: " + provider));
+  } else {
+    console.log(
+      s.error("  ✗ Connection failed: " + (result.error || "Unknown error")),
+    );
+    const { saveAnyway } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "saveAnyway",
+        message: s.muted("Save settings anyway?"),
+        default: false,
+      },
+    ]);
+    if (saveAnyway) {
+      saveConfig({ ...fullConfig, aiProvider: provider });
+      console.log(s.success("  ✓ Settings saved (connection pending)"));
+    } else {
+      console.log(s.muted("  Settings not saved."));
+    }
+  }
+  await sleep(600);
+}
 
 /**
  * Get the required API key field name for a provider (null if no key needed)
@@ -26,32 +68,87 @@ function getProviderQuestions(provider, config) {
   switch (provider) {
     case "openai":
       return [
-        { type: "input", name: "openaiApiKey", message: "OpenAI API Key:", default: config.openaiApiKey },
-        { type: "input", name: "openaiModel", message: "Model (e.g. gpt-4o, gpt-3.5-turbo):", default: config.openaiModel }
+        {
+          type: "input",
+          name: "openaiApiKey",
+          message: "OpenAI API Key:",
+          default: config.openaiApiKey,
+        },
+        {
+          type: "input",
+          name: "openaiModel",
+          message: "Model (e.g. gpt-4o, gpt-3.5-turbo):",
+          default: config.openaiModel,
+        },
       ];
     case "anthropic":
       return [
-        { type: "input", name: "anthropicApiKey", message: "Anthropic API Key:", default: config.anthropicApiKey },
-        { type: "input", name: "anthropicModel", message: "Model (e.g. claude-3-5-sonnet-20240620):", default: config.anthropicModel }
+        {
+          type: "input",
+          name: "anthropicApiKey",
+          message: "Anthropic API Key:",
+          default: config.anthropicApiKey,
+        },
+        {
+          type: "input",
+          name: "anthropicModel",
+          message: "Model (e.g. claude-3-5-sonnet-20240620):",
+          default: config.anthropicModel,
+        },
       ];
     case "ollama":
       return [
-        { type: "input", name: "ollamaUrl", message: "Ollama URL:", default: config.ollamaUrl },
-        { type: "input", name: "ollamaModel", message: "Model (e.g. llama3):", default: config.ollamaModel }
+        {
+          type: "input",
+          name: "ollamaUrl",
+          message: "Ollama URL:",
+          default: config.ollamaUrl,
+        },
+        {
+          type: "input",
+          name: "ollamaModel",
+          message: "Model (e.g. llama3):",
+          default: config.ollamaModel,
+        },
       ];
     case "openrouter":
       return [
-        { type: "input", name: "openrouterApiKey", message: "OpenRouter API Key:", default: config.openrouterApiKey },
+        {
+          type: "input",
+          name: "openrouterApiKey",
+          message: "OpenRouter API Key:",
+          default: config.openrouterApiKey,
+        },
       ];
     case "gemini":
       return [
-        { type: "input", name: "geminiApiKey", message: "Google Gemini API Key:", default: config.geminiApiKey },
-        { type: "input", name: "geminiModel", message: "Model (e.g. gemini-2.0-flash, gemini-2.5-pro):", default: config.geminiModel }
+        {
+          type: "input",
+          name: "geminiApiKey",
+          message: "Google Gemini API Key:",
+          default: config.geminiApiKey,
+        },
+        {
+          type: "input",
+          name: "geminiModel",
+          message: "Model (e.g. gemini-2.0-flash, gemini-2.5-pro):",
+          default: config.geminiModel,
+        },
       ];
     default:
       return [
-        { type: "input", name: "lmStudioUrl", message: "LM Studio URL:", default: config.lmStudioUrl },
-        { type: "input", name: "model", message: "Model:", default: config.model }
+        {
+          type: "input",
+          name: "lmStudioUrl",
+          message: "LM Studio URL:",
+          default: config.lmStudioUrl,
+        },
+        {
+          type: "input",
+          name: "model",
+          message: "Model:",
+          default: config.model,
+        },
       ];
   }
 }
@@ -61,15 +158,25 @@ function getProviderQuestions(provider, config) {
  */
 async function promptOpenRouterModel(apiKey, currentModel) {
   const ora = require("ora");
-  const spinner = ora({ text: s.muted("  Fetching models from OpenRouter..."), spinner: "dots" }).start();
-  
+  const spinner = ora({
+    text: s.muted("  Fetching models from OpenRouter..."),
+    spinner: "dots",
+  }).start();
+
   let models = await fetchOpenRouterModels(apiKey);
   spinner.stop();
 
   if (models.length === 0) {
-    console.log(s.muted("  Could not fetch models. You can type a model ID manually."));
+    console.log(
+      s.muted("  Could not fetch models. You can type a model ID manually."),
+    );
     const { openrouterModel } = await inquirer.prompt([
-      { type: "input", name: "openrouterModel", message: "Model ID:", default: currentModel || "openai/gpt-4o" }
+      {
+        type: "input",
+        name: "openrouterModel",
+        message: "Model ID:",
+        default: currentModel || "openai/gpt-4o",
+      },
     ]);
     return openrouterModel;
   }
@@ -82,7 +189,7 @@ async function promptOpenRouterModel(apiKey, currentModel) {
     return a.name.localeCompare(b.name);
   });
 
-  const modelChoices = models.map(m => {
+  const modelChoices = models.map((m) => {
     const isFree = parseFloat(m.pricing?.prompt || "1") === 0;
     const label = isFree ? `${m.name}  [free]` : m.name;
     return { name: label, value: m.id, short: m.id };
@@ -96,8 +203,10 @@ async function promptOpenRouterModel(apiKey, currentModel) {
       source: (_answers, input) => {
         if (!input) return modelChoices;
         const term = input.toLowerCase();
-        return modelChoices.filter(c =>
-          c.name.toLowerCase().includes(term) || c.value.toLowerCase().includes(term)
+        return modelChoices.filter(
+          (c) =>
+            c.name.toLowerCase().includes(term) ||
+            c.value.toLowerCase().includes(term),
         );
       },
       default: currentModel || "openai/gpt-4o",
@@ -134,33 +243,66 @@ async function doSettings() {
   const config = getConfig();
   const aiStatus = await checkAIConnection();
 
-  console.log(s.muted("  Provider: ") + s.text(config.aiProvider || "lmstudio"));
-  
+  console.log(
+    s.muted("  Provider: ") + s.text(config.aiProvider || "lmstudio"),
+  );
+
   if (config.aiProvider === "openai") {
     console.log(s.muted("  Model: ") + s.text(config.openaiModel));
-    console.log(s.muted("  API Key: ") + s.text(config.openaiApiKey ? "****" + config.openaiApiKey.slice(-4) : "None"));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.openaiApiKey ? "****" + config.openaiApiKey.slice(-4) : "None",
+        ),
+    );
   } else if (config.aiProvider === "anthropic") {
     console.log(s.muted("  Model: ") + s.text(config.anthropicModel));
-    console.log(s.muted("  API Key: ") + s.text(config.anthropicApiKey ? "****" + config.anthropicApiKey.slice(-4) : "None"));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.anthropicApiKey
+            ? "****" + config.anthropicApiKey.slice(-4)
+            : "None",
+        ),
+    );
   } else if (config.aiProvider === "ollama") {
     console.log(s.muted("  URL: ") + s.text(config.ollamaUrl));
     console.log(s.muted("  Model: ") + s.text(config.ollamaModel));
   } else if (config.aiProvider === "openrouter") {
     console.log(s.muted("  Model: ") + s.text(config.openrouterModel));
-    console.log(s.muted("  API Key: ") + s.text(config.openrouterApiKey ? "****" + config.openrouterApiKey.slice(-4) : "None"));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.openrouterApiKey
+            ? "****" + config.openrouterApiKey.slice(-4)
+            : "None",
+        ),
+    );
   } else if (config.aiProvider === "gemini") {
     console.log(s.muted("  Model: ") + s.text(config.geminiModel));
-    console.log(s.muted("  API Key: ") + s.text(config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None"));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None",
+        ),
+    );
   } else {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
     console.log(s.muted("  Model: ") + s.text(config.model));
   }
 
-  console.log(s.muted("  AI Instruction: ") + s.text(truncate(config.aiInstruction || "", 50)));
+  console.log(
+    s.muted("  AI Instruction: ") +
+      s.text(truncate(config.aiInstruction || "", 50)),
+  );
   console.log(s.muted("  Theme: ") + s.text(config.theme || "dark"));
   console.log(
     s.muted("  AI Status: ") +
-    (aiStatus.connected ? s.success("Connected ✓") : s.error("Not connected ✗ (" + (aiStatus.error || "Unknown error") + ")")),
+      (aiStatus.connected
+        ? s.success("Connected ✓")
+        : s.error(
+            "Not connected ✗ (" + (aiStatus.error || "Unknown error") + ")",
+          )),
   );
   console.log();
 
@@ -190,15 +332,19 @@ async function doSettings() {
       {
         type: "confirm",
         name: "confirmReset",
-        message: s.error("Are you sure? This will delete all your API keys and settings."),
-        default: false
-      }
+        message: s.error(
+          "Are you sure? This will delete all your API keys and settings.",
+        ),
+        default: false,
+      },
     ]);
 
     if (confirmReset) {
       const { resetConfig } = require("../../helpers/config");
       resetConfig();
-      console.log(s.success("\n  ✓ Settings reset to default. Starting onboarding..."));
+      console.log(
+        s.success("\n  ✓ Settings reset to default. Starting onboarding..."),
+      );
       await sleep(1000);
       await doOnboarding();
       return;
@@ -230,26 +376,22 @@ async function doSettings() {
     const keyField = getRequiredKeyField(provider);
     const needsSetup = keyField && !config[keyField];
 
+    let answers = {};
     if (needsSetup) {
-      console.log(s.muted("\n  This provider requires configuration. Let's set it up:\n"));
-      const answers = await askProviderConfig(provider, config);
-      saveConfig({ ...config, aiProvider: provider, ...answers });
-      console.log(s.success("\n  ✓ Provider changed to " + provider + " and configured"));
-    } else {
-      saveConfig({ ...config, aiProvider: provider });
-      console.log(s.success("\n  ✓ Provider changed to " + provider));
+      console.log(
+        s.muted("\n  This provider requires configuration. Let's set it up:\n"),
+      );
+      answers = await askProviderConfig(provider, config);
     }
 
-    await sleep(600);
+    await testAndSaveProvider(provider, { ...config, ...answers }, answers);
     return;
   }
 
   if (action === "configure") {
     const provider = config.aiProvider || "lmstudio";
     const answers = await askProviderConfig(provider, config);
-    saveConfig({ ...config, ...answers });
-    console.log(s.success("\n  ✓ Settings saved!"));
-    await sleep(600);
+    await testAndSaveProvider(provider, { ...config, ...answers }, answers);
     return;
   }
 
