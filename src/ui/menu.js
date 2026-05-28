@@ -7,6 +7,7 @@ const {
   stageAll,
   stageFiles,
   unstageAll,
+  unstageFiles,
   getStagedDiff,
   pullFromRemote,
   fetchRemote,
@@ -276,7 +277,6 @@ async function unstageMenu() {
 
     if (files.length > 0) {
       spinner.start("Unstaging files...");
-      const { unstageFiles } = require("../helpers/git");
       await unstageFiles(files);
       spinner.succeed(chalk.green(`${files.length} files unstaged!`));
     }
