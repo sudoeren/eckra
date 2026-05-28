@@ -416,7 +416,7 @@ async function squashCommits(count, message) {
  * Reword a commit (only works for last commit)
  */
 async function rewordLastCommit(message) {
-  return await getGit().commit(message, ["--amend", "-m", message]);
+  return await getGit().commit(message, ["--amend"]);
 }
 
 /**
