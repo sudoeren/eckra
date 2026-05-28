@@ -52,7 +52,8 @@ Skip the menu and jump straight into action:
 | `eckra commit` | Start the AI-assisted commit flow             |
 | `eckra status` | Check repository status and staged files      |
 | `eckra push`   | Sync local commits with the remote repository |
-| `eckra branch` | Open the interactive branch manager           |
+| `eckra easy`   | Full workflow: Stage all, AI commit, and push |
+| `eckra start`  | Start the interactive dashboard               |
 
 ## ⚙️ AI Configuration
 
