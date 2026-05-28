@@ -39,7 +39,7 @@
     "cli-table3": "^0.6.3",
     "commander": "^11.1.0",
     "inquirer": "^8.2.6",
-    "inquirer-autocomplete-prompt": "^2.0.1",
+    "inquirer-autocomplete-prompt": "^3.0.1",
     "ora": "^5.4.1",
     "simple-git": "^3.36.0"
   },
