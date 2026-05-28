@@ -669,6 +669,7 @@ function resetGitCache() {
 }
 
 module.exports = {
+  getGit,
   getGitStatus,
   getStagedFiles,
   getUnstagedFiles,
