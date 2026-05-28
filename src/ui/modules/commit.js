@@ -151,6 +151,7 @@ async function doCommit(info) {
             choices: [
               { name: "  ✓ Use as is", value: "use" },
               { name: "  ✎ Edit", value: "edit" },
+              { name: "  🔄 Regenerate", value: "regenerate" },
               { name: "  ← Back", value: "back" },
             ],
             loop: true,
@@ -158,7 +159,7 @@ async function doCommit(info) {
           },
         ]);
 
-        if (aiAction === "back") continue;
+        if (aiAction === "back" || aiAction === "regenerate") continue;
         if (aiAction === "use") {
           message = selected;
         } else {
