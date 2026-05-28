@@ -35,7 +35,7 @@
   "dependencies": {
     "axios": "^1.7.9",
     "boxen": "^4.2.0",
-    "chalk": "^4.1.2",
+    "chalk": "^5.6.2",
     "cli-table3": "^0.6.3",
     "commander": "^11.1.0",
     "inquirer": "^8.2.6",
