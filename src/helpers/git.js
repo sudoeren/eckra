@@ -325,14 +325,14 @@ async function pushTags() {
  * Search commits by message
  */
 async function searchCommits(query, count = 20) {
-  return await getGit().log(["--grep=" + query, "-n", count.toString(), "--all"]);
+  return await getGit().log(["--grep", query, "-n", count.toString(), "--all"]);
 }
 
 /**
  * Search commits by author
  */
 async function searchCommitsByAuthor(author, count = 20) {
-  return await getGit().log(["--author=" + author, "-n", count.toString()]);
+  return await getGit().log(["--author", author, "-n", count.toString()]);
 }
 
 /**
@@ -347,6 +347,9 @@ async function cherryPick(commitHash) {
  */
 async function getOtherBranchCommits(branch, count = 20) {
   const current = (await getCurrentBranch());
+  if (/[;&|`$(){}]/.test(branch) || branch.includes("..")) {
+    throw new Error("Invalid branch name");
+  }
   return await getGit().log([`${current}..${branch}`, "-n", count.toString()]);
 }
 
