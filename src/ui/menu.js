@@ -20,14 +20,14 @@ const { pushChanges } = require("./push");
 const { branchMenu } = require("./branch");
 const { showLog } = require("./log");
 const { configMenu } = require("./config");
-const { checkLMStudioConnection } = require("../helpers/lmstudio");
+const { checkAIConnection } = require("../helpers/ai");
 
 async function mainMenu() {
   let running = true;
 
   while (running) {
     const status = await getGitStatus();
-    const lmStatus = await checkLMStudioConnection();
+    const aiStatus = await checkAIConnection();
 
     // Status bar
     console.log("\n" + chalk.gray("─".repeat(60)));
@@ -44,7 +44,7 @@ async function mainMenu() {
       chalk.blue("? Untracked: ") +
       chalk.white(status.not_added.length) +
       chalk.gray(" | ") +
-      (lmStatus.connected
+      (aiStatus.connected
         ? chalk.green("🤖 AI: Online")
         : chalk.red("🤖 AI: Offline")),
     );

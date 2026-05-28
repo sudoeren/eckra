@@ -11,8 +11,8 @@ const {
 const {
   generateCommitMessage,
   generateCommitSuggestions,
-  checkLMStudioConnection,
-} = require("../helpers/lmstudio");
+  checkAIConnection,
+} = require("../helpers/ai");
 const { getConfig } = require("../helpers/config");
 
 async function aiCommit(manualMessage = null) {
@@ -69,15 +69,16 @@ async function aiCommit(manualMessage = null) {
   let commitMessage = manualMessage;
 
   if (!commitMessage) {
-    // Check LM Studio connection
-    const lmStatus = await checkLMStudioConnection();
+    const config = getConfig();
+    const provider = config.aiProvider || "lmstudio";
+    const aiStatus = await checkAIConnection();
 
-    if (!lmStatus.connected) {
+    if (!aiStatus.connected) {
       console.log(
         boxen(
-          chalk.yellow("⚠️  Could not connect to LM Studio\n\n") +
+          chalk.yellow("⚠️  Could not connect to " + provider + "\n\n") +
           chalk.gray(
-            "Make sure LM Studio is running on localhost:1234.\n",
+            "Check your " + provider + " configuration.\n",
           ) +
           chalk.gray("You can write a manual commit message."),
           { padding: 1, borderStyle: "round", borderColor: "yellow" },
@@ -108,7 +109,6 @@ async function aiCommit(manualMessage = null) {
 
       commitMessage = message;
     } else {
-      const config = getConfig();
       const { instruction } = await inquirer.prompt([
         {
           type: "input",
@@ -118,77 +118,78 @@ async function aiCommit(manualMessage = null) {
         },
       ]);
 
-      // Generate AI suggestions
-      const spinner = ora("Generating AI commit messages...").start();
+      while (!commitMessage) {
+        const spinner = ora("Generating AI commit messages...").start();
 
-      try {
-        const suggestions = await generateCommitSuggestions(
-          diff,
-          stagedFiles,
-          3,
-          instruction,
-        );
-        spinner.succeed("Commit messages generated!");
+        try {
+          const suggestions = await generateCommitSuggestions(
+            diff,
+            stagedFiles,
+            3,
+            instruction,
+          );
+          spinner.succeed("Commit messages generated!");
 
-        const { selectedMessage } = await inquirer.prompt([
-          {
-            type: "list",
-            name: "selectedMessage",
-            message: "Select a commit message or write your own:",
-            choices: [
-              ...suggestions.map((msg, i) => ({
-                name: chalk.cyan(`${i + 1}. `) + msg,
-                value: msg,
-              })),
-              new inquirer.Separator(),
+          const { selectedMessage } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "selectedMessage",
+              message: "Select a commit message or write your own:",
+              choices: [
+                ...suggestions.map((msg, i) => ({
+                  name: chalk.cyan(`${i + 1}. `) + msg,
+                  value: msg,
+                })),
+                new inquirer.Separator(),
+                {
+                  name: chalk.yellow("✏️  I'll write my own message"),
+                  value: "custom",
+                },
+                {
+                  name: chalk.green("🔄 Generate new suggestions"),
+                  value: "regenerate",
+                },
+                { name: chalk.red("❌ Cancel"), value: "cancel" },
+              ],
+            },
+          ]);
+
+          if (selectedMessage === "cancel") {
+            console.log(chalk.yellow("Operation cancelled."));
+            return;
+          }
+
+          if (selectedMessage === "regenerate") {
+            continue;
+          }
+
+          if (selectedMessage === "custom") {
+            const { message } = await inquirer.prompt([
               {
-                name: chalk.yellow("✏️  I'll write my own message"),
-                value: "custom",
+                type: "input",
+                name: "message",
+                message: "Commit message:",
+                validate: (input) =>
+                  input.length > 0 || "Commit message cannot be empty",
               },
-              {
-                name: chalk.green("🔄 Generate new suggestions"),
-                value: "regenerate",
-              },
-              { name: chalk.red("❌ Cancel"), value: "cancel" },
-            ],
-          },
-        ]);
+            ]);
+            commitMessage = message;
+          } else {
+            commitMessage = selectedMessage;
+          }
+        } catch (error) {
+          spinner.fail("AI message generation failed: " + error.message);
 
-        if (selectedMessage === "cancel") {
-          console.log(chalk.yellow("Operation cancelled."));
-          return;
-        }
-
-        if (selectedMessage === "regenerate") {
-          return await aiCommit(); // Recursive call
-        }
-
-        if (selectedMessage === "custom") {
           const { message } = await inquirer.prompt([
             {
               type: "input",
               name: "message",
-              message: "Commit message:",
-              validate: (input) =>
-                input.length > 0 || "Commit message cannot be empty",
+              message: "Manual commit message:",
+              validate: (input) => input.length > 0 || "Commit message cannot be empty",
             },
           ]);
           commitMessage = message;
-        } else {
-          commitMessage = selectedMessage;
         }
-      } catch (error) {
-        spinner.fail("AI message generation failed: " + error.message);
-
-        const { message } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "message",
-            message: "Manual commit message:",
-            validate: (input) => input.length > 0 || "Commit message cannot be empty",
-          },
-        ]);
-        commitMessage = message;
       }
     }
   }
