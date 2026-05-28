@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
-const { getConflictDetails, acceptOurs, acceptTheirs, abortMerge } = require("../../helpers/git");
+const { execFile } = require("child_process");
+const { getConflictDetails, acceptOurs, acceptTheirs, acceptBoth, abortMerge, stageFiles } = require("../../helpers/git");
 const { s, header, clear, pause, sleep } = require("../common");
 
 async function doConflict() {
@@ -75,13 +76,10 @@ async function resolveFile(file) {
     },
   ]);
 
-  const { acceptBoth } = require("../../helpers/git");
-
   if (choice === "ours") await acceptOurs(file);
   if (choice === "theirs") await acceptTheirs(file);
   if (choice === "both") await acceptBoth(file);
   if (choice === "manual") {
-    const { execFile } = require("child_process");
     // Try to open in VS Code, then Notepad, or fallback to environment editor
     const editor = process.env.EDITOR || "code" || "notepad";
     console.log(s.muted(`  Opening ${editor}...`));
@@ -96,7 +94,6 @@ async function resolveFile(file) {
     ]);
     
     // After manual edit, we should add the file to mark as resolved
-    const { stageFiles } = require("../../helpers/git");
     await stageFiles([file]);
   }
 }
