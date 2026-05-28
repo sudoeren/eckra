@@ -6,6 +6,9 @@ const {
   getRemotes,
   getCurrentBranch,
   getGitStatus,
+  addRemote,
+  pullFromRemote,
+  getGit,
 } = require("../helpers/git");
 
 async function pushChanges() {
@@ -50,9 +53,8 @@ async function pushChanges() {
         },
       ]);
 
-      const { addRemote: addRemoteGit } = require("../helpers/git");
       try {
-        await addRemoteGit(remoteName, remoteUrl);
+        await addRemote(remoteName, remoteUrl);
         console.log(chalk.green(`\n✓ Remote "${remoteName}" added.\n`));
       } catch (error) {
         console.log(chalk.red("Could not add remote: " + error.message));
@@ -132,7 +134,6 @@ async function pushChanges() {
       ]);
 
       if (shouldPull) {
-        const { pullFromRemote } = require("../helpers/git");
         const pullSpinner = ora("Pulling...").start();
         try {
           await pullFromRemote(selectedRemote, currentBranch);
@@ -160,7 +161,6 @@ async function pushChanges() {
       ]);
 
       if (setUpstream) {
-        const { getGit } = require("../helpers/git");
         const upstreamSpinner = ora(
           "Setting upstream and pushing...",
         ).start();
