@@ -28,7 +28,7 @@ async function pushChanges() {
   if (remotes.length === 0) {
     console.log(chalk.red("\n⚠️  No remote repository defined.\n"));
 
-    const { addRemote } = await inquirer.prompt([
+    const { addRemote: shouldAddRemote } = await inquirer.prompt([
       {
         type: "confirm",
         name: "addRemote",
@@ -37,7 +37,7 @@ async function pushChanges() {
       },
     ]);
 
-    if (addRemote) {
+    if (shouldAddRemote) {
       const { remoteName, remoteUrl } = await inquirer.prompt([
         {
           type: "input",
