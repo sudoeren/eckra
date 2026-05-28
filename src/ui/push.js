@@ -160,12 +160,12 @@ async function pushChanges() {
       ]);
 
       if (setUpstream) {
-        const simpleGit = require("simple-git")();
+        const { getGit } = require("../helpers/git");
         const upstreamSpinner = ora(
           "Setting upstream and pushing...",
         ).start();
         try {
-          await simpleGit.push(["-u", selectedRemote, currentBranch]);
+          await getGit().push(["-u", selectedRemote, currentBranch]);
           upstreamSpinner.succeed(
             chalk.green("Upstream set and push successful!"),
           );
