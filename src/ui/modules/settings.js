@@ -1,12 +1,14 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const { getConfig, saveConfig } = require("../../helpers/config");
+const ora = require("ora");
+const { getConfig, saveConfig, resetConfig } = require("../../helpers/config");
 const {
   checkAIConnection,
   testProviderConnection,
   fetchOpenRouterModels,
 } = require("../../helpers/ai");
 const { s, header, clear, sleep, truncate } = require("../common");
+const { doOnboarding } = require("./onboarding");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
 
@@ -14,7 +16,6 @@ inquirer.registerPrompt("autocomplete", autocomplete);
  * Test provider connection with a spinner, then save or let user decide
  */
 async function testAndSaveProvider(provider, fullConfig, answers) {
-  const ora = require("ora");
   const spinner = ora({
     text: s.muted("  Testing connection..."),
     spinner: "dots",
@@ -157,7 +158,6 @@ function getProviderQuestions(provider, config) {
  * Prompt for OpenRouter model selection using autocomplete with models fetched from API
  */
 async function promptOpenRouterModel(apiKey, currentModel) {
-  const ora = require("ora");
   const spinner = ora({
     text: s.muted("  Fetching models from OpenRouter..."),
     spinner: "dots",
@@ -232,8 +232,6 @@ async function askProviderConfig(provider, config) {
 
   return answers;
 }
-
-const { doOnboarding } = require("./onboarding");
 
 async function doSettings() {
   clear();
@@ -340,7 +338,6 @@ async function doSettings() {
     ]);
 
     if (confirmReset) {
-      const { resetConfig } = require("../../helpers/config");
       resetConfig();
       console.log(
         s.success("\n  ✓ Settings reset to default. Starting onboarding..."),
