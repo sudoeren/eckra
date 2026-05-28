@@ -75,8 +75,8 @@ async function callProvider(
       break;
 
     case "gemini":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-2.0-flash"}:generateContent?key=${config.geminiApiKey}`;
-      headers = { "Content-Type": "application/json" };
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-2.0-flash"}:generateContent`;
+      headers = { "Content-Type": "application/json", "x-goog-api-key": config.geminiApiKey };
       // Gemini uses a different message format
       const geminiContents = messages
         .filter((m) => m.role !== "system")
@@ -323,8 +323,9 @@ async function testProviderConnection(provider, providerConfig) {
       const apiKey = providerConfig.geminiApiKey;
       if (!apiKey) return { connected: false, error: "API Key is missing" };
       await axios.get(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models`,
         {
+          headers: { "x-goog-api-key": apiKey },
           timeout: 5000,
         },
       );
@@ -385,8 +386,9 @@ async function checkAIConnection() {
       if (!config.geminiApiKey)
         return { connected: false, error: "Google Gemini API Key is missing" };
       const response = await axios.get(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${config.geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models`,
         {
+          headers: { "x-goog-api-key": config.geminiApiKey },
           timeout: 5000,
         },
       );
