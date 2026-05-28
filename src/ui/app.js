@@ -8,7 +8,6 @@ const {
   getGitStatus,
   stageAll,
   createCommit,
-  isConfigured, // Import isConfigured
 } = require("../helpers/git");
 
 const configHelper = require("../helpers/config"); // Import config helper
