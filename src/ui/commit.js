@@ -14,6 +14,7 @@ const {
   checkAIConnection,
 } = require("../helpers/ai");
 const { getConfig } = require("../helpers/config");
+const { pushChanges } = require("./push");
 
 async function aiCommit(manualMessage = null) {
   const status = await getGitStatus();
@@ -238,7 +239,6 @@ async function aiCommit(manualMessage = null) {
     ]);
 
     if (shouldPush) {
-      const { pushChanges } = require("./push");
       await pushChanges();
     }
   } catch (error) {

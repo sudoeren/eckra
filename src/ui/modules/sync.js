@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
-const { pushToRemote, pullFromRemote, getCurrentBranch } = require("../../helpers/git");
+const { getGit, getGitStatus, pushToRemote, pullFromRemote, getCurrentBranch } = require("../../helpers/git");
 const { s, clear, sleep, pause } = require("../common");
 
 async function doPush(silent = false) {
@@ -10,7 +10,6 @@ async function doPush(silent = false) {
   }).start();
 
   try {
-    const { getGitStatus } = require("../../helpers/git");
     await pushToRemote();
     spin.succeed(s.success(" Push successful!"));
     if (!silent) await sleep(800);
@@ -39,7 +38,6 @@ async function doPush(silent = false) {
           spinner: "dots",
         }).start();
         try {
-          const { getGit } = require("../../helpers/git");
           await getGit().push(["-u", "origin", branch]);
           spin2.succeed(s.success(" Push successful!"));
         } catch (e) {
