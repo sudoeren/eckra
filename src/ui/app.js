@@ -6,9 +6,11 @@ const path = require("path");
 
 const {
   getGitStatus,
+  getStagedDiff,
   stageAll,
   createCommit,
 } = require("../helpers/git");
+const { generateCommitMessage } = require("../helpers/ai");
 
 const configHelper = require("../helpers/config"); // Import config helper
 
@@ -197,8 +199,6 @@ async function easyWorkflow() {
   }
 
   let finalMessage = null;
-  const { getStagedDiff } = require("../helpers/git");
-  const { generateCommitMessage } = require("../helpers/ai");
 
   while (!finalMessage) {
     const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();

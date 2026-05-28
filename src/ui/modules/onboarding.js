@@ -1,7 +1,9 @@
 const inquirer = require("inquirer");
 const chalk = require("chalk");
 const boxen = require("boxen");
+const ora = require("ora");
 const { saveConfig, DEFAULT_CONFIG } = require("../../helpers/config");
+const { fetchOpenRouterModels } = require("../../helpers/ai");
 const { s, header, clear, sleep } = require("../common");
 
 /**
@@ -100,8 +102,6 @@ async function doOnboarding() {
     ]);
     
     // We can use the existing function from settings to fetch models
-    const { fetchOpenRouterModels } = require("../../helpers/ai");
-    const ora = require("ora");
     const spinner = ora({ text: s.muted("  Fetching models from OpenRouter..."), spinner: "dots" }).start();
     const models = await fetchOpenRouterModels(openrouterApiKey);
     spinner.stop();
