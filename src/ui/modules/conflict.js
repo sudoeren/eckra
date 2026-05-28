@@ -81,11 +81,15 @@ async function resolveFile(file) {
   if (choice === "theirs") await acceptTheirs(file);
   if (choice === "both") await acceptBoth(file);
   if (choice === "manual") {
-    const { exec } = require("child_process");
+    const { execFile } = require("child_process");
     // Try to open in VS Code, then Notepad, or fallback to environment editor
     const editor = process.env.EDITOR || "code" || "notepad";
     console.log(s.muted(`  Opening ${editor}...`));
-    await new Promise(resolve => exec(`${editor} ${file}`, resolve));
+    await new Promise((resolve, reject) => {
+      const child = execFile(editor, [file], { stdio: "inherit" });
+      child.on("close", resolve);
+      child.on("error", reject);
+    });
     
     await inquirer.prompt([
       { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") }
