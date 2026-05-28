@@ -41,8 +41,7 @@
     "inquirer": "^8.2.6",
     "inquirer-autocomplete-prompt": "^2.0.1",
     "ora": "^5.4.1",
-    "simple-git": "^3.36.0",
-    "terminal-link": "^5.0.0"
+    "simple-git": "^3.36.0"
   },
   "engines": {
     "node": ">=18.0.0"
