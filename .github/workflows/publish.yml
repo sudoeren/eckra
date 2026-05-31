@@ -24,13 +24,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to GitHub Packages
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          registry-url: https://npm.pkg.github.com
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm config set registry https://npm.pkg.github.com
+          npm config set //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
+          jq '.name = "@sudoeren/eckra" | .publishConfig = { "registry": "https://npm.pkg.github.com" }' package.json > package-gh.json
+          mv package.json package.bak
+          mv package-gh.json package.json
+          npm publish
+          mv package.bak package.json
 
       - uses: softprops/action-gh-release@v2
         with:
