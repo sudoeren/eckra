@@ -21,7 +21,7 @@ async function callProvider(
         Authorization: `Bearer ${config.openaiApiKey}`,
       };
       body = {
-        model: config.openaiModel || "gpt-4o",
+        model: config.openaiModel || "gpt-5-mini",
         messages,
         temperature,
         max_tokens,
@@ -39,7 +39,7 @@ async function callProvider(
       const systemMessage = messages.find((m) => m.role === "system")?.content;
       const userMessages = messages.filter((m) => m.role !== "system");
       body = {
-        model: config.anthropicModel || "claude-3-5-sonnet-20240620",
+        model: config.anthropicModel || "claude-sonnet-4-6",
         system: systemMessage,
         messages: userMessages,
         max_tokens,
@@ -51,7 +51,7 @@ async function callProvider(
       url = `${config.ollamaUrl || "http://localhost:11434"}/api/chat`;
       headers = { "Content-Type": "application/json" };
       body = {
-        model: config.ollamaModel || "llama3",
+        model: config.ollamaModel,
         messages,
         temperature,
         stream: false,
@@ -67,7 +67,7 @@ async function callProvider(
         "X-Title": "Eckra",
       };
       body = {
-        model: config.openrouterModel || "openai/gpt-4o",
+        model: config.openrouterModel || "openai/gpt-oss-120b",
         messages,
         temperature,
         max_tokens,
@@ -75,7 +75,7 @@ async function callProvider(
       break;
 
     case "gemini":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-2.0-flash"}:generateContent`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-3.1-flash-lite"}:generateContent`;
       headers = { "Content-Type": "application/json", "x-goog-api-key": config.geminiApiKey };
       // Gemini uses a different message format
       const geminiContents = messages
@@ -498,15 +498,12 @@ async function fetchOpenAIModels(apiKey) {
  */
 async function fetchAnthropicModels() {
   return [
-    { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
-    { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-    { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
-    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet (New)" },
-    { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet" },
+    { id: "claude-opus-4-8", name: "Claude Opus 4.8" },
+    { id: "claude-opus-4-7", name: "Claude Opus 4.7" },
+    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
+    { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5" },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
     { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
-    { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
-    { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
-    { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
   ];
 }
 
