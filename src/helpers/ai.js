@@ -150,7 +150,7 @@ async function generateCommitMessage(diff, filesList) {
     ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n`
     : "";
 
-  const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a short, descriptive commit message in Conventional Commits format.
+  const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a professional commit message in Conventional Commits format.
 ${instructionText}
 Conventional Commits format:
 - feat: A new feature
@@ -168,13 +168,28 @@ ${filesList.join("\n")}
 Diff:
 ${diff.substring(0, 3000)}
 
-Write only the commit message, do not add any other explanation. The message should be in English and should not exceed 72 characters.`;
+Write a commit message in the following format:
+
+1. **Subject line** (first line): Type, scope (optional), and brief description. Max 50 characters. Use imperative mood ("add" not "added").
+
+2. **Blank line**
+
+3. **Body** (optional but recommended): Explain WHAT changed and WHY. Wrap at 72 characters. Use bullet points for multiple changes.
+
+Example:
+feat: add autocomplete search for providers
+
+- Implement type-to-search in provider selection
+- Fetch models from each provider's API
+- Add fallback to manual input when API fails
+
+Write only the commit message, no explanations.`;
 
   const messages = [
     {
       role: "system",
       content:
-        "You are a helpful assistant that generates concise and meaningful Git commit messages following Conventional Commits specification.",
+        "You are a helpful assistant that generates professional Git commit messages following Conventional Commits specification. Always include a subject line and a detailed body explaining the changes.",
     },
     {
       role: "user",
@@ -182,12 +197,18 @@ Write only the commit message, do not add any other explanation. The message sho
     },
   ];
 
-  let message = await callProvider(config.aiProvider, messages, 0.3, 100);
+  let message = await callProvider(config.aiProvider, messages, 0.3, 400);
 
-  // Clean up the message
   message = message.replace(/^["']|["']$/g, "");
-  message = message.split("\n")[0]; // Take only first line
-  return message;
+  message = message.trim();
+  
+  const lines = message.split("\n").map(line => line.trimEnd());
+  
+  if (lines.length > 0 && lines[0].length > 72) {
+    lines[0] = lines[0].substring(0, 72);
+  }
+  
+  return lines.join("\n");
 }
 
 /**
@@ -215,13 +236,34 @@ ${filesList.join("\n")}
 Diff:
 ${diff.substring(0, 3000)}
 
-Write ${count} different commit messages, each on a new line. Write only the messages, do not add numbers or explanations.`;
+For each suggestion, write:
+1. **Subject line**: Type, scope (optional), and brief description. Max 50 characters. Use imperative mood.
+2. **Blank line**
+3. **Body**: Explain WHAT changed and WHY. Wrap at 72 characters. Use bullet points for multiple changes.
+
+Separate each suggestion with "---" on its own line.
+
+Example format:
+feat: add user authentication
+
+- Implement JWT token validation
+- Add login endpoint with rate limiting
+- Store refresh tokens securely
+
+---
+
+fix: resolve memory leak in cache
+
+- Clear expired entries every 5 minutes
+- Use WeakMap for object references
+
+Write exactly ${count} suggestions, no other explanations.`;
 
   const messages = [
     {
       role: "system",
       content:
-        "You are a helpful assistant that generates concise and meaningful Git commit messages.",
+        "You are a helpful assistant that generates professional Git commit messages. Always include a subject line and a detailed body explaining the changes.",
     },
     {
       role: "user",
@@ -229,44 +271,47 @@ Write ${count} different commit messages, each on a new line. Write only the mes
     },
   ];
 
-  try {
-    const content = await callProvider(config.aiProvider, messages, 0.7, 200);
+  let lastError = null;
+  const maxRetries = 2;
 
-    if (!content || content.trim().length < 3) {
-      throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
-    }
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const content = await callProvider(config.aiProvider, messages, 0.7, 600);
 
-    // Clean backtick blocks
-    let cleanedContent = content.replace(/```[\s\S]*?```/g, "");
-    cleanedContent = cleanedContent.replace(/`/g, "");
-
-    const suggestions = cleanedContent
-      .split("\n")
-      .map((line) => {
-        let cleaned = line
-          .trim()
-          .replace(/^\d+[\.)\-:]\s*/, "") // Remove numbers
-          .replace(/^[-*•]\s*/, "") // Remove list markers
-          .replace(/^["']|["']$/g, "") // Remove quotes
-          .trim();
-        return cleaned;
-      })
-      .filter((line) => line.length > 5 && !line.startsWith("```"))
-      .slice(0, count);
-
-    if (suggestions.length === 0) {
-      // Fallback: try returning the raw content as a single suggestion if it looks like a message
-      const firstLine = content.split("\n").find(l => l.trim().length > 5);
-      if (firstLine) {
-        return [firstLine.trim().replace(/^["']|["']$/g, "").slice(0, 72)];
+      if (!content || content.trim().length < 10) {
+        throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
       }
-      throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
-    }
 
-    return suggestions;
-  } catch (error) {
-    throw error;
+      const blocks = content.split(/^---$/m).map(b => b.trim()).filter(b => b.length > 0);
+      
+      const suggestions = blocks.map(block => {
+        const lines = block.split("\n").map(line => line.trimEnd());
+        
+        if (lines.length > 0 && lines[0].length > 72) {
+          lines[0] = lines[0].substring(0, 72);
+        }
+        
+        return lines.join("\n");
+      }).slice(0, count);
+
+      if (suggestions.length === 0) {
+        const lines = content.split("\n").map(l => l.trimEnd());
+        if (lines.length > 0 && lines[0].length > 5) {
+          return [lines.join("\n").substring(0, 200)];
+        }
+        throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
+      }
+
+      return suggestions;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
   }
+
+  throw lastError;
 }
 
 /**
