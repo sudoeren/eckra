@@ -228,7 +228,7 @@ async function generateCommitSuggestions(
     instructionText = `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`;
   }
 
-  const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each should be in Conventional Commits format.
+  const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each MUST follow Conventional Commits format with a detailed body.
 ${instructionText}
 Changed files:
 ${filesList.join("\n")}
@@ -236,34 +236,40 @@ ${filesList.join("\n")}
 Diff:
 ${diff.substring(0, 3000)}
 
-For each suggestion, write:
-1. **Subject line**: Type, scope (optional), and brief description. Max 50 characters. Use imperative mood.
-2. **Blank line**
-3. **Body**: Explain WHAT changed and WHY. Wrap at 72 characters. Use bullet points for multiple changes.
+CRITICAL FORMAT REQUIREMENTS:
+Each suggestion MUST have:
+1. Subject line (max 50 chars): type(scope): brief description
+2. Empty line
+3. Body section with 2-4 bullet points explaining WHAT changed and WHY
 
-Separate each suggestion with "---" on its own line.
+EXAMPLE 1:
+feat(auth): add JWT token validation
 
-Example format:
-feat: add user authentication
+- Implement token verification middleware
+- Add refresh token rotation for security
+- Store tokens in httpOnly cookies
 
-- Implement JWT token validation
-- Add login endpoint with rate limiting
-- Store refresh tokens securely
+EXAMPLE 2:
+fix(ui): resolve dark mode contrast issues
 
----
+- Update color palette for better accessibility
+- Add CSS variables for theme switching
+- Test with WCAG 2.1 AA standards
 
-fix: resolve memory leak in cache
+EXAMPLE 3:
+refactor(api): optimize database queries
 
-- Clear expired entries every 5 minutes
-- Use WeakMap for object references
+- Add indexes for frequently queried fields
+- Implement query caching with Redis
+- Reduce response time by 40%
 
-Write exactly ${count} suggestions, no other explanations.`;
+Write exactly ${count} suggestions following this format. Separate each with "---" on its own line. Do NOT write single-line messages.`;
 
   const messages = [
     {
       role: "system",
       content:
-        "You are a helpful assistant that generates professional Git commit messages. Always include a subject line and a detailed body explaining the changes.",
+        "You are a professional Git commit message writer. ALWAYS generate multi-line messages with a subject and detailed body. Never write single-line commits.",
     },
     {
       role: "user",
@@ -276,7 +282,7 @@ Write exactly ${count} suggestions, no other explanations.`;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const content = await callProvider(config.aiProvider, messages, 0.7, 600);
+      const content = await callProvider(config.aiProvider, messages, 0.7, 1000);
 
       if (!content || content.trim().length < 10) {
         throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
