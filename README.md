@@ -4,9 +4,7 @@
 
 # Eckra
 
-<p align="center">
-  <strong>AI-powered Git assistant that analyzes your code changes and generates meaningful commit messages using OpenAI, Anthropic, Gemini, OpenRouter, Ollama, or LM Studio</strong>
-</p>
+**AI-powered Git assistant that analyzes your code changes and generates meaningful commit messages using OpenAI, Anthropic, Gemini, OpenRouter, Ollama, or LM Studio**
 
 ---
 
