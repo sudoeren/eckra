@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to eckra! This guide will help you get started with the development environment and understand the project structure.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -26,7 +26,7 @@ Thank you for your interest in contributing to eckra! This guide will help you g
    npm start
    ```
 
-## 🧪 Testing
+## Testing
 
 We use **Jest** for testing. To run the tests:
 
@@ -36,7 +36,7 @@ npm test
 
 Please ensure that all tests pass before submitting a pull request. Adding new tests for new features is highly encouraged.
 
-## 🏗 Architecture
+## Architecture
 
 The project is structured into three main layers:
 
@@ -79,13 +79,13 @@ Core business logic separated from the UI.
 - **`config.js`**: Manages user configuration.
 - **`patch.js`**: Utilities for handling git patches and diffs.
 
-## 🎨 Style Guide
+## Style Guide
 
 - Use the styles defined in `src/ui/common.js` (e.g., `s.primary`, `s.success`) to maintain visual consistency.
 - Prefer `inquirer` for interactive prompts.
 - Keep UI logic in `src/ui/modules` and Git/AI logic in `src/helpers`.
 
-## 📝 Pull Request Process
+## Pull Request Process
 
 1. Create a new branch for your feature or bugfix.
 2. Make your changes and add tests if applicable.
