@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>The AI-powered Git CLI that turns "working on stuff" into meaningful commits.</strong>
+  <strong>AI-powered terminal-based Git assistant</strong>
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@ Skip the menu and jump straight into action:
 | Command          | Alias | Action                                        |
 | :--------------- | :---- | :-------------------------------------------- |
 | `eckra commit`   | `c`   | Start the AI-assisted commit flow             |
-| `eckra status`   |       | Check repository status and staged files      |
+| `eckra status`   | `st`  | Check repository status and staged files      |
 | `eckra push`     | `p`   | Sync local commits with the remote repository |
 | `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
 | `eckra start`    | `s`   | Start the interactive dashboard               |
