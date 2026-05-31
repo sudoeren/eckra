@@ -215,13 +215,13 @@ ${filesList.join("\n")}
 Diff:
 ${diff.substring(0, 3000)}
 
-Write ${count} different commit messages, each on a new line. Write only the messages, do not add numbers or explanations.`;
+IMPORTANT: Write exactly ${count} different commit messages, each on a new line. Each message MUST be at least 15 characters long and include a brief description after the type (e.g., "feat: add user authentication"). Do not write single words or very short responses.`;
 
   const messages = [
     {
       role: "system",
       content:
-        "You are a helpful assistant that generates concise and meaningful Git commit messages.",
+        "You are a helpful assistant that generates concise and meaningful Git commit messages. Always provide complete messages with type and description.",
     },
     {
       role: "user",
@@ -229,44 +229,55 @@ Write ${count} different commit messages, each on a new line. Write only the mes
     },
   ];
 
-  try {
-    const content = await callProvider(config.aiProvider, messages, 0.7, 200);
+  let lastError = null;
+  const maxRetries = 2;
 
-    if (!content || content.trim().length < 3) {
-      throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
-    }
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const content = await callProvider(config.aiProvider, messages, 0.7, 300);
 
-    // Clean backtick blocks
-    let cleanedContent = content.replace(/```[\s\S]*?```/g, "");
-    cleanedContent = cleanedContent.replace(/`/g, "");
-
-    const suggestions = cleanedContent
-      .split("\n")
-      .map((line) => {
-        let cleaned = line
-          .trim()
-          .replace(/^\d+[\.)\-:]\s*/, "") // Remove numbers
-          .replace(/^[-*•]\s*/, "") // Remove list markers
-          .replace(/^["']|["']$/g, "") // Remove quotes
-          .trim();
-        return cleaned;
-      })
-      .filter((line) => line.length > 5 && !line.startsWith("```"))
-      .slice(0, count);
-
-    if (suggestions.length === 0) {
-      // Fallback: try returning the raw content as a single suggestion if it looks like a message
-      const firstLine = content.split("\n").find(l => l.trim().length > 5);
-      if (firstLine) {
-        return [firstLine.trim().replace(/^["']|["']$/g, "").slice(0, 72)];
+      if (!content || content.trim().length < 3) {
+        throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
       }
-      throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
-    }
 
-    return suggestions;
-  } catch (error) {
-    throw error;
+      // Clean backtick blocks
+      let cleanedContent = content.replace(/```[\s\S]*?```/g, "");
+      cleanedContent = cleanedContent.replace(/`/g, "");
+
+      const suggestions = cleanedContent
+        .split("\n")
+        .map((line) => {
+          let cleaned = line
+            .trim()
+            .replace(/^\d+[\.)\-:]\s*/, "") // Remove numbers
+            .replace(/^[-*•]\s*/, "") // Remove list markers
+            .replace(/^["']|["']$/g, "") // Remove quotes
+            .trim();
+          return cleaned;
+        })
+        .filter((line) => line.length > 5 && !line.startsWith("```"))
+        .slice(0, count);
+
+      if (suggestions.length === 0) {
+        // Fallback: try returning the raw content as a single suggestion if it looks like a message
+        const firstLine = content.split("\n").find(l => l.trim().length > 5);
+        if (firstLine) {
+          return [firstLine.trim().replace(/^["']|["']$/g, "").slice(0, 72)];
+        }
+        throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
+      }
+
+      return suggestions;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
   }
+
+  throw lastError;
 }
 
 /**
