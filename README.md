@@ -10,19 +10,19 @@
 
 ---
 
-## 💡 Overview
+## Overview
 
 **eckra** is an interactive Git management tool designed for developers who value both speed and clarity. It integrates with multiple AI providers to analyze your staged changes and suggest context-aware commit messages, ensuring your project history remains professional and descriptive without the manual overhead.
 
-## 🚀 Key Features
+## Key Features
 
-- **🤖 AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs. Supports **LM Studio**, **OpenAI**, **Anthropic**, **Ollama**, **OpenRouter**, and **Google Gemini**.
-- **📝 Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
-- **🔍 Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
-- **🎯 Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
-- **⚡ Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
+- **AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs. Supports **LM Studio**, **OpenAI**, **Anthropic**, **Ollama**, **OpenRouter**, and **Google Gemini**.
+- **Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
+- **Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
+- **Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
+- **Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
 
-## 📦 Installation
+## Installation
 
 Install eckra globally using npm:
 
@@ -30,7 +30,7 @@ Install eckra globally using npm:
 npm install -g eckra
 ```
 
-## 🛠 Usage
+## Usage
 
 Just type `eckra` in any Git repository to launch the interactive dashboard:
 
@@ -50,9 +50,9 @@ Skip the menu and jump straight into action:
 | `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
 | `eckra start`    | `s`   | Start the interactive dashboard               |
 
-> **💡 Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
+> **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
 
-## ⚙️ AI Configuration
+## AI Configuration
 
 eckra supports multiple AI providers. You can switch between them using the built-in settings menu (`Settings > Change Provider`).
 
@@ -91,13 +91,13 @@ You can configure your provider in two ways:
 
 You can also create a `.eckrarc` file in your project root to override global settings per-repository.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## 📄 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
