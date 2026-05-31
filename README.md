@@ -47,13 +47,15 @@ eckra
 
 Skip the menu and jump straight into action:
 
-| Command        | Action                                        |
-| :------------- | :-------------------------------------------- |
-| `eckra commit` | Start the AI-assisted commit flow             |
-| `eckra status` | Check repository status and staged files      |
-| `eckra push`   | Sync local commits with the remote repository |
-| `eckra easy`   | Full workflow: Stage all, AI commit, and push |
-| `eckra start`  | Start the interactive dashboard               |
+| Command          | Alias | Action                                        |
+| :--------------- | :---- | :-------------------------------------------- |
+| `eckra commit`   | `c`   | Start the AI-assisted commit flow             |
+| `eckra status`   |       | Check repository status and staged files      |
+| `eckra push`     | `p`   | Sync local commits with the remote repository |
+| `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
+| `eckra start`    | `s`   | Start the interactive dashboard               |
+
+> **💡 Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
 
 ## ⚙️ AI Configuration
 
