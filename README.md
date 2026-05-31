@@ -5,12 +5,7 @@
 # Eckra
 
 <p align="center">
-  <strong>AI-powered terminal-based Git assistant</strong>
-</p>
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/badge/npm-v1.2.8-blue.svg?style=flat-square" alt="NPM Version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/npm/l/eckra.svg?style=flat-square" alt="License"></a>
+  <strong>AI-powered Git assistant that analyzes your code changes and generates meaningful commit messages using OpenAI, Anthropic, Gemini, OpenRouter, Ollama, or LM Studio</strong>
 </p>
 
 ---
