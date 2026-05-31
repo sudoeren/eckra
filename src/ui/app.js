@@ -210,7 +210,9 @@ async function easyWorkflow() {
       aiMessage = await generateCommitMessage(diff, status.staged);
       spinAi.stop();
       
-      console.log(`\n  ${s.primary("🤖 AI Suggestion:")} ${s.text(aiMessage)}\n`);
+      console.log(`\n  ${s.primary("🤖 AI Suggestion:")}\n`);
+      aiMessage.split("\n").forEach(line => console.log(s.text("    " + line)));
+      console.log();
 
       const { choice } = await inquirer.prompt([
         {
@@ -220,7 +222,7 @@ async function easyWorkflow() {
           choices: [
             { name: s.success("  ✓ Looks good (Commit & Push)"), value: "approve" },
             { name: s.primary("  ↻ Regenerate"), value: "retry" },
-            { name: s.white("  ✎ Edit / Manual"), value: "edit" },
+            { name: s.white("  ✎ Edit subject line"), value: "edit" },
             { name: s.muted("  ✕ Cancel"), value: "cancel" },
           ],
           loop: true,
@@ -230,16 +232,19 @@ async function easyWorkflow() {
       if (choice === "approve") {
         finalMessage = aiMessage;
       } else if (choice === "edit") {
-        const { edited } = await inquirer.prompt([
+        const subject = aiMessage.split("\n")[0];
+        const body = aiMessage.split("\n").slice(1).join("\n");
+        
+        const { editedSubject } = await inquirer.prompt([
           {
             type: "input",
-            name: "edited",
-            message: s.muted("Commit message:"),
-            default: aiMessage,
-            validate: (v) => v.length > 0 || "Message cannot be empty",
+            name: "editedSubject",
+            message: s.muted("Edit subject line:"),
+            default: subject,
+            validate: (v) => v.length > 0 || "Subject cannot be empty",
           },
         ]);
-        finalMessage = edited;
+        finalMessage = body ? `${editedSubject}${body}` : editedSubject;
       } else if (choice === "cancel") {
         return;
       }

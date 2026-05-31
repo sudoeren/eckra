@@ -123,6 +123,8 @@ async function doCommit(info) {
 
         console.log(s.muted("\n  AI Suggestions:\n"));
 
+        const getSubject = (msg) => msg.split("\n")[0].substring(0, 72);
+
         const { selected } = await inquirer.prompt([
           {
             type: "list",
@@ -130,7 +132,7 @@ async function doCommit(info) {
             message: s.muted("Pick one:"),
             choices: [
               ...suggestions.map((msg, i) => ({
-                name: `  ${i + 1}. ${s.text(msg)}`,
+                name: `  ${i + 1}. ${s.text(getSubject(msg))}`,
                 value: msg,
               })),
               { type: "separator", line: " " },
@@ -143,14 +145,18 @@ async function doCommit(info) {
 
         if (selected === "_back") continue;
 
+        console.log(s.muted("\n  Selected message:\n"));
+        selected.split("\n").forEach(line => console.log(s.text("    " + line)));
+        console.log();
+
         const { aiAction } = await inquirer.prompt([
           {
             type: "list",
             name: "aiAction",
-            message: s.muted("Action for: ") + s.text(selected),
+            message: s.muted("Action:"),
             choices: [
               { name: "  ✓ Use as is", value: "use" },
-              { name: "  ✎ Edit", value: "edit" },
+              { name: "  ✎ Edit subject line", value: "edit" },
               { name: "  🔄 Regenerate", value: "regenerate" },
               { name: "  ← Back", value: "back" },
             ],
@@ -163,16 +169,20 @@ async function doCommit(info) {
         if (aiAction === "use") {
           message = selected;
         } else {
-          const { edited } = await inquirer.prompt([
+          const subject = getSubject(selected);
+          const body = selected.split("\n").slice(1).join("\n");
+          
+          const { editedSubject } = await inquirer.prompt([
             {
               type: "input",
-              name: "edited",
-              message: s.muted("Edit commit message:"),
-              default: selected,
-              validate: (v) => v.length > 0 || "Message cannot be empty",
+              name: "editedSubject",
+              message: s.muted("Edit subject line:"),
+              default: subject,
+              validate: (v) => v.length > 0 || "Subject cannot be empty",
             },
           ]);
-          message = edited;
+          
+          message = body ? `${editedSubject}${body}` : editedSubject;
         }
       } catch (err) {
         spin.fail(s.error(" AI error: " + err.message));
@@ -194,7 +204,9 @@ async function doCommit(info) {
   }
 
   // Confirm
-  console.log(s.muted("\n  Message: ") + s.text(message));
+  console.log(s.muted("\n  Commit message:\n"));
+  message.split("\n").forEach(line => console.log(s.text("    " + line)));
+  console.log();
 
   const { confirm } = await inquirer.prompt([
     {
