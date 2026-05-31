@@ -6,9 +6,13 @@ const {
   checkAIConnection,
   testProviderConnection,
   fetchOpenRouterModels,
+  fetchOpenAIModels,
+  fetchAnthropicModels,
+  fetchGeminiModels,
+  fetchOllamaModels,
+  fetchLMStudioModels,
 } = require("../../helpers/ai");
 const { s, header, clear, sleep, truncate } = require("../common");
-const { doOnboarding } = require("./onboarding");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
 
@@ -63,7 +67,7 @@ function getRequiredKeyField(provider) {
 }
 
 /**
- * Get configuration questions for a provider
+ * Get configuration questions for a provider (excluding model selection)
  */
 function getProviderQuestions(provider, config) {
   switch (provider) {
@@ -75,12 +79,6 @@ function getProviderQuestions(provider, config) {
           message: "OpenAI API Key:",
           default: config.openaiApiKey,
         },
-        {
-          type: "input",
-          name: "openaiModel",
-          message: "Model (e.g. gpt-4o, gpt-3.5-turbo):",
-          default: config.openaiModel,
-        },
       ];
     case "anthropic":
       return [
@@ -90,12 +88,6 @@ function getProviderQuestions(provider, config) {
           message: "Anthropic API Key:",
           default: config.anthropicApiKey,
         },
-        {
-          type: "input",
-          name: "anthropicModel",
-          message: "Model (e.g. claude-3-5-sonnet-20240620):",
-          default: config.anthropicModel,
-        },
       ];
     case "ollama":
       return [
@@ -104,12 +96,6 @@ function getProviderQuestions(provider, config) {
           name: "ollamaUrl",
           message: "Ollama URL:",
           default: config.ollamaUrl,
-        },
-        {
-          type: "input",
-          name: "ollamaModel",
-          message: "Model (e.g. llama3):",
-          default: config.ollamaModel,
         },
       ];
     case "openrouter":
@@ -129,12 +115,6 @@ function getProviderQuestions(provider, config) {
           message: "Google Gemini API Key:",
           default: config.geminiApiKey,
         },
-        {
-          type: "input",
-          name: "geminiModel",
-          message: "Model (e.g. gemini-2.0-flash, gemini-2.5-pro):",
-          default: config.geminiModel,
-        },
       ];
     default:
       return [
@@ -144,61 +124,104 @@ function getProviderQuestions(provider, config) {
           message: "LM Studio URL:",
           default: config.lmStudioUrl,
         },
-        {
-          type: "input",
-          name: "model",
-          message: "Model:",
-          default: config.model,
-        },
       ];
   }
 }
 
 /**
- * Prompt for OpenRouter model selection using autocomplete with models fetched from API
+ * Prompt for model selection using autocomplete with models fetched from the provider's API
  */
-async function promptOpenRouterModel(apiKey, currentModel) {
-  const spinner = ora({
-    text: s.muted("  Fetching models from OpenRouter..."),
-    spinner: "dots",
-  }).start();
+async function promptModelSearch(provider, answers, config) {
+  let models = [];
+  let currentModel = "";
+  let configKey = "";
+  let fetchLabel = "";
 
-  let models = await fetchOpenRouterModels(apiKey);
+  switch (provider) {
+    case "openai":
+      configKey = "openaiModel";
+      currentModel = config.openaiModel || "gpt-4o";
+      fetchLabel = "Fetching models from OpenAI...";
+      break;
+    case "anthropic":
+      configKey = "anthropicModel";
+      currentModel = config.anthropicModel || "claude-3-5-sonnet-20240620";
+      fetchLabel = "Loading Anthropic models...";
+      break;
+    case "gemini":
+      configKey = "geminiModel";
+      currentModel = config.geminiModel || "gemini-2.0-flash";
+      fetchLabel = "Fetching models from Gemini...";
+      break;
+    case "ollama":
+      configKey = "ollamaModel";
+      currentModel = config.ollamaModel || "llama3";
+      fetchLabel = "Fetching models from Ollama...";
+      break;
+    case "openrouter":
+      configKey = "openrouterModel";
+      currentModel = config.openrouterModel || "openai/gpt-4o";
+      fetchLabel = "Fetching models from OpenRouter...";
+      break;
+    case "lmstudio":
+    default:
+      configKey = "model";
+      currentModel = config.model || "";
+      fetchLabel = "Fetching models from LM Studio...";
+      break;
+  }
+
+  const spinner = ora({ text: s.muted("  " + fetchLabel), spinner: "dots" }).start();
+
+  switch (provider) {
+    case "openai":
+      models = await fetchOpenAIModels(answers.openaiApiKey || config.openaiApiKey);
+      break;
+    case "anthropic":
+      models = await fetchAnthropicModels();
+      break;
+    case "gemini":
+      models = await fetchGeminiModels(answers.geminiApiKey || config.geminiApiKey);
+      break;
+    case "ollama":
+      models = await fetchOllamaModels(answers.ollamaUrl || config.ollamaUrl);
+      break;
+    case "openrouter":
+      models = await fetchOpenRouterModels(answers.openrouterApiKey || config.openrouterApiKey);
+      break;
+    case "lmstudio":
+    default:
+      models = await fetchLMStudioModels(answers.lmStudioUrl || config.lmStudioUrl);
+      break;
+  }
+
   spinner.stop();
 
   if (models.length === 0) {
     console.log(
-      s.muted("  Could not fetch models. You can type a model ID manually."),
+      s.muted("  Could not fetch models. You can type a model name manually."),
     );
-    const { openrouterModel } = await inquirer.prompt([
+    const result = await inquirer.prompt([
       {
         type: "input",
-        name: "openrouterModel",
-        message: "Model ID:",
-        default: currentModel || "openai/gpt-4o",
+        name: configKey,
+        message: "Model:",
+        default: currentModel,
       },
     ]);
-    return openrouterModel;
+    return result;
   }
 
-  // Sort: free models first, then by name
-  models.sort((a, b) => {
-    const aFree = parseFloat(a.pricing?.prompt || "1") === 0;
-    const bFree = parseFloat(b.pricing?.prompt || "1") === 0;
-    if (aFree !== bFree) return aFree ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  const modelChoices = models.map((m) => ({
+    name: m.name !== m.id ? `${m.name}  (${m.id})` : m.name,
+    value: m.id,
+    short: m.id,
+  }));
 
-  const modelChoices = models.map((m) => {
-    const isFree = parseFloat(m.pricing?.prompt || "1") === 0;
-    const label = isFree ? `${m.name}  [free]` : m.name;
-    return { name: label, value: m.id, short: m.id };
-  });
-
-  const { openrouterModel } = await inquirer.prompt([
+  const result = await inquirer.prompt([
     {
       type: "autocomplete",
-      name: "openrouterModel",
+      name: configKey,
       message: "Select Model (type to search):",
       source: (_answers, input) => {
         if (!input) return modelChoices;
@@ -209,28 +232,24 @@ async function promptOpenRouterModel(apiKey, currentModel) {
             c.value.toLowerCase().includes(term),
         );
       },
-      default: currentModel || "openai/gpt-4o",
+      default: currentModel,
       pageSize: 15,
     },
   ]);
 
-  return openrouterModel;
+  return result;
 }
 
 /**
- * Ask provider configuration and return answers (handles OpenRouter model selection specially)
+ * Ask provider configuration and return answers (handles model selection with autocomplete for all providers)
  */
 async function askProviderConfig(provider, config) {
   const questions = getProviderQuestions(provider, config);
-  const answers = await inquirer.prompt(questions);
+  const answers = questions.length > 0 ? await inquirer.prompt(questions) : {};
 
-  if (provider === "openrouter") {
-    const apiKey = answers.openrouterApiKey || config.openrouterApiKey;
-    const model = await promptOpenRouterModel(apiKey, config.openrouterModel);
-    answers.openrouterModel = model;
-  }
+  const modelAnswers = await promptModelSearch(provider, answers, config);
 
-  return answers;
+  return { ...answers, ...modelAnswers };
 }
 
 async function doSettings() {
@@ -343,28 +362,37 @@ async function doSettings() {
         s.success("\n  ✓ Settings reset to default. Starting onboarding..."),
       );
       await sleep(1000);
-      await doOnboarding();
+      await require("./onboarding").doOnboarding();
       return;
     }
     return;
   }
 
   if (action === "provider") {
+    const providerChoices = [
+      { name: "LM Studio (Local)", value: "lmstudio" },
+      { name: "OpenAI", value: "openai" },
+      { name: "Anthropic (Claude)", value: "anthropic" },
+      { name: "Ollama (Local)", value: "ollama" },
+      { name: "OpenRouter", value: "openrouter" },
+      { name: "Google Gemini", value: "gemini" },
+    ];
+
     const { provider } = await inquirer.prompt([
       {
-        type: "list",
+        type: "autocomplete",
         name: "provider",
-        message: s.muted("Select AI Provider:"),
-        choices: [
-          { name: "LM Studio (Local)", value: "lmstudio" },
-          { name: "OpenAI", value: "openai" },
-          { name: "Anthropic (Claude)", value: "anthropic" },
-          { name: "Ollama (Local)", value: "ollama" },
-          { name: "OpenRouter", value: "openrouter" },
-          { name: "Google Gemini", value: "gemini" },
-        ],
+        message: s.muted("Select AI Provider (type to search):"),
+        source: (_answers, input) => {
+          if (!input) return providerChoices;
+          const term = input.toLowerCase();
+          return providerChoices.filter(
+            (c) =>
+              c.name.toLowerCase().includes(term) ||
+              c.value.toLowerCase().includes(term),
+          );
+        },
         default: config.aiProvider,
-        loop: true,
         pageSize: 15,
       },
     ]);
@@ -428,4 +456,4 @@ async function doSettings() {
   }
 }
 
-module.exports = { doSettings };
+module.exports = { doSettings, promptModelSearch };
