@@ -199,6 +199,7 @@ async function easyWorkflow() {
   }
 
   let finalMessage = null;
+  let shouldPush = true;
 
   while (!finalMessage) {
     const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();
@@ -220,7 +221,8 @@ async function easyWorkflow() {
           name: "choice",
           message: s.muted("Action:"),
           choices: [
-            { name: s.success("  ✓ Looks good (Commit & Push)"), value: "approve" },
+            { name: s.success("  ✓ Looks good (Commit & Push)"), value: "commit-push" },
+            { name: s.primary("  ✓ Looks good (Commit Only)"), value: "commit-only" },
             { name: s.primary("  ↻ Regenerate"), value: "retry" },
             { name: s.white("  ✎ Edit subject line"), value: "edit" },
             { name: s.muted("  ✕ Cancel"), value: "cancel" },
@@ -229,8 +231,9 @@ async function easyWorkflow() {
         },
       ]);
 
-      if (choice === "approve") {
+      if (choice === "commit-push" || choice === "commit-only") {
         finalMessage = aiMessage;
+        shouldPush = choice === "commit-push";
       } else if (choice === "edit") {
         const subject = aiMessage.split("\n")[0];
         const body = aiMessage.split("\n").slice(1).join("\n");
@@ -245,6 +248,7 @@ async function easyWorkflow() {
           },
         ]);
         finalMessage = body ? `${editedSubject}${body}` : editedSubject;
+        shouldPush = false;
       } else if (choice === "cancel") {
         return;
       }
@@ -260,19 +264,22 @@ async function easyWorkflow() {
         },
       ]);
       finalMessage = manual;
+      shouldPush = false;
     }
   }
 
-  // 3. Commit & Push
+  // 3. Commit
   try {
     const spinCommit = ora({ text: s.muted(" Creating commit..."), spinner: "dots" }).start();
     const result = await createCommit(finalMessage);
     spinCommit.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
 
-    // 4. Push (Silent/Auto mode)
-    await sync().doPush(true);
+    // 4. Push (optional)
+    if (shouldPush) {
+      await sync().doPush(true);
+    }
     
-    console.log(s.success("\n  ✨ Workflow complete!\n"));
+    console.log(s.success(`\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`));
   } catch (err) {
     console.log(s.error(`\n  ❌ Error: ${err.message}`));
   }
