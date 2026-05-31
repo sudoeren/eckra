@@ -47,6 +47,7 @@ program
 
 program
   .command("status")
+  .alias("st")
   .description("Show Git status")
   .action(async () => {
     if (await checkGitRepo()) {
