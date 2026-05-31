@@ -424,12 +424,111 @@ async function fetchOpenRouterModels(apiKey) {
   }
 }
 
+/**
+ * Fetch available models from OpenAI API
+ */
+async function fetchOpenAIModels(apiKey) {
+  try {
+    const response = await axios.get("https://api.openai.com/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    return models
+      .map((m) => ({ id: m.id, name: m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from Anthropic (hardcoded list, no public API)
+ */
+async function fetchAnthropicModels() {
+  return [
+    { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
+    { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
+    { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
+    { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet (New)" },
+    { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet" },
+    { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+    { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+    { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+    { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+  ];
+}
+
+/**
+ * Fetch available models from Google Gemini API
+ */
+async function fetchGeminiModels(apiKey) {
+  try {
+    const response = await axios.get(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      {
+        headers: { "x-goog-api-key": apiKey },
+        timeout: 10000,
+      },
+    );
+    const models = response.data?.models || [];
+    return models
+      .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+      .map((m) => {
+        const id = m.name.replace("models/", "");
+        return { id, name: m.displayName || id };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from Ollama
+ */
+async function fetchOllamaModels(url) {
+  try {
+    const response = await axios.get(`${url || "http://localhost:11434"}/api/tags`, {
+      timeout: 10000,
+    });
+    const models = response.data?.models || [];
+    return models
+      .map((m) => ({ id: m.name, name: m.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from LM Studio
+ */
+async function fetchLMStudioModels(url) {
+  try {
+    const response = await axios.get(`${url || "http://localhost:1234"}/v1/models`, {
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    return models
+      .map((m) => ({ id: m.id, name: m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    return [];
+  }
+}
+
 module.exports = {
   generateCommitMessage,
   generateCommitSuggestions,
   checkAIConnection,
   testProviderConnection,
   fetchOpenRouterModels,
+  fetchOpenAIModels,
+  fetchAnthropicModels,
+  fetchGeminiModels,
+  fetchOllamaModels,
+  fetchLMStudioModels,
   // Alias for backward compatibility
   checkLMStudioConnection: checkAIConnection,
 };
