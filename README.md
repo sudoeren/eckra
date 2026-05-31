@@ -1,8 +1,8 @@
-# Eckra
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/sudoeren/eckra/master/screenshot.png" alt="eckra terminal preview" width="800">
 </p>
+
+# Eckra
 
 <p align="center">
   <strong>AI-powered terminal-based Git assistant</strong>
@@ -105,3 +105,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+<p align="center">eckra</p>
