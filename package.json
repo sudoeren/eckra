@@ -44,7 +44,7 @@
     "simple-git": "^3.36.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "repository": {
     "type": "git",

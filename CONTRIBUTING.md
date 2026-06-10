@@ -6,7 +6,7 @@ Thank you for your interest in contributing to eckra! This guide will help you g
 
 ### Prerequisites
 
-- **Node.js**: Version 14.0.0 or higher.
+- **Node.js**: Version 20.0.0 or higher.
 - **Git**: Installed and configured on your system.
 - **LM Studio** (Optional): For local AI-powered features. Other supported providers include OpenAI, Anthropic, Ollama, OpenRouter, and Google Gemini.
 
