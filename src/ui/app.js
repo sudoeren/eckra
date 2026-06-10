@@ -25,7 +25,7 @@ const {
   timeAgo,
   box,
   header,
-  pause
+  pause,
 } = require("./common");
 
 // Lazy load modules
@@ -60,9 +60,7 @@ async function startApp() {
 
     if (!info) {
       console.log(s.muted("  You are not in a Git repository."));
-      console.log(
-        s.muted("  Navigate to a git project or run 'git init'.\n"),
-      );
+      console.log(s.muted("  Navigate to a git project or run 'git init'.\n"));
       await inquirer.prompt([
         { type: "input", name: "x", message: s.muted("Press Enter...") },
       ]);
@@ -74,7 +72,10 @@ async function startApp() {
 
     // Conflict priority
     if (info.conflicts > 0) {
-      choices.push({ name: s.error("  ⚠ Resolve Conflict"), value: "conflict" });
+      choices.push({
+        name: s.error("  ⚠ Resolve Conflict"),
+        value: "conflict",
+      });
       choices.push({
         type: "separator",
         line: s.dim("  ─────────────────────"),
@@ -82,16 +83,21 @@ async function startApp() {
     }
 
     // Main actions
-    if (info.modified > 0 || info.untracked > 0) {
+    if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
       choices.push({
         name:
           `  ${s.success("+ ")} Stage` +
-          s.muted(` (${info.modified + info.untracked} files)`),
+          s.muted(` (${info.modified + info.untracked + info.deleted} files)`),
         value: "stage",
       });
     }
 
-    if (info.staged > 0 || info.modified > 0 || info.untracked > 0) {
+    if (
+      info.staged > 0 ||
+      info.modified > 0 ||
+      info.untracked > 0 ||
+      info.deleted > 0
+    ) {
       choices.push({
         name:
           `  ${s.primary("◆")} Commit` +
@@ -121,8 +127,8 @@ async function startApp() {
         choices,
         pageSize: 20,
         loop: true,
-        },
-        ]);
+      },
+    ]);
 
     switch (action) {
       case "stage":
@@ -189,8 +195,15 @@ async function easyWorkflow() {
   const info = await getGitStatus();
 
   // 1. Stage all
-  if (info.modified.length > 0 || info.not_added.length > 0) {
-    const spin = ora({ text: s.muted(" Staging all changes..."), spinner: "dots" }).start();
+  if (
+    info.modified.length > 0 ||
+    info.not_added.length > 0 ||
+    info.deleted.length > 0
+  ) {
+    const spin = ora({
+      text: s.muted(" Staging all changes..."),
+      spinner: "dots",
+    }).start();
     await stageAll();
     spin.succeed(s.success(" All files staged!"));
   } else if (info.staged.length === 0) {
@@ -202,17 +215,22 @@ async function easyWorkflow() {
   let shouldPush = true;
 
   while (!finalMessage) {
-    const spinAi = ora({ text: s.muted(" 🤖 Generating AI commit message..."), spinner: "dots" }).start();
+    const spinAi = ora({
+      text: s.muted(" 🤖 Generating AI commit message..."),
+      spinner: "dots",
+    }).start();
     let aiMessage = "";
-    
+
     try {
       const diff = await getStagedDiff();
       const status = await getGitStatus();
       aiMessage = await generateCommitMessage(diff, status.staged);
       spinAi.stop();
-      
+
       console.log(`\n  ${s.primary("🤖 AI Suggestion:")}\n`);
-      aiMessage.split("\n").forEach(line => console.log(s.text("    " + line)));
+      aiMessage
+        .split("\n")
+        .forEach((line) => console.log(s.text("    " + line)));
       console.log();
 
       const { choice } = await inquirer.prompt([
@@ -221,8 +239,14 @@ async function easyWorkflow() {
           name: "choice",
           message: s.muted("Action:"),
           choices: [
-            { name: s.success("  ✓ Looks good (Commit & Push)"), value: "commit-push" },
-            { name: s.primary("  ✓ Looks good (Commit Only)"), value: "commit-only" },
+            {
+              name: s.success("  ✓ Looks good (Commit & Push)"),
+              value: "commit-push",
+            },
+            {
+              name: s.primary("  ✓ Looks good (Commit Only)"),
+              value: "commit-only",
+            },
             { name: s.primary("  ↻ Regenerate"), value: "retry" },
             { name: s.white("  ✎ Edit subject line"), value: "edit" },
             { name: s.muted("  ✕ Cancel"), value: "cancel" },
@@ -237,7 +261,7 @@ async function easyWorkflow() {
       } else if (choice === "edit") {
         const subject = aiMessage.split("\n")[0];
         const body = aiMessage.split("\n").slice(1).join("\n");
-        
+
         const { editedSubject } = await inquirer.prompt([
           {
             type: "input",
@@ -270,7 +294,10 @@ async function easyWorkflow() {
 
   // 3. Commit
   try {
-    const spinCommit = ora({ text: s.muted(" Creating commit..."), spinner: "dots" }).start();
+    const spinCommit = ora({
+      text: s.muted(" Creating commit..."),
+      spinner: "dots",
+    }).start();
     const result = await createCommit(finalMessage);
     spinCommit.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
 
@@ -278,11 +305,21 @@ async function easyWorkflow() {
     if (shouldPush) {
       await sync().doPush(true);
     }
-    
-    console.log(s.success(`\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`));
+
+    console.log(
+      s.success(
+        `\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`,
+      ),
+    );
   } catch (err) {
     console.log(s.error(`\n  ❌ Error: ${err.message}`));
   }
 }
 
-module.exports = { startApp, quickStatus, quickCommit, quickPush, easyWorkflow };
+module.exports = {
+  startApp,
+  quickStatus,
+  quickCommit,
+  quickPush,
+  easyWorkflow,
+};

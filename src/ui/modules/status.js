@@ -8,10 +8,21 @@ async function getStatusInfo() {
     const staged = status.staged.length;
     const modified = status.modified.length;
     const untracked = status.not_added.length;
+    const deleted = status.deleted.length;
     const conflicts = status.conflicted.length;
-    const clean = staged === 0 && modified === 0 && untracked === 0;
+    const clean =
+      staged === 0 && modified === 0 && untracked === 0 && deleted === 0;
 
-    return { branch, staged, modified, untracked, conflicts, clean, status };
+    return {
+      branch,
+      staged,
+      modified,
+      untracked,
+      deleted,
+      conflicts,
+      clean,
+      status,
+    };
   } catch {
     return null;
   }
@@ -30,6 +41,7 @@ function statusLine(info) {
     if (info.staged > 0) parts.push(s.success(`${icons.staged}${info.staged}`));
     if (info.modified > 0)
       parts.push(s.warning(`${icons.modified}${info.modified}`));
+    if (info.deleted > 0) parts.push(s.error(`-${info.deleted}`));
     if (info.untracked > 0)
       parts.push(s.muted(`${icons.untracked}${info.untracked}`));
   }
@@ -59,6 +71,12 @@ async function doStatus() {
     console.log();
   }
 
+  if (status.deleted.length > 0) {
+    console.log(s.error("  Deleted:"));
+    status.deleted.forEach((f) => console.log(s.error(`    - ${f}`)));
+    console.log();
+  }
+
   if (status.not_added.length > 0) {
     console.log(s.muted("  Untracked:"));
     status.not_added.forEach((f) => console.log(s.muted(`    ? ${f}`)));
@@ -75,6 +93,7 @@ async function doStatus() {
     status.staged.length === 0 &&
     status.modified.length === 0 &&
     status.not_added.length === 0 &&
+    status.deleted.length === 0 &&
     status.conflicted.length === 0
   ) {
     console.log(s.success("  ✓ Working directory clean!\n"));

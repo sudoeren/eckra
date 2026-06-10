@@ -1,7 +1,15 @@
 const inquirer = require("inquirer");
 const ora = require("ora");
-const { getGitStatus, stageAll, getStagedDiff, createCommit } = require("../../helpers/git");
-const { generateCommitSuggestions, checkAIConnection } = require("../../helpers/ai");
+const {
+  getGitStatus,
+  stageAll,
+  getStagedDiff,
+  createCommit,
+} = require("../../helpers/git");
+const {
+  generateCommitSuggestions,
+  checkAIConnection,
+} = require("../../helpers/ai");
 const { s, header, clear, pause } = require("../common");
 const { doPush } = require("./sync");
 
@@ -43,7 +51,8 @@ async function doCommit(info) {
   if (
     status.staged.length === 0 &&
     status.modified.length === 0 &&
-    status.not_added.length === 0
+    status.not_added.length === 0 &&
+    status.deleted.length === 0
   ) {
     console.log(s.muted("  No changes to commit.\n"));
     await pause();
@@ -78,12 +87,17 @@ async function doCommit(info) {
       .slice(0, 5)
       .forEach((f) => console.log(s.success(`    + ${f}`)));
     if (status.staged.length > 5)
-      console.log(s.muted(`    ... and ${status.staged.length - 5} more files`));
+      console.log(
+        s.muted(`    ... and ${status.staged.length - 5} more files`),
+      );
     console.log();
 
     const choices = [];
     if (ai.connected) {
-      choices.push({ name: s.primary("  🤖 Suggest message with AI"), value: "ai" });
+      choices.push({
+        name: s.primary("  🤖 Suggest message with AI"),
+        value: "ai",
+      });
     }
     choices.push({ name: s.white("  ✎ Write my own"), value: "custom" });
     choices.push({ name: s.success("  🔍 Review Diff"), value: "diff" });
@@ -146,7 +160,9 @@ async function doCommit(info) {
         if (selected === "_back") continue;
 
         console.log(s.muted("\n  Selected message:\n"));
-        selected.split("\n").forEach(line => console.log(s.text("    " + line)));
+        selected
+          .split("\n")
+          .forEach((line) => console.log(s.text("    " + line)));
         console.log();
 
         const { aiAction } = await inquirer.prompt([
@@ -171,7 +187,7 @@ async function doCommit(info) {
         } else {
           const subject = getSubject(selected);
           const body = selected.split("\n").slice(1).join("\n");
-          
+
           const { editedSubject } = await inquirer.prompt([
             {
               type: "input",
@@ -181,7 +197,7 @@ async function doCommit(info) {
               validate: (v) => v.length > 0 || "Subject cannot be empty",
             },
           ]);
-          
+
           message = body ? `${editedSubject}${body}` : editedSubject;
         }
       } catch (err) {
@@ -205,7 +221,7 @@ async function doCommit(info) {
 
   // Confirm
   console.log(s.muted("\n  Commit message:\n"));
-  message.split("\n").forEach(line => console.log(s.text("    " + line)));
+  message.split("\n").forEach((line) => console.log(s.text("    " + line)));
   console.log();
 
   const { confirm } = await inquirer.prompt([

@@ -1,5 +1,9 @@
 const inquirer = require("inquirer");
-const { getGitStatus, getStagedDiff, getUnstagedDiff } = require("../../helpers/git");
+const {
+  getGitStatus,
+  getStagedDiff,
+  getUnstagedDiff,
+} = require("../../helpers/git");
 const { s, header, clear, pause } = require("../common");
 
 async function doDiff() {
@@ -9,7 +13,11 @@ async function doDiff() {
 
   const status = await getGitStatus();
 
-  if (status.staged.length === 0 && status.modified.length === 0) {
+  if (
+    status.staged.length === 0 &&
+    status.modified.length === 0 &&
+    status.deleted.length === 0
+  ) {
     console.log(s.muted("  No changes.\n"));
     await pause();
     return;
@@ -26,7 +34,9 @@ async function doDiff() {
           value: "staged",
         },
         {
-          name: s.warning(`  Unstaged (${status.modified.length})`),
+          name: s.warning(
+            `  Unstaged (${status.modified.length + status.deleted.length})`,
+          ),
           value: "unstaged",
         },
         { name: s.muted("  ← Back"), value: "back" },
