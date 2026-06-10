@@ -1,6 +1,15 @@
 const axios = require("axios");
 const { getConfig } = require("./config");
 
+const MAX_DIFF_CHARS = 3000;
+
+function formatDiffForPrompt(diff, maxChars = MAX_DIFF_CHARS) {
+  if (!diff || diff.length <= maxChars) return diff || "";
+
+  const omittedChars = diff.length - maxChars;
+  return `${diff.substring(0, maxChars)}\n\n[Diff truncated: ${omittedChars} characters omitted. Review the changed files list for the full scope.]`;
+}
+
 /**
  * Call the selected AI provider
  */
@@ -76,7 +85,10 @@ async function callProvider(
 
     case "gemini":
       url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-3.1-flash-lite"}:generateContent`;
-      headers = { "Content-Type": "application/json", "x-goog-api-key": config.geminiApiKey };
+      headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": config.geminiApiKey,
+      };
       // Gemini uses a different message format
       const geminiContents = messages
         .filter((m) => m.role !== "system")
@@ -125,7 +137,9 @@ async function callProvider(
       content = response.data.candidates[0].content.parts[0].text;
     } else {
       if (!response.data.choices || response.data.choices.length === 0) {
-        throw new Error(`AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${config.openrouterModel || "openai/gpt-4o"}), insufficient credits, or safety filters.`);
+        throw new Error(
+          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${config.openrouterModel || "openai/gpt-4o"}), insufficient credits, or safety filters.`,
+        );
       }
       content = response.data.choices[0].message.content;
     }
@@ -166,7 +180,7 @@ Changed files:
 ${filesList.join("\n")}
 
 Diff:
-${diff.substring(0, 3000)}
+${formatDiffForPrompt(diff)}
 
 Write a commit message in the following format:
 
@@ -201,13 +215,13 @@ Write only the commit message, no explanations.`;
 
   message = message.replace(/^["']|["']$/g, "");
   message = message.trim();
-  
-  const lines = message.split("\n").map(line => line.trimEnd());
-  
+
+  const lines = message.split("\n").map((line) => line.trimEnd());
+
   if (lines.length > 0 && lines[0].length > 72) {
     lines[0] = lines[0].substring(0, 72);
   }
-  
+
   return lines.join("\n");
 }
 
@@ -234,7 +248,7 @@ Changed files:
 ${filesList.join("\n")}
 
 Diff:
-${diff.substring(0, 3000)}
+${formatDiffForPrompt(diff)}
 
 CRITICAL FORMAT REQUIREMENTS:
 Each suggestion MUST have:
@@ -282,37 +296,51 @@ Write exactly ${count} suggestions following this format. Separate each with "--
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const content = await callProvider(config.aiProvider, messages, 0.7, 1000);
+      const content = await callProvider(
+        config.aiProvider,
+        messages,
+        0.7,
+        1000,
+      );
 
       if (!content || content.trim().length < 10) {
-        throw new Error(`AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`);
+        throw new Error(
+          `AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`,
+        );
       }
 
-      const blocks = content.split(/^---$/m).map(b => b.trim()).filter(b => b.length > 0);
-      
-      const suggestions = blocks.map(block => {
-        const lines = block.split("\n").map(line => line.trimEnd());
-        
-        if (lines.length > 0 && lines[0].length > 72) {
-          lines[0] = lines[0].substring(0, 72);
-        }
-        
-        return lines.join("\n");
-      }).slice(0, count);
+      const blocks = content
+        .split(/^---$/m)
+        .map((b) => b.trim())
+        .filter((b) => b.length > 0);
+
+      const suggestions = blocks
+        .map((block) => {
+          const lines = block.split("\n").map((line) => line.trimEnd());
+
+          if (lines.length > 0 && lines[0].length > 72) {
+            lines[0] = lines[0].substring(0, 72);
+          }
+
+          return lines.join("\n");
+        })
+        .slice(0, count);
 
       if (suggestions.length === 0) {
-        const lines = content.split("\n").map(l => l.trimEnd());
+        const lines = content.split("\n").map((l) => l.trimEnd());
         if (lines.length > 0 && lines[0].length > 5) {
           return [lines.join("\n").substring(0, 200)];
         }
-        throw new Error(`AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`);
+        throw new Error(
+          `AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`,
+        );
       }
 
       return suggestions;
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
   }
@@ -537,9 +565,12 @@ async function fetchGeminiModels(apiKey) {
  */
 async function fetchOllamaModels(url) {
   try {
-    const response = await axios.get(`${url || "http://localhost:11434"}/api/tags`, {
-      timeout: 10000,
-    });
+    const response = await axios.get(
+      `${url || "http://localhost:11434"}/api/tags`,
+      {
+        timeout: 10000,
+      },
+    );
     const models = response.data?.models || [];
     return models
       .map((m) => ({ id: m.name, name: m.name }))
@@ -554,9 +585,12 @@ async function fetchOllamaModels(url) {
  */
 async function fetchLMStudioModels(url) {
   try {
-    const response = await axios.get(`${url || "http://localhost:1234"}/v1/models`, {
-      timeout: 10000,
-    });
+    const response = await axios.get(
+      `${url || "http://localhost:1234"}/v1/models`,
+      {
+        timeout: 10000,
+      },
+    );
     const models = response.data?.data || [];
     return models
       .map((m) => ({ id: m.id, name: m.id }))
@@ -567,6 +601,7 @@ async function fetchLMStudioModels(url) {
 }
 
 module.exports = {
+  formatDiffForPrompt,
   generateCommitMessage,
   generateCommitSuggestions,
   checkAIConnection,
