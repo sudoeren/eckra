@@ -271,7 +271,9 @@ async function easyWorkflow() {
             validate: (v) => v.length > 0 || "Subject cannot be empty",
           },
         ]);
-        finalMessage = body ? `${editedSubject}${body}` : editedSubject;
+        finalMessage = body
+          ? `${editedSubject}\n\n${body.trim()}`
+          : editedSubject;
         shouldPush = false;
       } else if (choice === "cancel") {
         return;

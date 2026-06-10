@@ -198,7 +198,7 @@ async function doCommit(info) {
             },
           ]);
 
-          message = body ? `${editedSubject}${body}` : editedSubject;
+          message = body ? `${editedSubject}\n\n${body.trim()}` : editedSubject;
         }
       } catch (err) {
         spin.fail(s.error(" AI error: " + err.message));
