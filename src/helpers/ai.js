@@ -447,11 +447,11 @@ async function checkAIConnection() {
       });
       return { connected: true, models: response.data?.data || [] };
     } else if (provider === "anthropic") {
-      if (!config.anthropicApiKey)
-        return { connected: false, error: "Anthropic API Key is missing" };
+      const result = await testProviderConnection("anthropic", config);
+      if (!result.connected) return result;
       return {
         connected: true,
-        note: "Anthropic connection assumed (listing models not supported via simple GET)",
+        note: "Anthropic connection verified with a minimal request",
       };
     } else if (provider === "openrouter") {
       if (!config.openrouterApiKey)

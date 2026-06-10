@@ -2,6 +2,7 @@ const axios = require("axios");
 const {
   generateCommitMessage,
   formatDiffForPrompt,
+  checkAIConnection,
 } = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
 
@@ -48,6 +49,33 @@ describe("AI Helper", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer sk-test",
+        }),
+      }),
+    );
+  });
+
+  test("should verify Anthropic connection with a minimal request", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "anthropic",
+      anthropicApiKey: "sk-ant-test",
+      anthropicModel: "claude-3",
+    });
+
+    axios.post.mockResolvedValue({ data: { content: [{ text: "ok" }] } });
+
+    const result = await checkAIConnection();
+
+    expect(result.connected).toBe(true);
+    expect(result.note).toContain("verified");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/messages",
+      expect.objectContaining({
+        model: "claude-3",
+        max_tokens: 1,
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-api-key": "sk-ant-test",
         }),
       }),
     );
