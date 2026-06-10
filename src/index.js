@@ -2,6 +2,7 @@
 
 const { Command } = require("commander");
 const { getGitStatus } = require("./helpers/git");
+const { version } = require("../package.json");
 const chalk = require("chalk");
 
 // Lazy load app functions
@@ -23,7 +24,7 @@ async function checkGitRepo() {
 program
   .name("eckra")
   .description("AI-powered Git management CLI")
-  .version("1.2.0");
+  .version(version);
 
 program
   .command("easy")
