@@ -87,7 +87,7 @@ You can configure your provider in two ways:
 }
 ```
 
-You can also create a `.eckrarc` file in your project root to override global settings per-repository.
+You can also create a `.eckrarc` file in your project root to override global settings per-repository. `.eckrarc` is ignored by default because it may contain API keys; avoid committing provider secrets to your repository.
 
 ## Contributing
 
