@@ -34,12 +34,6 @@ Install eckra globally using npm:
 npm install -g eckra
 ```
 
-To uninstall:
-
-```bash
-npm uninstall -g eckra
-```
-
 ## Usage
 
 Just type `eckra` in any Git repository to launch the interactive dashboard:
@@ -120,6 +114,14 @@ You can also create a `.eckrarc` file in your project root to override global se
 Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## Uninstall
+
+```bash
+npm uninstall -g eckra
+```
+
+Configuration files at `~/.eckra/` are not removed automatically; delete them manually if needed.
 
 ## License
 
