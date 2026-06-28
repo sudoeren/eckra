@@ -125,8 +125,6 @@ Configuration files at `~/.eckra/` are not removed automatically; delete them ma
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
----
 
-<p align="center">eckra</p>
