@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?label=total%20downloads" alt="npm total downloads"></a>
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/node/v/eckra" alt="node version"></a>
 </p>
 
 ---
@@ -31,6 +32,12 @@ Install eckra globally using npm:
 
 ```bash
 npm install -g eckra
+```
+
+To uninstall:
+
+```bash
+npm uninstall -g eckra
 ```
 
 ## Usage
@@ -93,6 +100,20 @@ You can configure your provider in two ways:
 ```
 
 You can also create a `.eckrarc` file in your project root to override global settings per-repository. `.eckrarc` is ignored by default because it may contain API keys; avoid committing provider secrets to your repository.
+
+## Troubleshooting
+
+| Problem | Likely Cause | Solution |
+| :------ | :----------- | :------- |
+| "This folder is not a Git repository!" | Not inside a git repo | Run `git init` or `cd` into a repo |
+| "Not connected" (LM Studio / Ollama) | Local server not running | Start LM Studio server on `:1234` or Ollama on `:11434` |
+| "AI Provider Error: 401" | Wrong or missing API key | Check `~/.eckra/config.json` or re-enter key via `Settings` menu |
+| "AI returned no choices" | Invalid model name | Verify the model name in settings matches your provider |
+| "AI returned empty or too short response" | Local model not loaded | Load a model in LM Studio / Ollama before using eckra |
+| "Malformed config file" | Bad JSON in config | Fix or delete `~/.eckra/config.json` — defaults will be used |
+| Push fails: "no upstream" | First push on a new branch | eckra auto-detects this and offers to set upstream for you |
+| Rebase / cherry-pick failed | Merge conflicts | Resolve conflicts manually, then continue from the rebase menu |
+| Timeout / "ECONNABORTED" | Provider slow or unreachable | Check your network, firewall, or provider status page |
 
 ## Contributing
 
