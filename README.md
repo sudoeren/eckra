@@ -9,7 +9,6 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?label=total%20downloads" alt="npm total downloads"></a>
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/node/v/eckra" alt="node version"></a>
 </p>
 
 ---
