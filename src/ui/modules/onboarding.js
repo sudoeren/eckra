@@ -23,38 +23,7 @@ async function doOnboarding() {
   
   console.log("\n" + welcome + "\n");
   
-  const { start } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "start",
-      message: "Ready to configure your AI provider?",
-      default: true
-    }
-  ]);
-
-  if (!start) {
-    console.log(s.muted("\n  No problem! We'll use the default settings (LM Studio)."));
-    saveConfig(DEFAULT_CONFIG);
-    await sleep(1000);
-    return;
-  }
-
-  // 1. Choose Theme
-  const { theme } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "theme",
-      message: "Select your preferred theme:",
-      choices: [
-        { name: "Auto (Detect terminal theme)", value: "auto" },
-        { name: "Dark", value: "dark" },
-        { name: "Light", value: "light" }
-      ],
-      default: "auto"
-    }
-  ]);
-
-  // 2. Choose provider
+  // Choose provider
   const providerChoices = [
     { name: "LM Studio (Local, no API key needed)", value: "lmstudio" },
     { name: "OpenAI (GPT-4o, etc.)", value: "openai" },
@@ -81,7 +50,7 @@ async function doOnboarding() {
     }
   ]);
 
-  let configData = { aiProvider: provider, theme };
+  let configData = { aiProvider: provider, theme: "auto" };
   let answers = {};
 
   if (provider === "openai") {
