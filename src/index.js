@@ -3,7 +3,7 @@
 const { Command } = require("commander");
 const { getGitStatus } = require("./helpers/git");
 const { version } = require("../package.json");
-const chalk = require("chalk");
+const { s } = require("./ui/common");
 
 // Lazy load app functions
 const app = () => require("./ui/app");
@@ -15,8 +15,8 @@ async function checkGitRepo() {
     await getGitStatus();
     return true;
   } catch (error) {
-    console.log(chalk.red("\n  ⚠️  This folder is not a Git repository!\n"));
-    console.log(chalk.gray("  Solution: Run git init command\n"));
+    console.log(s.error("\n  ⚠️  This folder is not a Git repository!\n"));
+    console.log(s.muted("  Solution: Run git init command\n"));
     return false;
   }
 }

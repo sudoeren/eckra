@@ -1,6 +1,5 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const chalk = require("chalk");
 const boxen = require("boxen");
 const ora = require("ora");
 const { saveConfig, DEFAULT_CONFIG } = require("../../helpers/config");
@@ -15,10 +14,10 @@ async function doOnboarding() {
   clear();
   
   const welcome = boxen(
-    chalk.bold.cyan("Welcome to Eckra! 🚀\n\n") +
-    chalk.white("Your AI-powered Git management companion.\n") +
-    chalk.gray("Let's get you set up in less than a minute."),
-    { padding: 1, borderStyle: "round", borderColor: "cyan", textAlign: "center" }
+    s.brand("Welcome to Eckra! 🚀\n\n") +
+    s.text("Your AI-powered Git management companion.\n") +
+    s.muted("Let's get you set up in less than a minute."),
+    { padding: 1, borderStyle: "round", textAlign: "center" }
   );
   
   console.log("\n" + welcome + "\n");
