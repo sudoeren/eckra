@@ -24,7 +24,7 @@ async function checkGitRepo() {
 program
   .name("eckra")
   .description("AI-powered Git management CLI")
-  .version(version);
+  .version(version, "-v, --version");
 
 program
   .command("easy")
