@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const ora = require("ora");
+const ora = require("ora").default;
 const { getConfig, saveConfig, resetConfig } = require("../../helpers/config");
 const {
   checkAIConnection,

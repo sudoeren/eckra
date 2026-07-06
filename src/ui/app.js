@@ -1,6 +1,6 @@
 const chalk = require("chalk");
 const inquirer = require("inquirer");
-const ora = require("ora");
+const ora = require("ora").default;
 const fs = require("fs");
 const path = require("path");
 
