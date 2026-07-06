@@ -27,7 +27,7 @@ const themes = {
     error: chalk.hex("#DC2626"),
     muted: chalk.hex("#6B7280"),
     text: chalk.hex("#1F2937"),
-    dim: chalk.hex("#9CA3AF"),
+    dim: chalk.hex("#787878"),
     white: chalk.hex("#111827"),
     bold: chalk.bold,
   },
