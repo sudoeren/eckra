@@ -509,6 +509,8 @@ async function doSettings() {
       },
     ]);
     saveConfig({ ...config, theme });
+    const { resetThemeCache } = require("../common");
+    resetThemeCache();
     console.log(s.success("\n  ✓ Theme changed to " + theme));
     await sleep(600);
   }

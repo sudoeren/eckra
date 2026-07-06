@@ -125,6 +125,9 @@ function isDarkMode() {
 }
 
 let _cachedTheme = null;
+function resetThemeCache() {
+  _cachedTheme = null;
+}
 function getTheme() {
   if (_cachedTheme) return _cachedTheme;
 
@@ -235,5 +238,6 @@ module.exports = {
   timeAgo,
   box,
   header,
-  pause
+  pause,
+  resetThemeCache,
 };

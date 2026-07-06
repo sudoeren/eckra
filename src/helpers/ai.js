@@ -137,8 +137,12 @@ async function callProvider(
       content = response.data.candidates[0].content.parts[0].text;
     } else {
       if (!response.data.choices || response.data.choices.length === 0) {
+        const modelLabels = {
+          openai: config.openaiModel,
+          openrouter: config.openrouterModel || "openai/gpt-4o",
+        };
         throw new Error(
-          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${config.openrouterModel || "openai/gpt-4o"}), insufficient credits, or safety filters.`,
+          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`,
         );
       }
       content = response.data.choices[0].message.content;
