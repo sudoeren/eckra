@@ -1,7 +1,8 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
 const ora = require("ora").default;
-const { getConfig, saveConfig, resetConfig } = require("../../helpers/config");
+const { execSync } = require("child_process");
+const { getConfig, saveConfig, resetConfig, getConfigPath } = require("../../helpers/config");
 const {
   checkAIConnection,
   testProviderConnection,
@@ -335,6 +336,7 @@ async function doSettings() {
         { name: s.text("  Change Theme"), value: "theme" },
         { type: "separator", line: " " },
         { name: s.error("  ⚠ Reset & Restart Onboarding"), value: "reset" },
+        { name: s.error("  🗑 Uninstall Eckra"), value: "uninstall" },
         { name: s.muted("  ← Back"), value: "back" },
       ],
       loop: true,
@@ -366,6 +368,62 @@ async function doSettings() {
       return;
     }
     return;
+  }
+
+  if (action === "uninstall") {
+    const { confirmUninstall } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirmUninstall",
+        message: s.error(
+          "This will DELETE all Eckra settings, API keys, and remove the global package. Continue?",
+        ),
+        default: false,
+      },
+    ]);
+
+    if (!confirmUninstall) return;
+
+    const { reallySure } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "reallySure",
+        message: s.error('Type "uninstall" to confirm:'),
+        validate: (v) => v === "uninstall" || "Type 'uninstall' to confirm",
+      },
+    ]);
+
+    if (reallySure !== "uninstall") return;
+
+    clear();
+    console.log(s.muted("\n  Uninstalling Eckra...\n"));
+
+    // Remove config directory
+    const spinner1 = ora({ text: s.muted("  Removing config files..."), spinner: "dots" }).start();
+    try {
+      const configDir = require("path").join(require("os").homedir(), ".eckra");
+      require("fs").rmSync(configDir, { recursive: true, force: true });
+      spinner1.succeed(s.success("  Config files removed"));
+    } catch {
+      spinner1.fail(s.error("  Failed to remove config files"));
+    }
+
+    // Uninstall global package
+    const spinner2 = ora({ text: s.muted("  Uninstalling global package..."), spinner: "dots" }).start();
+    try {
+      execSync("npm uninstall -g eckra", { stdio: ["pipe", "pipe", "ignore"] });
+      spinner2.succeed(s.success("  Global package uninstalled"));
+    } catch {
+      spinner2.fail(s.warning("  Global package may not be installed or npm not found"));
+    }
+
+    console.log();
+    console.log(s.success("  Eckra has been uninstalled."));
+    console.log(s.muted("  You can delete the project folder manually:"));
+    console.log(s.dim("    rm -rf " + require("path").join(__dirname, "..", "..", "..")));
+    console.log();
+    await sleep(2000);
+    process.exit(0);
   }
 
   if (action === "provider") {
