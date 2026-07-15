@@ -1,8 +1,96 @@
 const inquirer = require("inquirer");
 const ora = require("ora").default;
 const { getCommitHistory } = require("../../helpers/git");
-const { generateTimeline, checkAIConnection } = require("../../helpers/ai");
-const { s, header, clear, pause, box } = require("../common");
+const { generateTimeline } = require("../../helpers/ai");
+const { s, header, clear, pause } = require("../common");
+
+function parseSections(text) {
+  const sections = [];
+  const parts = text.split(/\n(?=## )/);
+  for (const part of parts) {
+    const lines = part.trim().split("\n");
+    const headerMatch = lines[0]?.match(/^##\s*(.+)/);
+    if (headerMatch) {
+      sections.push({
+        title: headerMatch[1].trim(),
+        content: lines.slice(1).join("\n").trim(),
+      });
+    } else {
+      sections.push({
+        title: "Timeline",
+        content: part.trim(),
+      });
+    }
+  }
+  return sections;
+}
+
+function renderSection(title, content, icon, colorFn) {
+  console.log(colorFn(`  ${icon} ${title}`));
+  console.log(s.dim("  " + "─".repeat(Math.min(process.stdout.columns - 4, 60))));
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      console.log();
+    } else if (trimmed.startsWith("- ")) {
+      console.log(s.text("    " + trimmed));
+    } else {
+      const wrapped = wrapText(trimmed, process.stdout.columns - 8);
+      for (const w of wrapped) {
+        console.log(s.text("    " + w));
+      }
+    }
+  }
+  console.log();
+}
+
+function wrapText(text, maxWidth) {
+  if (text.length <= maxWidth) return [text];
+  const result = [];
+  let remaining = text;
+  while (remaining.length > maxWidth) {
+    let breakAt = remaining.lastIndexOf(" ", maxWidth);
+    if (breakAt === -1 || breakAt === 0) breakAt = maxWidth;
+    result.push(remaining.substring(0, breakAt).trim());
+    remaining = remaining.substring(breakAt).trim();
+  }
+  if (remaining) result.push(remaining);
+  return result;
+}
+
+function renderStory(story, commitCount, commits) {
+  const firstDate = commits[commits.length - 1]?.date;
+  const lastDate = commits[0]?.date;
+
+  clear();
+  header();
+  console.log(s.bold("  Project Story\n"));
+
+  if (firstDate && lastDate) {
+    const from = new Date(firstDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    const to = new Date(lastDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    console.log(s.muted(`  ${commitCount} commits  ·  ${from} → ${to}\n`));
+  } else {
+    console.log(s.muted(`  ${commitCount} commits analyzed\n`));
+  }
+
+  const sections = parseSections(story);
+
+  const styleMap = {
+    "timeline": { icon: "◆", color: s.primary },
+    "key milestones": { icon: "★", color: s.success },
+    "contributors": { icon: "👥", color: s.brand },
+    "patterns & insights": { icon: "💡", color: s.warning },
+    "patterns and insights": { icon: "💡", color: s.warning },
+  };
+
+  for (const sec of sections) {
+    const key = sec.title.toLowerCase();
+    const style = styleMap[key] || { icon: "·", color: s.primary };
+    renderSection(sec.title, sec.content, style.icon, style.color);
+  }
+}
 
 async function doTimeline() {
   clear();
@@ -50,12 +138,7 @@ async function doTimeline() {
   try {
     const story = await generateTimeline(commits);
     spin.stop();
-
-    clear();
-    header();
-    console.log(s.bold(`  Project Story (${commits.length} commits analyzed)\n`));
-    console.log(box(story, s.primary("AI-Generated Timeline")));
-    console.log();
+    renderStory(story, commits.length, commits);
   } catch (err) {
     spin.fail(s.error(` AI Error: ${err.message}`));
     console.log(s.muted("\n  Check your AI provider configuration in Settings."));
@@ -64,4 +147,4 @@ async function doTimeline() {
   await pause();
 }
 
-module.exports = { doTimeline };
+module.exports = { doTimeline, renderStory };

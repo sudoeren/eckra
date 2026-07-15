@@ -313,17 +313,15 @@ async function quickTimeline(count) {
   if (count) {
     const { getCommitHistory } = require("../helpers/git");
     const { generateTimeline } = require("../helpers/ai");
-    const { s, header, clear, pause, box } = require("./common");
+    const { s, header, clear, pause } = require("./common");
 
-    clear();
-    header();
     const n = parseInt(count, 10);
     if (isNaN(n) || n < 1) {
       console.log(s.error("  Invalid count. Please provide a number greater than 0.\n"));
       return;
     }
 
-    const { default: ora } = require("ora");
+    const ora = require("ora").default;
     const spin = ora({ text: s.muted(` Fetching ${n} commits...`), spinner: "dots" }).start();
     let commits;
     try {
@@ -341,9 +339,7 @@ async function quickTimeline(count) {
     try {
       const story = await generateTimeline(commits);
       spin.stop();
-      console.log(s.bold(`  Project Story (${commits.length} commits analyzed)\n`));
-      console.log(box(story, s.primary("AI-Generated Timeline")));
-      console.log();
+      timelineMod.renderStory(story, commits.length, commits);
     } catch (err) {
       spin.fail(s.error(` AI Error: ${err.message}`));
     }
