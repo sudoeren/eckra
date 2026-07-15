@@ -118,11 +118,22 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct
 
 ## Uninstall
 
+You can uninstall Eckra either from the app or manually:
+
+### In-App Uninstall (Recommended)
+
+1. Run `eckra` and go to **More > Settings**
+2. Select **"Uninstall Eckra"**
+3. Confirm by typing `uninstall`
+
+This will remove all configuration files (`~/.eckra/`) and the global npm package.
+
+### Manual Uninstall
+
 ```bash
 npm uninstall -g eckra
+rm -rf ~/.eckra
 ```
-
-Configuration files at `~/.eckra/` are not removed automatically; delete them manually if needed.
 
 ## License
 

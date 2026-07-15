@@ -1,8 +1,7 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const chalk = require("chalk");
 const boxen = require("boxen");
-const ora = require("ora");
+const ora = require("ora").default;
 const { saveConfig, DEFAULT_CONFIG } = require("../../helpers/config");
 const { s, header, clear, sleep } = require("../common");
 
@@ -15,46 +14,15 @@ async function doOnboarding() {
   clear();
   
   const welcome = boxen(
-    chalk.bold.cyan("Welcome to Eckra! 🚀\n\n") +
-    chalk.white("Your AI-powered Git management companion.\n") +
-    chalk.gray("Let's get you set up in less than a minute."),
-    { padding: 1, borderStyle: "round", borderColor: "cyan", textAlign: "center" }
+    s.brand("Welcome to Eckra! 🚀\n\n") +
+    s.text("Your AI-powered Git management companion.\n") +
+    s.muted("Let's get you set up in less than a minute."),
+    { padding: 1, borderStyle: "round", textAlign: "center" }
   );
   
   console.log("\n" + welcome + "\n");
   
-  const { start } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "start",
-      message: "Ready to configure your AI provider?",
-      default: true
-    }
-  ]);
-
-  if (!start) {
-    console.log(s.muted("\n  No problem! We'll use the default settings (LM Studio)."));
-    saveConfig(DEFAULT_CONFIG);
-    await sleep(1000);
-    return;
-  }
-
-  // 1. Choose Theme
-  const { theme } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "theme",
-      message: "Select your preferred theme:",
-      choices: [
-        { name: "Auto (Detect terminal theme)", value: "auto" },
-        { name: "Dark", value: "dark" },
-        { name: "Light", value: "light" }
-      ],
-      default: "auto"
-    }
-  ]);
-
-  // 2. Choose provider
+  // Choose provider
   const providerChoices = [
     { name: "LM Studio (Local, no API key needed)", value: "lmstudio" },
     { name: "OpenAI (GPT-4o, etc.)", value: "openai" },
@@ -81,7 +49,7 @@ async function doOnboarding() {
     }
   ]);
 
-  let configData = { aiProvider: provider, theme };
+  let configData = { aiProvider: provider, theme: "auto" };
   let answers = {};
 
   if (provider === "openai") {

@@ -80,8 +80,7 @@ async function resolveFile(file) {
   if (choice === "theirs") await acceptTheirs(file);
   if (choice === "both") await acceptBoth(file);
   if (choice === "manual") {
-    // Try to open in VS Code, then Notepad, or fallback to environment editor
-    const editor = process.env.EDITOR || "code" || "notepad";
+    const editor = process.env.EDITOR || (process.platform === "win32" ? "notepad" : "code");
     console.log(s.muted(`  Opening ${editor}...`));
     await new Promise((resolve, reject) => {
       const child = execFile(editor, [file], { stdio: "inherit" });

@@ -27,53 +27,107 @@ const themes = {
     error: chalk.hex("#DC2626"),
     muted: chalk.hex("#6B7280"),
     text: chalk.hex("#1F2937"),
-    dim: chalk.hex("#9CA3AF"),
+    dim: chalk.hex("#787878"),
     white: chalk.hex("#111827"),
     bold: chalk.bold,
   },
 };
 
 let _isDark = null;
+
 function isDarkMode() {
   if (_isDark !== null) return _isDark;
-  
+
   const { execSync } = require("child_process");
-  
+  const env = process.env;
+
   try {
     if (process.platform === "win32") {
-      // Check Windows Registry for AppsUseLightTheme
-      // Using reg query is FASTER than powershell
       const command = 'reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme';
-      const output = execSync(command, { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
-      // If AppsUseLightTheme is 0x0, it is Dark Mode
+      const output = execSync(command, { stdio: ["pipe", "pipe", "ignore"] }).toString();
       _isDark = output.includes("0x0");
       return _isDark;
-    } else if (process.platform === "darwin") {
-      // Check macOS AppleInterfaceStyle
-      const output = execSync("defaults read -g AppleInterfaceStyle", { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+    }
+
+    if (process.platform === "darwin") {
+      const output = execSync("defaults read -g AppleInterfaceStyle", { stdio: ["pipe", "pipe", "ignore"] }).toString();
       _isDark = output.trim() === "Dark";
       return _isDark;
     }
-  } catch (e) {
-    // If command fails, fallback to dark
-  }
 
-  // Fallback for Linux or other cases: check common env variables
-  const env = process.env;
-  if (env.COLORFGBG) {
-    const parts = env.COLORFGBG.split(";");
-    const bg = parts[parts.length - 1];
-    if (bg) {
-      _isDark = parseInt(bg) < 8;
-      return _isDark;
+    // ---- Linux detection ----
+
+    // 1. GNOME via gsettings
+    try {
+      const out = execSync("gsettings get org.gnome.desktop.interface color-scheme", {
+        stdio: ["pipe", "pipe", "ignore"],
+        timeout: 2000,
+      }).toString().trim();
+      if (out === "'prefer-dark'") { _isDark = true; return true; }
+      if (out === "'default'" || out === "'prefer-light'") { _isDark = false; return false; }
+    } catch {}
+
+    // 2. KDE via kreadconfig5
+    try {
+      const out = execSync("kreadconfig5 --group General --key ColorScheme", {
+        stdio: ["pipe", "pipe", "ignore"],
+        timeout: 2000,
+      }).toString().trim().toLowerCase();
+      if (out.includes("dark")) { _isDark = true; return true; }
+      if (out.length > 0) { _isDark = false; return false; }
+    } catch {}
+
+    // 3. KDE via kdeglobals
+    try {
+      const fs = require("fs");
+      const p = require("path");
+      const kdegl = p.join(require("os").homedir(), ".config", "kdeglobals");
+      if (fs.existsSync(kdegl)) {
+        const c = fs.readFileSync(kdegl, "utf8");
+        if (c.includes("ColorScheme=KDE Breeze Dark") || c.includes("ColorScheme=BreezeDark")) { _isDark = true; return true; }
+        if (/ColorScheme=/.test(c)) { _isDark = false; return false; }
+      }
+    } catch {}
+
+    // 4. GTK settings.ini
+    try {
+      const fs = require("fs");
+      const p = require("path");
+      const gtkIni = p.join(require("os").homedir(), ".config", "gtk-3.0", "settings.ini");
+      if (fs.existsSync(gtkIni)) {
+        const c = fs.readFileSync(gtkIni, "utf8");
+        if (/gtk-application-prefer-dark-theme\s*=\s*1/.test(c)) { _isDark = true; return true; }
+      }
+    } catch {}
+
+    // 5. COLORFGBG env
+    if (env.COLORFGBG) {
+      const parts = env.COLORFGBG.split(";");
+      const bg = parts[parts.length - 1];
+      if (bg) {
+        const val = parseInt(bg, 10);
+        if (!isNaN(val)) { _isDark = val < 8; return _isDark; }
+      }
     }
+
+    // 6. GTK_THEME env
+    if (env.GTK_THEME && env.GTK_THEME.endsWith("-dark")) { _isDark = true; return true; }
+  } catch {
+    // fall through
   }
 
-  _isDark = true; // Default to dark
+  // Fallback: check terminal emulator env hints
+  const term = (env.COLORTERM || env.TERM || "").toLowerCase();
+  if (term.includes("dark") || term.includes("black")) { _isDark = true; return true; }
+
+  _isDark = false; // Default to light (safer for most terminals)
   return _isDark;
 }
 
 let _cachedTheme = null;
+function resetThemeCache() {
+  _cachedTheme = null;
+}
 function getTheme() {
   if (_cachedTheme) return _cachedTheme;
 
@@ -184,5 +238,6 @@ module.exports = {
   timeAgo,
   box,
   header,
-  pause
+  pause,
+  resetThemeCache,
 };

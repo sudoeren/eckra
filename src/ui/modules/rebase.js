@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require("ora");
+const ora = require("ora").default;
 const { getCommitLog, squashCommits, rebase, abortRebase, continueRebase, getBranches, getCurrentBranch } = require("../../helpers/git");
 const { s, header, clear, pause } = require("../common");
 

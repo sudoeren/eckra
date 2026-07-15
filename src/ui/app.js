@@ -1,8 +1,5 @@
-const chalk = require("chalk");
 const inquirer = require("inquirer");
-const ora = require("ora");
-const fs = require("fs");
-const path = require("path");
+const ora = require("ora").default;
 
 const {
   getGitStatus,
@@ -12,20 +9,12 @@ const {
 } = require("../helpers/git");
 const { generateCommitMessage } = require("../helpers/ai");
 
-const configHelper = require("../helpers/config"); // Import config helper
+const configHelper = require("../helpers/config");
 
 const {
   s,
-  icons,
   clear,
-  sleep,
-  cols,
-  rows,
-  truncate,
-  timeAgo,
-  box,
   header,
-  pause,
 } = require("./common");
 
 // Lazy load modules
@@ -56,16 +45,17 @@ async function startApp() {
     header();
 
     const info = await status().getStatusInfo();
-    console.log(status().statusLine(info));
 
     if (!info) {
-      console.log(s.muted("  You are not in a Git repository."));
+      console.log(s.error("  ✗ not a git repository\n"));
       console.log(s.muted("  Navigate to a git project or run 'git init'.\n"));
       await inquirer.prompt([
         { type: "input", name: "x", message: s.muted("Press Enter...") },
       ]);
       return;
     }
+
+    console.log(status().statusLine(info));
 
     // Smart menu - options based on current state
     const choices = [];
