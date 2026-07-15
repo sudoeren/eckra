@@ -47,7 +47,7 @@ async function doMore() {
         { name: s.text("  ◷ Project Story"), value: "timeline" },
         { type: "separator", line: " " },
         { name: s.text("  ⚙ Settings"), value: "settings" },
-        { name: s.text("  ℹ About"), value: "about" },
+        { name: s.text("  ⊙ About"), value: "about" },
         { name: s.muted("  ← Main Menu"), value: "back" },
       ],
       pageSize: 20,
