@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const ora = require("ora").default;
+const ora = require("ora");
 const { execSync } = require("child_process");
 const { getConfig, saveConfig, resetConfig, getConfigPath } = require("../../helpers/config");
 const {

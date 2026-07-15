@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require("ora").default;
+const ora = require("ora");
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
 const { s, header, clear, pause } = require("../common");

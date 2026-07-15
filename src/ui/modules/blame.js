@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require("ora").default;
+const ora = require("ora");
 const { getTrackedFiles, getBlame } = require("../../helpers/git");
 const { s, header, clear, pause, truncate, cols, rows } = require("../common");
 

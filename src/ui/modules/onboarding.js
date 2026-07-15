@@ -1,7 +1,7 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
 const boxen = require("boxen");
-const ora = require("ora").default;
+const ora = require("ora");
 const { saveConfig, DEFAULT_CONFIG } = require("../../helpers/config");
 const { s, header, clear, sleep } = require("../common");
 
