@@ -323,7 +323,7 @@ async function quickTimeline(count) {
       return;
     }
 
-    const ora = require("ora");
+    const { default: ora } = require("ora");
     const spin = ora({ text: s.muted(` Fetching ${n} commits...`), spinner: "dots" }).start();
     let commits;
     try {
