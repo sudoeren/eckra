@@ -13,6 +13,7 @@ const { doWorktree } = require("./worktree");
 const { doSubmodule } = require("./submodule");
 const { doSettings } = require("./settings");
 const { doRebase } = require("./rebase");
+const { doTimeline } = require("./timeline");
 const { doAbout } = require("./about");
 
 async function doMore() {
@@ -43,6 +44,7 @@ async function doMore() {
         { name: s.text("  📋 Blame"), value: "blame" },
         { name: s.text("  🌳 Worktrees"), value: "worktree" },
         { name: s.text("  🧩 Submodules"), value: "submodule" },
+        { name: s.text("  📖 Project Story"), value: "timeline" },
         { type: "separator", line: " " },
         { name: s.text("  ⚙ Settings"), value: "settings" },
         { name: s.text("  ℹ About"), value: "about" },
@@ -91,6 +93,9 @@ async function doMore() {
       break;
     case "submodule":
       await doSubmodule();
+      break;
+    case "timeline":
+      await doTimeline();
       break;
     case "settings":
       await doSettings();

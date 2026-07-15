@@ -22,6 +22,7 @@
 - **AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs. Supports **LM Studio**, **OpenAI**, **Anthropic**, **Ollama**, **OpenRouter**, and **Google Gemini**.
 - **Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
 - **Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
+- **Project Story**: AI analyzes your commit history and generates a human-readable timeline — understand any repo's evolution at a glance.
 - **Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
 - **Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
 
@@ -51,6 +52,7 @@ Skip the menu and jump straight into action:
 | `eckra status`   | `st`  | Check repository status and staged files      |
 | `eckra push`     | `p`   | Sync local commits with the remote repository |
 | `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
+| `eckra story`    | `t`   | AI-generated project timeline from commit history |
 | `eckra start`    | `s`   | Start the interactive dashboard               |
 
 > **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.

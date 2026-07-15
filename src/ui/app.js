@@ -318,10 +318,56 @@ async function easyWorkflow() {
   }
 }
 
+async function quickTimeline(count) {
+  const timelineMod = require("./modules/timeline");
+  if (count) {
+    const { getCommitHistory } = require("../helpers/git");
+    const { generateTimeline } = require("../helpers/ai");
+    const { s, header, clear, pause, box } = require("./common");
+
+    clear();
+    header();
+    const n = parseInt(count, 10);
+    if (isNaN(n) || n < 1) {
+      console.log(s.error("  Invalid count. Please provide a number greater than 0.\n"));
+      return;
+    }
+
+    const ora = require("ora");
+    const spin = ora({ text: s.muted(` Fetching ${n} commits...`), spinner: "dots" }).start();
+    let commits;
+    try {
+      commits = (await getCommitHistory(n)).all;
+      if (commits.length === 0) {
+        spin.fail(s.warning(" No commits found."));
+        return;
+      }
+      spin.text = s.muted(` Analyzing ${commits.length} commits with AI...`);
+    } catch (err) {
+      spin.fail(s.error(` Failed to fetch commits: ${err.message}`));
+      return;
+    }
+
+    try {
+      const story = await generateTimeline(commits);
+      spin.stop();
+      console.log(s.bold(`  Project Story (${commits.length} commits analyzed)\n`));
+      console.log(box(story, s.primary("AI-Generated Timeline")));
+      console.log();
+    } catch (err) {
+      spin.fail(s.error(` AI Error: ${err.message}`));
+    }
+    await pause();
+  } else {
+    await timelineMod.doTimeline();
+  }
+}
+
 module.exports = {
   startApp,
   quickStatus,
   quickCommit,
   quickPush,
+  quickTimeline,
   easyWorkflow,
 };

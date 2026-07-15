@@ -166,6 +166,13 @@ async function getCommitLog(count = 10) {
 }
 
 /**
+ * Get commit history for AI analysis - structured data with details
+ */
+async function getCommitHistory(count = 50) {
+  return await getGit().log(["-n", count.toString()]);
+}
+
+/**
  * Get remote info
  */
 async function getRemotes() {
@@ -693,6 +700,7 @@ module.exports = {
   deleteBranch,
   mergeBranch,
   getCommitLog,
+  getCommitHistory,
   getRemotes,
   hasConflicts,
   getConflictedFiles,

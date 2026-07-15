@@ -77,6 +77,17 @@ program
     }
   });
 
+program
+  .command("story")
+  .alias("t")
+  .description("AI-generated project story from commit history")
+  .option("-n, --count <number>", "Number of commits to analyze (default: 50)")
+  .action(async (options) => {
+    if (await checkGitRepo()) {
+      await app().quickTimeline(options.count);
+    }
+  });
+
 // Default - start interactive
 program.action(async () => {
   if (await checkGitRepo()) {
