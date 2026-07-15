@@ -1,33 +1,23 @@
-const boxen = require("boxen");
 const packageJson = require("../../../package.json");
-const { s, clear, pause } = require("../common");
+const { s, clear, header, pause } = require("../common");
 
 async function doAbout() {
   clear();
+  header();
+  console.log(s.bold("  About\n"));
 
-  const content = [
-    s.brand("ECKRA"),
-    s.muted("AI-Powered Git Assistant"),
-    s.dim("v" + packageJson.version),
-    "",
-    s.dim("Developed by") + " " + s.white.bold("Eren Çakar"),
-    "",
-    s.dim("Web   ") + s.primary("erencakar.com"),
-    s.dim("GitHub") + " " + s.primary("github.com/sudoeren"),
-    s.dim("NPM   ") + s.primary("npmjs.com/package/eckra"),
-    "",
-    s.dim("MIT License"),
-  ].join("\n");
-
-  console.log(
-    boxen(content, {
-      padding: { top: 1, bottom: 1, left: 4, right: 4 },
-      margin: 1,
-      borderStyle: "round",
-      textAlignment: "center",
-      minWidth: 50,
-    }),
-  );
+  console.log(s.brand("  ECKRA"));
+  console.log(s.muted("  AI-Powered Git Assistant"));
+  console.log(s.dim("  v" + packageJson.version));
+  console.log();
+  console.log(s.dim("  Developed by ") + s.text("Eren Çakar"));
+  console.log();
+  console.log(s.dim("  Web    ") + s.primary("erencakar.com"));
+  console.log(s.dim("  GitHub ") + s.primary("github.com/sudoeren"));
+  console.log(s.dim("  NPM    ") + s.primary("npmjs.com/package/eckra"));
+  console.log();
+  console.log(s.dim("  MIT License"));
+  console.log();
 
   await pause();
 }
