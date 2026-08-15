@@ -12,7 +12,7 @@ const {
   fetchOllamaModels,
   fetchLMStudioModels,
 } = require("../../helpers/ai");
-const { s, clear, sleep, truncate } = require("../common");
+const { s, clear, sleep, pause } = require("../common");
 const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
@@ -306,10 +306,6 @@ async function doSettings() {
     console.log(s.muted("  Model: ") + s.text(config.model));
   }
 
-  console.log(
-    s.muted("  AI Instruction: ") +
-      s.text(truncate(config.aiInstruction || "", 50)),
-  );
   console.log(s.muted("  Theme: ") + s.text(config.theme || "dark"));
   console.log(
     s.muted("  AI Status: ") +
@@ -329,6 +325,7 @@ async function doSettings() {
       choices: [
         menuItem("branch", "Change Provider", "text", "provider"),
         menuItem("settings", "Configure Provider Settings", "text", "configure"),
+        menuItem("info", "Show AI Instruction", "text", "show-instruction"),
         menuItem("edit", "Change AI Instructions", "text", "instruction"),
         menuItem("about", "Change Theme", "text", "theme"),
         sep(),
@@ -475,6 +472,16 @@ async function doSettings() {
     const answers = await askProviderConfig(provider, config);
     await testAndSaveProvider(provider, { ...config, ...answers }, answers);
     return;
+  }
+
+  if (action === "show-instruction") {
+    console.log();
+    console.log(s.muted("  AI Instruction:"));
+    console.log(
+      s.text("  " + (config.aiInstruction || "No custom instruction set.")),
+    );
+    console.log();
+    await pause();
   }
 
   if (action === "instruction") {

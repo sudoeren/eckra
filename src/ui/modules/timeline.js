@@ -1,7 +1,7 @@
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
 const { s, pause, cols } = require("../common");
-const { open, rule, menuItem, backItem, prompt, spinner, done, fail, icon, tone } = require("../screen");
+const { open, rule, menuItem, backItem, prompt, spinner, done, fail, icon, tone, padGlyph } = require("../screen");
 
 function parseSections(text) {
   const sections = [];
@@ -25,7 +25,7 @@ function parseSections(text) {
 }
 
 function renderSection(title, content, iconName, t) {
-  console.log(tone(t)(`  ${icon(iconName, t)} ${title}`));
+  console.log(tone(t)(`  ${padGlyph(icon(iconName))} ${title}`));
   console.log(rule());
   const lines = content.split("\n");
   for (const line of lines) {

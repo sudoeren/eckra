@@ -157,6 +157,7 @@ const s = new Proxy({}, {
 });
 
 // Single source of truth for all UI glyphs.
+// IMPORTANT: keep every glyph single-width (halfwidth) so menu columns align.
 const icons = {
   staged: "●",
   modified: "◐",
@@ -167,7 +168,7 @@ const icons = {
   commit: "◆",
   push: "↑",
   pull: "↓",
-  stage: "＋",
+  stage: "+",
   select: "◉",
   stash: "⊞",
   tag: "♯",
@@ -190,7 +191,7 @@ const icons = {
   ai: "✦",
   edit: "✎",
   refresh: "↻",
-  new: "＋",
+  new: "+",
   remove: "✕",
   check: "✓",
   cross: "✗",
