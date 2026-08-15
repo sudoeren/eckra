@@ -69,7 +69,7 @@ eckra supports multiple AI providers. You can switch between them using the buil
 | **Ollama**        | Local           | — (user-configured)          |
 | **OpenAI**        | Cloud (API Key) | `gpt-5-mini`                 |
 | **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`          |
-| **OpenRouter**    | Cloud (API Key) | `openai/gpt-5-mini`          |
+| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`        |
 | **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`       |
 
 ### Default Setup (LM Studio)
