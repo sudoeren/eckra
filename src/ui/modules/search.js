@@ -1,14 +1,11 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { searchCommits, cherryPick } = require("../../helpers/git");
-const { s, header, clear, pause, truncate, timeAgo, cols } = require("../common");
+const { s, pause, truncate, cols } = require("../common");
+const { open, menuItem, backItem, sep, prompt, spinner, done, fail, rule } = require("../screen");
 
 async function doSearch() {
-  clear();
-  header();
-  console.log(s.bold("  Search Commits\n"));
+  open("Search Commits", "Find commits by message text");
 
-  const { query } = await inquirer.prompt([
+  const { query } = await prompt([
     {
       type: "input",
       name: "query",
@@ -17,7 +14,8 @@ async function doSearch() {
     },
   ]);
 
-  const spin = ora({ text: s.muted(" Searching..."), spinner: "dots" }).start();
+  const spin = spinner("Searching...");
+  spin.start();
 
   try {
     const results = await searchCommits(query);
@@ -30,25 +28,23 @@ async function doSearch() {
       await showSearchResults(results.all, query);
     }
   } catch (err) {
-    spin.fail(s.error(` ${err.message}`));
+    fail(spin, err.message);
     await pause();
   }
 }
 
 async function showSearchResults(commits, query) {
-  clear();
-  header();
-  console.log(s.bold(`  Search Results for: "${query}"\n`));
+  open(`Search Results for: "${query}"`);
 
-  const choices = commits.slice(0, 20).map(commit => ({
+  const choices = commits.slice(0, 20).map((commit) => ({
     name: `  ${s.primary(commit.hash.substring(0, 7))} ${truncate(commit.message, cols() - 25)}`,
     value: commit,
   }));
 
-  choices.push({ type: "separator", line: " " });
-  choices.push({ name: s.muted("  ← Back"), value: "back" });
+  choices.push(sep());
+  choices.push(backItem());
 
-  const { selected } = await inquirer.prompt([
+  const { selected } = await prompt([
     {
       type: "list",
       name: "selected",
@@ -56,39 +52,39 @@ async function showSearchResults(commits, query) {
       choices,
       pageSize: 15,
       loop: true,
-      },
-      ]);
+    },
+  ]);
 
   if (selected === "back") return;
 
-  clear();
-  header();
-  console.log(s.bold("  Commit Details\n"));
+  open("Commit Details");
   console.log(s.muted("  Hash:    ") + s.primary(selected.hash));
   console.log(s.muted("  Author:  ") + s.text(selected.author_name + " <" + selected.author_email + ">"));
   console.log(s.muted("  Date:    ") + s.text(new Date(selected.date).toLocaleString()));
-  console.log(s.muted("  Message: ") + s.white(selected.message));
+  console.log(rule("message"));
+  console.log(s.white(selected.message));
   console.log();
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("Action:"),
       choices: [
-        { name: s.success("  🍒 Cherry-pick this commit"), value: "cherry" },
-        { name: s.muted("  ← Back to Results"), value: "back" },
-      ]
-    }
+        menuItem("select", "Cherry-pick this commit", "success", "cherry"),
+        backItem("Back to Results"),
+      ],
+    },
   ]);
 
   if (action === "cherry") {
-    const spin = ora({ text: s.muted(" Cherry-picking..."), spinner: "dots" }).start();
+    const spin = spinner("Cherry-picking...");
+    spin.start();
     try {
       await cherryPick(selected.hash);
-      spin.succeed(s.success(` Successfully cherry-picked ${selected.hash.substring(0, 7)}`));
+      done(spin, `Successfully cherry-picked ${selected.hash.substring(0, 7)}`);
     } catch (error) {
-      spin.fail(s.error(` Cherry-pick failed: ${error.message}`));
+      fail(spin, `Cherry-pick failed: ${error.message}`);
       console.log(s.muted("\n  You may have conflicts to resolve."));
     }
     await pause();

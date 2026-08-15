@@ -1,14 +1,12 @@
-const inquirer = require("inquirer");
 const { listWorktrees, addWorktree, addWorktreeNewBranch, removeWorktree, getBranches } = require("../../helpers/git");
-const { s, header, clear, sleep, pause } = require("../common");
+const { s, sleep, pause } = require("../common");
+const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
 
 async function doWorktree() {
   let inMenu = true;
 
   while (inMenu) {
-    clear();
-    header();
-    console.log(s.bold("  Worktrees\n"));
+    open("Worktrees");
 
     const worktrees = await listWorktrees();
 
@@ -20,18 +18,18 @@ async function doWorktree() {
         console.log();
       });
     } else {
-      console.log(s.muted("  No worktrees found.\n"));
+      emptyState("No worktrees found.", "Worktrees let you check out branches in parallel.");
     }
 
-    const { action } = await inquirer.prompt([
+    const { action } = await prompt([
       {
         type: "list",
         name: "action",
         message: s.muted("What should I do?"),
         choices: [
-          { name: s.success("  + Add Worktree"), value: "add" },
-          { name: s.error("  ✕ Remove Worktree"), value: "remove" },
-          { name: s.muted("  ← Back"), value: "back" },
+          menuItem("new", "Add Worktree", "success", "add"),
+          menuItem("remove", "Remove Worktree", "danger", "remove"),
+          backItem(),
         ],
         loop: true,
         pageSize: 15,
@@ -40,7 +38,7 @@ async function doWorktree() {
 
     switch (action) {
       case "add":
-        const { path: wtPath } = await inquirer.prompt([
+        const { path: wtPath } = await prompt([
           {
             type: "input",
             name: "path",
@@ -49,14 +47,14 @@ async function doWorktree() {
           },
         ]);
 
-        const { type } = await inquirer.prompt([
+        const { type } = await prompt([
           {
             type: "list",
             name: "type",
             message: s.muted("Branch type:"),
             choices: [
-              { name: "Existing Branch", value: "existing" },
-              { name: "New Branch", value: "new" },
+              menuItem("branch", "Existing Branch", "text", "existing"),
+              menuItem("new", "New Branch", "primary", "new"),
             ],
             loop: true,
             pageSize: 15,
@@ -65,7 +63,7 @@ async function doWorktree() {
 
         if (type === "existing") {
           const branches = await getBranches();
-          const { branch } = await inquirer.prompt([
+          const { branch } = await prompt([
             {
               type: "list",
               name: "branch",
@@ -75,21 +73,21 @@ async function doWorktree() {
               pageSize: 15,
             },
           ]);
-           try {
+          try {
             await addWorktree(wtPath, branch);
             console.log(s.success(`\n  ✓ Worktree added at ${wtPath}`));
             await sleep(600);
           } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
+            console.log(s.error(`\n  ✗ ${err.message}`));
+            await pause();
           }
         } else {
-           const { newBranch } = await inquirer.prompt([
+          const { newBranch } = await prompt([
             {
               type: "input",
               name: "newBranch",
               message: s.muted("New branch name:"),
-               validate: (v) => v.length > 0,
+              validate: (v) => v.length > 0,
             },
           ]);
           try {
@@ -97,34 +95,34 @@ async function doWorktree() {
             console.log(s.success(`\n  ✓ Worktree created with branch ${newBranch}`));
             await sleep(600);
           } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
+            console.log(s.error(`\n  ✗ ${err.message}`));
+            await pause();
           }
         }
         break;
 
       case "remove":
         if (worktrees.length === 0) {
-           console.log(s.muted("\n  No worktrees to remove."));
-           await pause();
+          emptyState("No worktrees to remove.");
+          await pause();
         } else {
-           const { toRemove } = await inquirer.prompt([
+          const { toRemove } = await prompt([
             {
               type: "list",
               name: "toRemove",
               message: s.muted("Select worktree to remove:"),
-              choices: worktrees.map(wt => wt.path),
+              choices: worktrees.map((wt) => wt.path),
               loop: true,
               pageSize: 15,
             },
           ]);
-           try {
+          try {
             await removeWorktree(toRemove);
-            console.log(s.success(`\n  ✓ Worktree removed!`));
+            console.log(s.success("\n  ✓ Worktree removed!"));
             await sleep(600);
           } catch (err) {
-             console.log(s.error(`\n  ✗ ${err.message}`));
-             await pause();
+            console.log(s.error(`\n  ✗ ${err.message}`));
+            await pause();
           }
         }
         break;

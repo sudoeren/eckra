@@ -1,5 +1,3 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const {
   getGitStatus,
   stageAll,
@@ -10,7 +8,9 @@ const {
   generateCommitSuggestions,
   checkAIConnection,
 } = require("../../helpers/ai");
-const { s, header, clear, pause } = require("../common");
+const { s, pause, clear, header } = require("../common");
+const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
+const { renderDiff } = require("../diff-view");
 const { doPush } = require("./sync");
 
 async function showReviewDiff() {
@@ -22,28 +22,21 @@ async function showReviewDiff() {
   }
 
   clear();
-  console.log(s.bold("  Review Staged Diff\n"));
+  console.log(s.bold("\n  Review Staged Diff\n"));
 
-  diff.split("\n").forEach((line) => {
-    if (line.startsWith("+") && !line.startsWith("+++")) {
-      console.log(s.success(line));
-    } else if (line.startsWith("-") && !line.startsWith("---")) {
-      console.log(s.error(line));
-    } else if (line.startsWith("@@")) {
-      console.log(s.primary(line));
-    } else {
-      console.log(s.muted(line));
-    }
-  });
+  const lines = renderDiff(diff);
+  if (lines.length === 0) {
+    console.log(s.muted("  No staged changes.\n"));
+  } else {
+    for (const line of lines) console.log(line);
+  }
 
   console.log();
   await pause();
 }
 
 async function doCommit(info) {
-  clear();
-  header();
-  console.log(s.bold("  Commit\n"));
+  open("Commit");
 
   let status = info?.status || (await getGitStatus());
 
@@ -61,7 +54,7 @@ async function doCommit(info) {
 
   // No staged files - stage first
   if (status.staged.length === 0) {
-    const { doStageFirst } = await inquirer.prompt([
+    const { doStageFirst } = await prompt([
       {
         type: "confirm",
         name: "doStageFirst",
@@ -94,17 +87,14 @@ async function doCommit(info) {
 
     const choices = [];
     if (ai.connected) {
-      choices.push({
-        name: s.primary("  🤖 Suggest message with AI"),
-        value: "ai",
-      });
+      choices.push(menuItem("ai", "Suggest message with AI", "ai", "ai"));
     }
-    choices.push({ name: s.white("  ✎ Write my own"), value: "custom" });
-    choices.push({ name: s.success("  🔍 Review Diff"), value: "diff" });
-    choices.push({ type: "separator", line: " " });
-    choices.push({ name: s.muted("  ← Cancel"), value: "cancel" });
+    choices.push(menuItem("edit", "Write my own", "text", "custom"));
+    choices.push(menuItem("diff", "Review Diff", "success", "diff"));
+    choices.push(sep());
+    choices.push(backItem());
 
-    const { action } = await inquirer.prompt([
+    const { action } = await prompt([
       {
         type: "list",
         name: "action",
@@ -114,17 +104,15 @@ async function doCommit(info) {
         pageSize: 20,
       },
     ]);
-    if (action === "cancel") return;
+    if (action === "back") return;
     if (action === "diff") {
       await showReviewDiff();
       continue;
     }
 
     if (action === "ai") {
-      const spin = ora({
-        text: s.muted(" AI is thinking..."),
-        spinner: "dots",
-      }).start();
+      const spin = spinner("AI is thinking...");
+      spin.start();
 
       try {
         const diff = await getStagedDiff();
@@ -139,7 +127,7 @@ async function doCommit(info) {
 
         const getSubject = (msg) => msg.split("\n")[0].substring(0, 72);
 
-        const { selected } = await inquirer.prompt([
+        const { selected } = await prompt([
           {
             type: "list",
             name: "selected",
@@ -149,15 +137,15 @@ async function doCommit(info) {
                 name: `  ${i + 1}. ${s.text(getSubject(msg))}`,
                 value: msg,
               })),
-              { type: "separator", line: " " },
-              { name: s.muted("  ← Back"), value: "_back" },
+              sep(),
+              backItem("Back"),
             ],
             loop: true,
             pageSize: 20,
           },
         ]);
 
-        if (selected === "_back") continue;
+        if (selected === "back") continue;
 
         console.log(s.muted("\n  Selected message:\n"));
         selected
@@ -165,17 +153,17 @@ async function doCommit(info) {
           .forEach((line) => console.log(s.text("    " + line)));
         console.log();
 
-        const { aiAction } = await inquirer.prompt([
+        const { aiAction } = await prompt([
           {
             type: "list",
             name: "aiAction",
             message: s.muted("Action:"),
-            choices: [
-              { name: "  ✓ Use as is", value: "use" },
-              { name: "  ✎ Edit subject line", value: "edit" },
-              { name: "  🔄 Regenerate", value: "regenerate" },
-              { name: "  ← Back", value: "back" },
-            ],
+          choices: [
+            menuItem("check", "Use as is", "success", "use"),
+            menuItem("edit", "Edit subject line", "text", "edit"),
+            menuItem("refresh", "Regenerate", "primary", "regenerate"),
+            backItem("Back"),
+          ],
             loop: true,
             pageSize: 20,
           },
@@ -188,7 +176,7 @@ async function doCommit(info) {
           const subject = getSubject(selected);
           const body = selected.split("\n").slice(1).join("\n");
 
-          const { editedSubject } = await inquirer.prompt([
+          const { editedSubject } = await prompt([
             {
               type: "input",
               name: "editedSubject",
@@ -201,13 +189,13 @@ async function doCommit(info) {
           message = body ? `${editedSubject}\n\n${body.trim()}` : editedSubject;
         }
       } catch (err) {
-        spin.fail(s.error(" AI error: " + err.message));
+        fail(spin, "AI error: " + err.message);
         await pause();
       }
     }
 
     if (action === "custom") {
-      const { custom } = await inquirer.prompt([
+      const { custom } = await prompt([
         {
           type: "input",
           name: "custom",
@@ -224,7 +212,7 @@ async function doCommit(info) {
   message.split("\n").forEach((line) => console.log(s.text("    " + line)));
   console.log();
 
-  const { confirm } = await inquirer.prompt([
+  const { confirm } = await prompt([
     {
       type: "confirm",
       name: "confirm",
@@ -235,17 +223,15 @@ async function doCommit(info) {
 
   if (!confirm) return;
 
-  const spin = ora({
-    text: s.muted(" Creating commit..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Creating commit...");
+  spin.start();
 
   try {
     const result = await createCommit(message);
-    spin.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
+    done(spin, `Commit: ${result.commit.substring(0, 7)}`);
 
     // Suggest push
-    const { doPushNow } = await inquirer.prompt([
+    const { doPushNow } = await prompt([
       {
         type: "confirm",
         name: "doPushNow",
@@ -256,7 +242,7 @@ async function doCommit(info) {
 
     if (doPushNow) await doPush();
   } catch (err) {
-    spin.fail(s.error(` Error: ${err.message}`));
+    fail(spin, `Error: ${err.message}`);
     await pause();
   }
 }

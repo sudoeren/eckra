@@ -1,37 +1,34 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const {
   listTags,
   createTag,
   deleteTag,
   pushTags,
 } = require("../../helpers/git");
-const { s, header, clear, pause, sleep } = require("../common");
+const { s, pause, sleep } = require("../common");
+const { open, emptyState, menuItem, backItem, prompt, spinner, done, fail } = require("../screen");
 
 async function doTag() {
-  clear();
-  header();
-  console.log(s.bold("  Tag\n"));
+  open("Tag");
 
   const tags = await listTags();
 
   if (tags.all.length > 0) {
-    tags.all.slice(0, 10).forEach((t) => console.log(s.primary(`  🏷 ${t}`)));
+    tags.all.slice(0, 10).forEach((t) => console.log(s.primary(`  ${t}`)));
     console.log();
   } else {
-    console.log(s.muted("  No tags.\n"));
+    emptyState("No tags.", "Tag a release point to reference it later.");
   }
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + New Tag"), value: "new" },
-        { name: s.primary("  ↑ Push Tags"), value: "push" },
-        { name: s.error("  ✕ Delete Tag"), value: "delete" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("new", "New Tag", "success", "new"),
+        menuItem("push", "Push Tags", "primary", "push"),
+        menuItem("remove", "Delete Tag", "danger", "delete"),
+        backItem(),
       ],
       loop: true,
       pageSize: 15,
@@ -41,7 +38,7 @@ async function doTag() {
   if (action === "back") return;
 
   if (action === "new") {
-    const { name } = await inquirer.prompt([
+    const { name } = await prompt([
       {
         type: "input",
         name: "name",
@@ -55,25 +52,23 @@ async function doTag() {
   }
 
   if (action === "push") {
-    const spin = ora({
-      text: s.muted(" Pushing tags..."),
-      spinner: "dots",
-    }).start();
+    const spin = spinner("Pushing tags...");
+    spin.start();
     try {
       await pushTags();
-      spin.succeed(s.success(" Tags pushed!"));
+      done(spin, "Tags pushed!");
     } catch (err) {
-      spin.fail(s.error(` ${err.message}`));
+      fail(spin, err.message);
     }
     await pause();
   }
 
   if (action === "delete") {
     if (tags.all.length === 0) {
-      console.log(s.muted("\n  No tags to delete."));
+      emptyState("No tags to delete.");
       await pause();
     } else {
-      const { toDelete } = await inquirer.prompt([
+      const { toDelete } = await prompt([
         {
           type: "list",
           name: "toDelete",

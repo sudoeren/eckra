@@ -8,27 +8,29 @@ const { getConfig } = require("../helpers/config");
 
 const themes = {
   dark: {
-    brand: chalk.hex("#00D9FF").bold,
-    primary: chalk.hex("#00D9FF"),
-    success: chalk.hex("#00FF88"),
-    warning: chalk.hex("#FFB800"),
-    error: chalk.hex("#FF4757"),
-    muted: chalk.hex("#6B7280"),
-    text: chalk.hex("#E5E7EB"),
-    dim: chalk.hex("#4B5563"),
-    white: chalk.white,
+    brand: chalk.hex("#38BDF8").bold,
+    primary: chalk.hex("#38BDF8"),
+    success: chalk.hex("#34D399"),
+    warning: chalk.hex("#FBBF24"),
+    error: chalk.hex("#F87171"),
+    muted: chalk.hex("#64748B"),
+    text: chalk.hex("#E2E8F0"),
+    dim: chalk.hex("#475569"),
+    white: chalk.hex("#F8FAFC"),
+    ai: chalk.hex("#A78BFA"),
     bold: chalk.bold,
   },
   light: {
-    brand: chalk.hex("#0077B6").bold,
-    primary: chalk.hex("#0077B6"),
+    brand: chalk.hex("#0369A1").bold,
+    primary: chalk.hex("#0284C7"),
     success: chalk.hex("#059669"),
-    warning: chalk.hex("#D97706"),
+    warning: chalk.hex("#B45309"),
     error: chalk.hex("#DC2626"),
-    muted: chalk.hex("#6B7280"),
-    text: chalk.hex("#1F2937"),
-    dim: chalk.hex("#787878"),
-    white: chalk.hex("#111827"),
+    muted: chalk.hex("#64748B"),
+    text: chalk.hex("#1E293B"),
+    dim: chalk.hex("#94A3B8"),
+    white: chalk.hex("#0F172A"),
+    ai: chalk.hex("#7C3AED"),
     bold: chalk.bold,
   },
 };
@@ -154,22 +156,58 @@ const s = new Proxy({}, {
   },
 });
 
+// Single source of truth for all UI glyphs.
 const icons = {
   staged: "●",
   modified: "◐",
   untracked: "○",
-  branch: "",
+  deleted: "✕",
+  conflict: "⚠",
+  branch: "⎇",
   commit: "◆",
   push: "↑",
   pull: "↓",
+  stage: "＋",
+  select: "◉",
+  stash: "⊞",
+  tag: "♯",
+  log: "◷",
+  status: "◎",
+  more: "⋯",
+  search: "⌕",
+  blame: "▤",
+  worktree: "⌂",
+  submodule: "◈",
+  diff: "≋",
+  undo: "↩",
+  amend: "✎",
+  rebase: "⚡",
+  stats: "≡",
+  remote: "↗",
+  settings: "⚙",
+  about: "⊙",
+  story: "✦",
+  ai: "✦",
+  edit: "✎",
+  refresh: "↻",
+  new: "＋",
+  remove: "✕",
   check: "✓",
   cross: "✗",
   arrow: "→",
+  back: "←",
   dot: "·",
   star: "★",
-  folder: "📁",
-  tag: "🏷",
+  info: "ℹ",
 };
+
+/**
+ * Return the glyph for a named icon, ready to be colored by the caller.
+ */
+function icon(name, tone) {
+  const glyph = icons[name] || icons.dot;
+  return tone ? s[tone](glyph) : glyph;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // UTILS
@@ -230,6 +268,7 @@ async function pause() {
 module.exports = {
   s,
   icons,
+  icon,
   clear,
   sleep,
   cols,

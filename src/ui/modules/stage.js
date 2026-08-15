@@ -1,5 +1,3 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const {
   getGitStatus,
   stageAll,
@@ -8,19 +6,18 @@ const {
   applyPatchString,
 } = require("../../helpers/git");
 const { parseDiff, generatePatch } = require("../../helpers/patch");
-const { s, header, clear, sleep, rows, pause } = require("../common");
+const { s, sleep, pause } = require("../common");
+const { open, emptyState, menuItem, backItem, prompt, spinner, done, fail } = require("../screen");
 const { doCommit } = require("./commit");
 
 async function doStage(info) {
-  clear();
-  header();
-  console.log(s.bold("  Stage\n"));
+  open("Stage");
 
   const status = info?.status || (await getGitStatus());
   const files = [...status.modified, ...status.deleted, ...status.not_added];
 
   if (files.length === 0) {
-    console.log(s.muted("  No changes.\n"));
+    emptyState("No changes.");
     await pause();
     return;
   }
@@ -44,16 +41,16 @@ async function doStage(info) {
     short: f,
   }));
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  ✓ Stage All"), value: "all" },
-        { name: s.text("  ◉ Select Files"), value: "select" },
-        { name: s.warning("  ✂ Partial Stage (Beta)"), value: "partial" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("check", "Stage All", "success", "all"),
+        menuItem("select", "Select Files", "text", "select"),
+        menuItem("diff", "Partial Stage", "warning", "partial"),
+        backItem(),
       ],
       loop: true,
       pageSize: 20,
@@ -64,13 +61,14 @@ async function doStage(info) {
   if (action === "partial") return doPartialStage(status);
 
   if (action === "all") {
-    const spin = ora({ text: s.muted(" Staging..."), spinner: "dots" }).start();
+    const spin = spinner("Staging...");
+    spin.start();
     await stageAll();
-    spin.succeed(s.success(" All staged!"));
+    done(spin, "All staged!");
     await sleep(500);
 
     // Redirect to commit
-    const { goCommit } = await inquirer.prompt([
+    const { goCommit } = await prompt([
       {
         type: "confirm",
         name: "goCommit",
@@ -84,7 +82,7 @@ async function doStage(info) {
   }
 
   // Select files
-  const { selected } = await inquirer.prompt([
+  const { selected } = await prompt([
     {
       type: "checkbox",
       name: "selected",
@@ -112,7 +110,7 @@ async function doStage(info) {
     await stageFiles(selected);
     console.log(s.success(`\n  ✓ ${selected.length} files staged!`));
 
-    const { goCommit } = await inquirer.prompt([
+    const { goCommit } = await prompt([
       {
         type: "confirm",
         name: "goCommit",
@@ -136,7 +134,7 @@ async function doPartialStage(status) {
   }
 
   // Select a file
-  const { file } = await inquirer.prompt([
+  const { file } = await prompt([
     {
       type: "list",
       name: "file",
@@ -159,7 +157,7 @@ async function doPartialStage(status) {
   const targetFile = parsedFiles[0];
   const hunks = targetFile.hunks;
 
-  const { selectedIndices } = await inquirer.prompt([
+  const { selectedIndices } = await prompt([
     {
       type: "checkbox",
       name: "selectedIndices",
@@ -181,17 +179,15 @@ async function doPartialStage(status) {
 
   if (selectedIndices.length === 0) return;
 
-  const spin = ora({
-    text: s.muted(" Applying partial patch..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Applying partial patch...");
+  spin.start();
 
   try {
     const patchContent = generatePatch(targetFile, selectedIndices);
     await applyPatchString(patchContent);
-    spin.succeed(s.success(" Selected hunks staged!"));
+    done(spin, "Selected hunks staged!");
   } catch (error) {
-    spin.fail(s.error(" Failed to stage hunks: " + error.message));
+    fail(spin, "Failed to stage hunks: " + error.message);
   }
 
   await sleep(1000);

@@ -1,36 +1,33 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { listSubmodules, initSubmodules, updateSubmodules } = require("../../helpers/git");
-const { s, header, clear, pause } = require("../common");
+const { s, pause } = require("../common");
+const { open, emptyState, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
 
 async function doSubmodule() {
-  clear();
-  header();
-  console.log(s.bold("  Submodule Management\n"));
+  open("Submodule Management");
 
   const submodules = await listSubmodules();
 
   if (submodules.length === 0) {
-    console.log(s.muted("  No submodules found in this repository."));
+    emptyState("No submodules found in this repository.");
   } else {
     console.log(s.muted("  Submodules:"));
-    submodules.forEach(sub => {
+    submodules.forEach((sub) => {
       const statusIcon = sub.status.startsWith("-") ? s.error("○") : s.success("●");
       console.log(`    ${statusIcon} ${s.primary(sub.path)} ${s.muted("(" + sub.hash.substring(0, 7) + ")")}`);
     });
   }
   console.log();
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("Select action:"),
       choices: [
-        { name: s.primary("  Update all submodules"), value: "update" },
-        { name: s.text("  Initialize submodules"), value: "init" },
-        { type: "separator", line: " " },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("pull", "Update all submodules", "primary", "update"),
+        menuItem("refresh", "Initialize submodules", "text", "init"),
+        sep(),
+        backItem(),
       ],
       loop: true,
       pageSize: 15,
@@ -39,20 +36,21 @@ async function doSubmodule() {
 
   if (action === "back") return;
 
-  const spin = ora({ text: s.muted(` Processing submodules...`), spinner: "dots" }).start();
-  
+  const spin = spinner("Processing submodules...");
+  spin.start();
+
   try {
     if (action === "update") {
       await updateSubmodules();
-      spin.succeed(s.success(" Submodules updated successfully."));
+      done(spin, "Submodules updated successfully.");
     } else if (action === "init") {
       await initSubmodules();
-      spin.succeed(s.success(" Submodules initialized."));
+      done(spin, "Submodules initialized.");
     }
   } catch (error) {
-    spin.fail(s.error(` Submodule operation failed: ${error.message}`));
+    fail(spin, `Submodule operation failed: ${error.message}`);
   }
-  
+
   await pause();
 }
 

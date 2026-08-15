@@ -1,26 +1,23 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { getCommitLog, squashCommits, rebase, abortRebase, continueRebase, getBranches, getCurrentBranch } = require("../../helpers/git");
-const { s, header, clear, pause } = require("../common");
+const { s, pause } = require("../common");
+const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
 
 async function doRebase() {
-  clear();
-  header();
-  console.log(s.bold("  Advanced Git Operations (Rebase)\n"));
+  open("Advanced Git Operations (Rebase)");
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("Select operation:"),
       choices: [
-        { name: s.primary("  Rebase onto branch"), value: "rebase_onto" },
-        { name: s.warning("  Squash last N commits"), value: "squash" },
-        { type: "separator", line: " " },
-        { name: s.error("  Abort Rebase"), value: "abort" },
-        { name: s.success("  Continue Rebase"), value: "continue" },
-        { type: "separator", line: " " },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("rebase", "Rebase onto branch", "primary", "rebase_onto"),
+        menuItem("diff", "Squash last N commits", "warning", "squash"),
+        sep(),
+        menuItem("cross", "Abort Rebase", "danger", "abort"),
+        menuItem("check", "Continue Rebase", "success", "continue"),
+        sep(),
+        backItem(),
       ],
       loop: true,
       pageSize: 20,
@@ -43,7 +40,7 @@ async function doRebase() {
 async function doRebaseOnto() {
   const branches = await getBranches();
   const current = await getCurrentBranch();
-  const otherBranches = branches.all.filter(b => b !== current);
+  const otherBranches = branches.all.filter((b) => b !== current);
 
   if (otherBranches.length === 0) {
     console.log(s.warning("  No other branches to rebase onto."));
@@ -51,7 +48,7 @@ async function doRebaseOnto() {
     return;
   }
 
-  const { target } = await inquirer.prompt([
+  const { target } = await prompt([
     {
       type: "list",
       name: "target",
@@ -59,40 +56,43 @@ async function doRebaseOnto() {
       choices: otherBranches,
       loop: true,
       pageSize: 15,
-    }
+    },
   ]);
 
-  const spin = ora({ text: s.muted(` Rebasing onto ${target}...`), spinner: "dots" }).start();
-  
+  const spin = spinner(`Rebasing onto ${target}...`);
+  spin.start();
+
   try {
     await rebase(target);
-    spin.succeed(s.success(` Successfully rebased onto ${target}`));
+    done(spin, `Successfully rebased onto ${target}`);
   } catch (error) {
-    spin.fail(s.error(` Rebase failed: ${error.message}`));
+    fail(spin, `Rebase failed: ${error.message}`);
     console.log(s.muted("\n  You may need to resolve conflicts and then 'Continue Rebase'."));
   }
-  
+
   await pause();
 }
 
 async function doAbortRebase() {
-  const spin = ora({ text: s.muted(" Aborting rebase..."), spinner: "dots" }).start();
+  const spin = spinner("Aborting rebase...");
+  spin.start();
   try {
     await abortRebase();
-    spin.succeed(s.success(" Rebase aborted."));
+    done(spin, "Rebase aborted.");
   } catch (error) {
-    spin.fail(s.error(` Failed to abort: ${error.message}`));
+    fail(spin, `Failed to abort: ${error.message}`);
   }
   await pause();
 }
 
 async function doContinueRebase() {
-  const spin = ora({ text: s.muted(" Continuing rebase..."), spinner: "dots" }).start();
+  const spin = spinner("Continuing rebase...");
+  spin.start();
   try {
     await continueRebase();
-    spin.succeed(s.success(" Rebase continued."));
+    done(spin, "Rebase continued.");
   } catch (error) {
-    spin.fail(s.error(` Failed to continue: ${error.message}`));
+    fail(spin, `Failed to continue: ${error.message}`);
     console.log(s.muted("\n  Are all conflicts resolved and staged?"));
   }
   await pause();
@@ -100,42 +100,43 @@ async function doContinueRebase() {
 
 async function doSquash() {
   const log = await getCommitLog(10);
-  
+
   if (log.all.length < 2) {
     console.log(s.warning("  Not enough commits to squash."));
     await pause();
     return;
   }
 
-  const { count } = await inquirer.prompt([
+  const { count } = await prompt([
     {
       type: "number",
       name: "count",
       message: "How many commits to squash (from HEAD)?",
       default: 2,
-      validate: (val) => val > 1 && val <= log.all.length ? true : `Enter a number between 2 and ${log.all.length}`
-    }
+      validate: (val) => (val > 1 && val <= log.all.length ? true : `Enter a number between 2 and ${log.all.length}`),
+    },
   ]);
 
-  const { message } = await inquirer.prompt([
+  const { message } = await prompt([
     {
       type: "input",
       name: "message",
       message: "New commit message for squashed commit:",
-      default: `Squashed ${count} commits`
-    }
+      default: `Squashed ${count} commits`,
+    },
   ]);
 
-  const spin = ora({ text: s.muted(" Squashing..."), spinner: "dots" }).start();
-  
+  const spin = spinner("Squashing...");
+  spin.start();
+
   try {
     // Soft reset to HEAD~count
     await squashCommits(count, message);
-    spin.succeed(s.success(" Commits squashed successfully!"));
+    done(spin, "Commits squashed successfully!");
   } catch (error) {
-    spin.fail(s.error(" Squash failed: " + error.message));
+    fail(spin, "Squash failed: " + error.message);
   }
-  
+
   await pause();
 }
 

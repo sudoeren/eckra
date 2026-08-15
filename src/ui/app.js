@@ -1,6 +1,3 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
-
 const {
   getGitStatus,
   getStagedDiff,
@@ -16,6 +13,7 @@ const {
   clear,
   header,
 } = require("./common");
+const { menuItem, sep, prompt, spinner, done, fail } = require("./screen");
 
 // Lazy load modules
 const status = () => require("./modules/status");
@@ -49,9 +47,7 @@ async function startApp() {
     if (!info) {
       console.log(s.error("  ✗ not a git repository\n"));
       console.log(s.muted("  Navigate to a git project or run 'git init'.\n"));
-      await inquirer.prompt([
-        { type: "input", name: "x", message: s.muted("Press Enter...") },
-      ]);
+      await prompt([{ type: "input", name: "x", message: s.muted("Press Enter...") }]);
       return;
     }
 
@@ -62,24 +58,20 @@ async function startApp() {
 
     // Conflict priority
     if (info.conflicts > 0) {
-      choices.push({
-        name: s.error("  ⚠ Resolve Conflict"),
-        value: "conflict",
-      });
-      choices.push({
-        type: "separator",
-        line: s.dim("  ─────────────────────"),
-      });
+      choices.push(menuItem("conflict", "Resolve Conflict", "danger", "conflict"));
+      choices.push(sep());
     }
 
     // Main actions
     if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
-      choices.push({
-        name:
-          `  ${s.success("+ ")} Stage` +
-          s.muted(` (${info.modified + info.untracked + info.deleted} files)`),
-        value: "stage",
-      });
+      choices.push(
+        menuItem(
+          "stage",
+          "Stage" + s.muted(` (${info.modified + info.untracked + info.deleted} files)`),
+          "success",
+          "stage",
+        ),
+      );
     }
 
     if (
@@ -88,28 +80,30 @@ async function startApp() {
       info.untracked > 0 ||
       info.deleted > 0
     ) {
-      choices.push({
-        name:
-          `  ${s.primary("◆")} Commit` +
-          (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
-        value: "commit",
-      });
+      choices.push(
+        menuItem(
+          "commit",
+          "Commit" + (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
+          "primary",
+          "commit",
+        ),
+      );
     }
 
-    choices.push({ name: `  ${s.primary("↑")} Push`, value: "push" });
-    choices.push({ name: `  ${s.primary("↓")} Pull`, value: "pull" });
+    choices.push(menuItem("push", "Push", "primary", "push"));
+    choices.push(menuItem("pull", "Pull", "primary", "pull"));
 
-    choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
+    choices.push(sep());
 
-    choices.push({ name: `  ${s.text("◎")} Status`, value: "status" });
-    choices.push({ name: `  ${s.text("⎇")} Branch`, value: "branch" });
-    choices.push({ name: `  ${s.text("◷")} Log`, value: "log" });
-    choices.push({ name: `  ${s.text("⋯")} More`, value: "more" });
+    choices.push(menuItem("status", "Status", "text", "status"));
+    choices.push(menuItem("branch", "Branch", "text", "branch"));
+    choices.push(menuItem("log", "Log", "text", "log"));
+    choices.push(menuItem("more", "More", "text", "more"));
 
-    choices.push({ type: "separator", line: s.dim("  ─────────────────────") });
-    choices.push({ name: s.muted("  ✕ Exit"), value: "exit" });
+    choices.push(sep());
+    choices.push(menuItem("cross", "Exit", "muted", "exit"));
 
-    const { action } = await inquirer.prompt([
+    const { action } = await prompt([
       {
         type: "list",
         name: "action",
@@ -190,12 +184,10 @@ async function easyWorkflow() {
     info.not_added.length > 0 ||
     info.deleted.length > 0
   ) {
-    const spin = ora({
-      text: s.muted(" Staging all changes..."),
-      spinner: "dots",
-    }).start();
+    const spin = spinner("Staging all changes...");
+    spin.start();
     await stageAll();
-    spin.succeed(s.success(" All files staged!"));
+    done(spin, "All files staged!");
   } else if (info.staged.length === 0) {
     console.log(s.warning("\n  ⚠️  No changes to commit."));
     return;
@@ -205,10 +197,8 @@ async function easyWorkflow() {
   let shouldPush = true;
 
   while (!finalMessage) {
-    const spinAi = ora({
-      text: s.muted(" 🤖 Generating AI commit message..."),
-      spinner: "dots",
-    }).start();
+    const spinAi = spinner("🤖 Generating AI commit message...");
+    spinAi.start();
     let aiMessage = "";
 
     try {
@@ -217,29 +207,23 @@ async function easyWorkflow() {
       aiMessage = await generateCommitMessage(diff, status.staged);
       spinAi.stop();
 
-      console.log(`\n  ${s.primary("🤖 AI Suggestion:")}\n`);
+      console.log(`\n  ${s.ai("🤖 AI Suggestion:")}\n`);
       aiMessage
         .split("\n")
         .forEach((line) => console.log(s.text("    " + line)));
       console.log();
 
-      const { choice } = await inquirer.prompt([
+      const { choice } = await prompt([
         {
           type: "list",
           name: "choice",
           message: s.muted("Action:"),
           choices: [
-            {
-              name: s.success("  ✓ Looks good (Commit & Push)"),
-              value: "commit-push",
-            },
-            {
-              name: s.primary("  ✓ Looks good (Commit Only)"),
-              value: "commit-only",
-            },
-            { name: s.primary("  ↻ Regenerate"), value: "retry" },
-            { name: s.white("  ✎ Edit subject line"), value: "edit" },
-            { name: s.muted("  ✕ Cancel"), value: "cancel" },
+            menuItem("check", "Looks good (Commit & Push)", "success", "commit-push"),
+            menuItem("check", "Looks good (Commit Only)", "primary", "commit-only"),
+            menuItem("refresh", "Regenerate", "primary", "retry"),
+            menuItem("edit", "Edit subject line", "text", "edit"),
+            menuItem("cross", "Cancel", "muted", "cancel"),
           ],
           loop: true,
         },
@@ -252,7 +236,7 @@ async function easyWorkflow() {
         const subject = aiMessage.split("\n")[0];
         const body = aiMessage.split("\n").slice(1).join("\n");
 
-        const { editedSubject } = await inquirer.prompt([
+        const { editedSubject } = await prompt([
           {
             type: "input",
             name: "editedSubject",
@@ -270,8 +254,8 @@ async function easyWorkflow() {
       }
       // If retry, loop continues to generate a new message
     } catch (err) {
-      spinAi.fail(s.error(` AI Error: ${err.message}`));
-      const { manual } = await inquirer.prompt([
+      fail(spinAi, `AI Error: ${err.message}`);
+      const { manual } = await prompt([
         {
           type: "input",
           name: "manual",
@@ -286,12 +270,10 @@ async function easyWorkflow() {
 
   // 3. Commit
   try {
-    const spinCommit = ora({
-      text: s.muted(" Creating commit..."),
-      spinner: "dots",
-    }).start();
+    const spinCommit = spinner("Creating commit...");
+    spinCommit.start();
     const result = await createCommit(finalMessage);
-    spinCommit.succeed(s.success(` Commit: ${result.commit.substring(0, 7)}`));
+    done(spinCommit, `Commit: ${result.commit.substring(0, 7)}`);
 
     // 4. Push (optional)
     if (shouldPush) {
@@ -321,18 +303,18 @@ async function quickTimeline(count) {
       return;
     }
 
-    const ora = require("ora").default || require("ora");
-    const spin = ora({ text: s.muted(` Fetching ${n} commits...`), spinner: "dots" }).start();
+    const spin = spinner(`Fetching ${n} commits...`);
+    spin.start();
     let commits;
     try {
       commits = (await getCommitHistory(n)).all;
       if (commits.length === 0) {
-        spin.fail(s.warning(" No commits found."));
+        fail(spin, "No commits found.");
         return;
       }
-      spin.text = s.muted(` Analyzing ${commits.length} commits with AI...`);
+      spin.text = s.muted(`  Analyzing ${commits.length} commits with AI...`);
     } catch (err) {
-      spin.fail(s.error(` Failed to fetch commits: ${err.message}`));
+      fail(spin, `Failed to fetch commits: ${err.message}`);
       return;
     }
 
@@ -341,7 +323,7 @@ async function quickTimeline(count) {
       spin.stop();
       timelineMod.renderStory(story, commits.length, commits);
     } catch (err) {
-      spin.fail(s.error(` AI Error: ${err.message}`));
+      fail(spin, `AI Error: ${err.message}`);
     }
     await pause();
   } else {

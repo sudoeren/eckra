@@ -1,11 +1,9 @@
-const inquirer = require("inquirer");
 const { getBranches, createBranch, switchBranch, mergeBranch, deleteBranch, compareBranches } = require("../../helpers/git");
-const { s, header, clear, sleep, pause } = require("../common");
+const { s, sleep, pause } = require("../common");
+const { open, emptyState, menuItem, backItem, sep, prompt, rule } = require("../screen");
 
 async function doBranch() {
-  clear();
-  header();
-  console.log(s.bold("  Branch\n"));
+  open("Branch");
 
   const branches = await getBranches();
   const current = branches.current;
@@ -22,20 +20,20 @@ async function doBranch() {
   });
   console.log();
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + New Branch"), value: "new" },
-        { name: s.text("  ↔ Switch Branch"), value: "switch" },
-        { name: s.text("  ⎇ Merge"), value: "merge" },
-        { name: s.text("  ⚡ Compare Branches"), value: "compare" },
-        { name: s.muted("  ☁ Remote Branches"), value: "remote" },
-        { name: s.error("  ✕ Delete Branch"), value: "delete" },
-        { type: "separator", line: " " },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("new", "New Branch", "success"),
+        menuItem("branch", "Switch Branch"),
+        menuItem("arrow", "Merge"),
+        menuItem("stats", "Compare Branches"),
+        menuItem("remote", "Remote Branches"),
+        menuItem("remove", "Delete Branch", "danger"),
+        sep(),
+        backItem(),
       ],
       loop: true,
       pageSize: 20,
@@ -46,7 +44,7 @@ async function doBranch() {
 
   switch (action) {
     case "new":
-      const { name } = await inquirer.prompt([
+      const { name } = await prompt([
         {
           type: "input",
           name: "name",
@@ -67,10 +65,10 @@ async function doBranch() {
     case "switch":
       const others = locals.filter((b) => b !== current);
       if (others.length === 0) {
-        console.log(s.muted("\n  No other branches."));
+        emptyState("No other branches.");
         await pause();
       } else {
-        const { target } = await inquirer.prompt([
+        const { target } = await prompt([
           {
             type: "list",
             name: "target",
@@ -94,10 +92,10 @@ async function doBranch() {
     case "compare":
       const compareTargets = branches.all.filter((b) => b !== current);
       if (compareTargets.length === 0) {
-        console.log(s.muted("\n  No other branches to compare."));
+        emptyState("No other branches to compare.");
         await pause();
       } else {
-        const { target } = await inquirer.prompt([
+        const { target } = await prompt([
           {
             type: "list",
             name: "target",
@@ -110,7 +108,7 @@ async function doBranch() {
         try {
           const stats = await compareBranches(current, target);
           console.log(s.bold(`\n  Comparison: ${current} vs ${target}`));
-          console.log(s.muted("  ──────────────────────────────"));
+          console.log(rule("branch comparison"));
           console.log(`  Ahead:  ${s.success(stats.ahead)} commits (commits in ${target} not in ${current})`);
           console.log(`  Behind: ${s.warning(stats.behind)} commits (commits in ${current} not in ${target})`);
           console.log(`  Diff:   ${s.text(stats.diffStat || "No file changes")}`);
@@ -124,10 +122,10 @@ async function doBranch() {
 
     case "remote":
       if (remotes.length === 0) {
-        console.log(s.muted("\n  No remote branches found."));
+        emptyState("No remote branches found.");
         await pause();
       } else {
-        const { remoteBranch } = await inquirer.prompt([
+        const { remoteBranch } = await prompt([
           {
             type: "list",
             name: "remoteBranch",
@@ -137,19 +135,19 @@ async function doBranch() {
             pageSize: 15,
           },
         ]);
-        
-        const { remoteAction } = await inquirer.prompt([
+
+        const { remoteAction } = await prompt([
           {
             type: "list",
             name: "remoteAction",
             message: s.muted(`Action for ${remoteBranch}:`),
             choices: [
-              { name: "Checkout (Track)", value: "checkout" },
-              { name: "Cancel", value: "cancel" }
+              menuItem("check", "Checkout (Track)", "success"),
+              menuItem("cross", "Cancel", "muted"),
             ],
             loop: true,
             pageSize: 15,
-          }
+          },
         ]);
 
         if (remoteAction === "checkout") {
@@ -170,10 +168,10 @@ async function doBranch() {
     case "merge":
       const mergeable = locals.filter((b) => b !== current);
       if (mergeable.length === 0) {
-        console.log(s.muted("\n  No branches to merge."));
+        emptyState("No branches to merge.");
         await pause();
       } else {
-        const { source } = await inquirer.prompt([
+        const { source } = await prompt([
           {
             type: "list",
             name: "source",
@@ -197,10 +195,10 @@ async function doBranch() {
     case "delete":
       const deletable = locals.filter((b) => b !== current);
       if (deletable.length === 0) {
-        console.log(s.muted("\n  No branches to delete."));
+        emptyState("No branches to delete.");
         await pause();
       } else {
-        const { toDelete } = await inquirer.prompt([
+        const { toDelete } = await prompt([
           {
             type: "list",
             name: "toDelete",
@@ -210,7 +208,7 @@ async function doBranch() {
             pageSize: 15,
           },
         ]);
-        const { confirm } = await inquirer.prompt([
+        const { confirm } = await prompt([
           {
             type: "confirm",
             name: "confirm",

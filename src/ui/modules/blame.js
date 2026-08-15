@@ -1,22 +1,19 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { getTrackedFiles, getBlame } = require("../../helpers/git");
-const { s, header, clear, pause, truncate, cols, rows } = require("../common");
+const { s, pause, truncate, cols, rows } = require("../common");
+const { open, emptyState, prompt, spinner, done, fail, clear } = require("../screen");
 
 async function doBlame() {
-  clear();
-  header();
-  console.log(s.bold("  Blame\n"));
+  open("Blame", "Show who changed each line of a file");
 
   const files = await getTrackedFiles();
 
   if (files.length === 0) {
-    console.log(s.muted("  No tracked files.\n"));
+    emptyState("No tracked files.");
     await pause();
     return;
   }
 
-  const { file } = await inquirer.prompt([
+  const { file } = await prompt([
     {
       type: "list",
       name: "file",
@@ -26,10 +23,8 @@ async function doBlame() {
     },
   ]);
 
-  const spin = ora({
-    text: s.muted(" Loading..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Loading...");
+  spin.start();
 
   try {
     const blame = await getBlame(file);
@@ -46,7 +41,7 @@ async function doBlame() {
       console.log(`${lineNum} ${hash} ${author} ${code}`);
     });
   } catch (err) {
-    spin.fail(s.error(` ${err.message}`));
+    fail(spin, err.message);
   }
 
   console.log();

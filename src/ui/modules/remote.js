@@ -1,11 +1,9 @@
-const inquirer = require("inquirer");
 const { getRemotes, addRemote, removeRemote } = require("../../helpers/git");
-const { s, header, clear, pause, sleep } = require("../common");
+const { s, pause, sleep } = require("../common");
+const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
 
 async function doRemote() {
-  clear();
-  header();
-  console.log(s.bold("  Remote\n"));
+  open("Remote");
 
   const remotes = await getRemotes();
 
@@ -15,18 +13,18 @@ async function doRemote() {
       console.log(s.muted(`    ${r.refs.fetch || "-"}\n`));
     });
   } else {
-    console.log(s.muted("  No remotes.\n"));
+    emptyState("No remotes.", "Add one to sync with a hosted repository.");
   }
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + Add Remote"), value: "add" },
-        { name: s.error("  ✕ Remove Remote"), value: "remove" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("new", "Add Remote", "success", "add"),
+        menuItem("remove", "Remove Remote", "danger", "remove"),
+        backItem(),
       ],
       loop: true,
       pageSize: 15,
@@ -36,7 +34,7 @@ async function doRemote() {
   if (action === "back") return;
 
   if (action === "add") {
-    const { name } = await inquirer.prompt([
+    const { name } = await prompt([
       {
         type: "input",
         name: "name",
@@ -44,7 +42,7 @@ async function doRemote() {
         default: "origin",
       },
     ]);
-    const { url } = await inquirer.prompt([
+    const { url } = await prompt([
       {
         type: "input",
         name: "url",
@@ -58,7 +56,7 @@ async function doRemote() {
   }
 
   if (action === "remove" && remotes.length > 0) {
-    const { toRemove } = await inquirer.prompt([
+    const { toRemove } = await prompt([
       {
         type: "list",
         name: "toRemove",

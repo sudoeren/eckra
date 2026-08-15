@@ -1,11 +1,9 @@
-const inquirer = require("inquirer");
 const { getGitStatus, listStashes, stashChanges, popStash, applyStash, dropStash } = require("../../helpers/git");
-const { s, header, clear, pause, sleep } = require("../common");
+const { s, pause, sleep } = require("../common");
+const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
 
 async function doStash() {
-  clear();
-  header();
-  console.log(s.bold("  Stash\n"));
+  open("Stash");
 
   const stashes = await listStashes();
 
@@ -15,20 +13,20 @@ async function doStash() {
     });
     console.log();
   } else {
-    console.log(s.muted("  No stashes.\n"));
+    emptyState("No stashes.", "Stash changes to work on something else.");
   }
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.success("  + Save Stash"), value: "save" },
-        { name: s.primary("  ↓ Pop Stash (Apply & Drop)"), value: "pop" },
-        { name: s.text("  ⟳ Apply Stash (Keep)"), value: "apply" },
-        { name: s.error("  ✕ Drop Stash"), value: "drop" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("new", "Save Stash", "success", "save"),
+        menuItem("pull", "Pop Stash (Apply & Drop)", "primary", "pop"),
+        menuItem("arrow", "Apply Stash (Keep)", "text", "apply"),
+        menuItem("remove", "Drop Stash", "danger", "drop"),
+        backItem(),
       ],
       loop: true,
       pageSize: 20,
@@ -40,10 +38,10 @@ async function doStash() {
   if (action === "save") {
     const status = await getGitStatus();
     if (status.modified.length === 0 && status.not_added.length === 0) {
-      console.log(s.muted("\n  No changes to stash."));
+      emptyState("No changes to stash.");
       await pause();
     } else {
-      const { message } = await inquirer.prompt([
+      const { message } = await prompt([
         {
           type: "input",
           name: "message",
@@ -58,24 +56,24 @@ async function doStash() {
   }
 
   if (stashes.all.length === 0) {
-    console.log(s.muted("\n  No stashes available."));
+    emptyState("No stashes available.");
     await pause();
     return;
   }
 
   // Select stash index
-  const { index } = await inquirer.prompt([
+  const { index } = await prompt([
     {
       type: "list",
       name: "index",
       message: s.muted("Select stash:"),
       choices: stashes.all.map((st, i) => ({
         name: `${i}: ${st.message}`,
-        value: i
+        value: i,
       })),
       loop: true,
       pageSize: 15,
-    }
+    },
   ]);
 
   try {

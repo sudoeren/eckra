@@ -1,8 +1,7 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
-const { s, header, clear, pause } = require("../common");
+const { s, pause, cols } = require("../common");
+const { open, rule, menuItem, backItem, prompt, spinner, done, fail, icon, tone } = require("../screen");
 
 function parseSections(text) {
   const sections = [];
@@ -25,9 +24,9 @@ function parseSections(text) {
   return sections;
 }
 
-function renderSection(title, content, icon, colorFn) {
-  console.log(colorFn(`  ${icon} ${title}`));
-  console.log(s.dim("  " + "─".repeat(Math.min(process.stdout.columns - 4, 60))));
+function renderSection(title, content, iconName, t) {
+  console.log(tone(t)(`  ${icon(iconName, t)} ${title}`));
+  console.log(rule());
   const lines = content.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
@@ -36,7 +35,7 @@ function renderSection(title, content, icon, colorFn) {
     } else if (trimmed.startsWith("- ")) {
       console.log(s.text("    " + trimmed));
     } else {
-      const wrapped = wrapText(trimmed, process.stdout.columns - 8);
+      const wrapped = wrapText(trimmed, cols() - 8);
       for (const w of wrapped) {
         console.log(s.text("    " + w));
       }
@@ -63,9 +62,7 @@ function renderStory(story, commitCount, commits) {
   const firstDate = commits[commits.length - 1]?.date;
   const lastDate = commits[0]?.date;
 
-  clear();
-  header();
-  console.log(s.bold("  Project Story\n"));
+  open("Project Story");
 
   if (firstDate && lastDate) {
     const from = new Date(firstDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -78,38 +75,35 @@ function renderStory(story, commitCount, commits) {
   const sections = parseSections(story);
 
   const styleMap = {
-    "timeline": { icon: "◆", color: s.primary },
-    "key milestones": { icon: "★", color: s.success },
-    "contributors": { icon: "👥", color: s.brand },
-    "patterns & insights": { icon: "💡", color: s.warning },
-    "patterns and insights": { icon: "💡", color: s.warning },
+    "timeline": { icon: "story", tone: "primary" },
+    "key milestones": { icon: "star", tone: "success" },
+    "contributors": { icon: "about", tone: "ai" },
+    "patterns & insights": { icon: "info", tone: "warning" },
+    "patterns and insights": { icon: "info", tone: "warning" },
   };
 
   for (const sec of sections) {
     const key = sec.title.toLowerCase();
-    const style = styleMap[key] || { icon: "·", color: s.primary };
-    renderSection(sec.title, sec.content, style.icon, style.color);
+    const style = styleMap[key] || { icon: "dot", tone: "primary" };
+    renderSection(sec.title, sec.content, style.icon, style.tone);
   }
 }
 
 async function doTimeline() {
-  clear();
-  header();
-  console.log(s.bold("  Project Story\n"));
-  console.log(s.muted("  AI analyzes your commit history and tells the story of this project.\n"));
+  open("Project Story", "AI analyzes your commit history and tells the story of this project.");
 
-  const { count } = await inquirer.prompt([
+  const { count } = await prompt([
     {
       type: "list",
       name: "count",
       message: s.muted("How many commits should be analyzed?"),
       choices: [
-        { name: s.text("  Last 10 commits (quick)"), value: 10 },
-        { name: s.text("  Last 25 commits"), value: 25 },
-        { name: s.text("  Last 50 commits"), value: 50 },
-        { name: s.text("  Last 100 commits"), value: 100 },
-        { name: s.text("  Last 200 commits (comprehensive)"), value: 200 },
-        { name: s.muted("  ← Back"), value: 0 },
+        menuItem("story", "Last 10 commits (quick)", "text", 10),
+        menuItem("story", "Last 25 commits", "text", 25),
+        menuItem("story", "Last 50 commits", "text", 50),
+        menuItem("story", "Last 100 commits", "text", 100),
+        menuItem("story", "Last 200 commits (comprehensive)", "text", 200),
+        backItem(),
       ],
       pageSize: 10,
       loop: true,
@@ -118,19 +112,20 @@ async function doTimeline() {
 
   if (count === 0) return;
 
-  const spin = ora({ text: s.muted(" Fetching commit history..."), spinner: "dots" }).start();
+  const spin = spinner("Fetching commit history...");
+  spin.start();
 
   let commits;
   try {
     commits = (await getCommitHistory(count)).all;
     if (commits.length === 0) {
-      spin.fail(s.warning(" No commits found in this repository."));
+      fail(spin, "No commits found in this repository.");
       await pause();
       return;
     }
-    spin.text = s.muted(` Analyzing ${commits.length} commits with AI...`);
+    spin.text = s.muted(`  Analyzing ${commits.length} commits with AI...`);
   } catch (err) {
-    spin.fail(s.error(` Failed to fetch commits: ${err.message}`));
+    fail(spin, `Failed to fetch commits: ${err.message}`);
     await pause();
     return;
   }
@@ -140,7 +135,7 @@ async function doTimeline() {
     spin.stop();
     renderStory(story, commits.length, commits);
   } catch (err) {
-    spin.fail(s.error(` AI Error: ${err.message}`));
+    fail(spin, `AI Error: ${err.message}`);
     console.log(s.muted("\n  Check your AI provider configuration in Settings."));
   }
 

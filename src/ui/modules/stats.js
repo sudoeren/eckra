@@ -1,16 +1,12 @@
-const ora = require("ora").default || require("ora");
 const { getRepoStats } = require("../../helpers/git");
-const { s, header, clear, pause } = require("../common");
+const { s, pause } = require("../common");
+const { open, spinner, done, fail } = require("../screen");
 
 async function doStats() {
-  clear();
-  header();
-  console.log(s.bold("  Statistics\n"));
+  open("Statistics");
 
-  const spin = ora({
-    text: s.muted(" Calculating..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Calculating...");
+  spin.start();
 
   try {
     const stats = await getRepoStats();
@@ -47,7 +43,7 @@ async function doStats() {
       });
     }
   } catch (err) {
-    spin.fail(s.error(` ${err.message}`));
+    fail(spin, err.message);
   }
 
   console.log();

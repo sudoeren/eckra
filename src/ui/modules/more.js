@@ -1,5 +1,4 @@
-const inquirer = require("inquirer");
-const { s, header, clear } = require("../common");
+const { open, menuItem, backItem, sep, prompt } = require("../screen");
 const { doUndo } = require("./undo");
 const { doAmend } = require("./amend");
 const { doDiff } = require("./diff");
@@ -17,38 +16,33 @@ const { doTimeline } = require("./timeline");
 const { doAbout } = require("./about");
 
 async function doMore() {
-  clear();
-  header();
-  console.log(s.bold("  More Options\n"));
+  open("More Options");
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
-      message: s.muted("What would you like to do?"),
+      message: "What would you like to do?",
       choices: [
-        { name: s.warning("  ↩ Undo (Revert last commit)"), value: "undo" },
-        {
-          name: s.primary("  ✎ Amend (Fix commit message)"),
-          value: "amend",
-        },
-        { name: s.warning("  ⚡ Rebase / Squash"), value: "rebase" },
-        { name: s.text("  ≋ Diff (View changes)"), value: "diff" },
-        { type: "separator", line: " " },
-        { name: s.text("  ⊞ Stash"), value: "stash" },
-        { name: s.text("  #  Tag"), value: "tag" },
-        { name: s.text("  ↗ Remote"), value: "remote" },
-        { type: "separator", line: " " },
-        { name: s.text("  ≡ Statistics"), value: "stats" },
-        { name: s.text("  ⌕ Search Commits"), value: "search" },
-        { name: s.text("  ▤ Blame"), value: "blame" },
-        { name: s.text("  ⌂ Worktrees"), value: "worktree" },
-        { name: s.text("  ◈ Submodules"), value: "submodule" },
-        { name: s.text("  ◷ Project Story"), value: "timeline" },
-        { type: "separator", line: " " },
-        { name: s.text("  ⚙ Settings"), value: "settings" },
-        { name: s.text("  ⊙ About"), value: "about" },
-        { name: s.muted("  ← Main Menu"), value: "back" },
+        menuItem("undo", "Undo (Revert last commit)", "warning", "undo"),
+        menuItem("amend", "Amend (Fix commit message)", "primary", "amend"),
+        menuItem("rebase", "Rebase / Squash", "warning", "rebase"),
+        menuItem("diff", "Diff (View changes)", "text", "diff"),
+        sep(),
+        menuItem("stash", "Stash", "text", "stash"),
+        menuItem("tag", "Tag", "text", "tag"),
+        menuItem("remote", "Remote", "text", "remote"),
+        sep(),
+        menuItem("stats", "Statistics", "text", "stats"),
+        menuItem("search", "Search Commits", "text", "search"),
+        menuItem("blame", "Blame", "text", "blame"),
+        menuItem("worktree", "Worktrees", "text", "worktree"),
+        menuItem("submodule", "Submodules", "text", "submodule"),
+        menuItem("story", "Project Story", "text", "timeline"),
+        sep(),
+        menuItem("settings", "Settings", "text", "settings"),
+        menuItem("about", "About", "text", "about"),
+        backItem("Main Menu"),
       ],
       pageSize: 20,
       loop: true,

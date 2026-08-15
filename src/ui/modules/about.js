@@ -1,10 +1,9 @@
 const packageJson = require("../../../package.json");
-const { s, clear, header, pause } = require("../common");
+const { s, pause } = require("../common");
+const { open } = require("../screen");
 
 async function doAbout() {
-  clear();
-  header();
-  console.log(s.bold("  About\n"));
+  open("About");
 
   console.log(s.brand("  ECKRA"));
   console.log(s.muted("  AI-Powered Git Assistant"));

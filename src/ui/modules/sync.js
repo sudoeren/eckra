@@ -1,27 +1,24 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { getGit, getGitStatus, pushToRemote, pullFromRemote, getCurrentBranch } = require("../../helpers/git");
-const { s, clear, sleep, pause } = require("../common");
+const { s, pause, sleep } = require("../common");
+const { prompt, spinner, done, fail } = require("../screen");
 
 async function doPush(silent = false) {
-  const spin = ora({
-    text: s.muted(" Pushing..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Pushing...");
+  spin.start();
 
   try {
     await pushToRemote();
-    spin.succeed(s.success(" Push successful!"));
+    done(spin, "Push successful!");
     if (!silent) await sleep(800);
   } catch (err) {
-    spin.fail(s.error(" Push error"));
+    fail(spin, "Push error");
 
     if (err.message.includes("no upstream")) {
       const branch = await getCurrentBranch();
       let setUpstream = true;
-      
+
       if (!silent) {
-        const answer = await inquirer.prompt([
+        const answer = await prompt([
           {
             type: "confirm",
             name: "setUpstream",
@@ -33,15 +30,13 @@ async function doPush(silent = false) {
       }
 
       if (setUpstream) {
-        const spin2 = ora({
-          text: s.muted(" Setting upstream..."),
-          spinner: "dots",
-        }).start();
+        const spin2 = spinner("Setting upstream...");
+        spin2.start();
         try {
           await getGit().push(["-u", "origin", branch]);
-          spin2.succeed(s.success(" Push successful!"));
+          done(spin2, "Push successful!");
         } catch (e) {
-          spin2.fail(s.error(` ${e.message}`));
+          fail(spin2, e.message);
         }
       }
     } else {
@@ -54,22 +49,20 @@ async function doPush(silent = false) {
 }
 
 async function doPull() {
-  const spin = ora({
-    text: s.muted(" Pulling..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Pulling...");
+  spin.start();
 
   try {
     const result = await pullFromRemote();
 
     if (result.summary?.changes > 0) {
-      spin.succeed(s.success(` ${result.summary.changes} files updated`));
+      done(spin, `${result.summary.changes} files updated`);
     } else {
-      spin.succeed(s.success(" Already up to date!"));
+      done(spin, "Already up to date!");
     }
     await sleep(800);
   } catch (err) {
-    spin.fail(s.error(` ${err.message}`));
+    fail(spin, err.message);
     await pause();
   }
 }

@@ -1,6 +1,5 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
-const ora = require("ora").default || require("ora");
 const { execSync } = require("child_process");
 const { getConfig, saveConfig, resetConfig, getConfigPath } = require("../../helpers/config");
 const {
@@ -13,7 +12,8 @@ const {
   fetchOllamaModels,
   fetchLMStudioModels,
 } = require("../../helpers/ai");
-const { s, header, clear, sleep, truncate } = require("../common");
+const { s, clear, sleep, truncate } = require("../common");
+const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
 
@@ -21,12 +21,10 @@ inquirer.registerPrompt("autocomplete", autocomplete);
  * Test provider connection with a spinner, then save or let user decide
  */
 async function testAndSaveProvider(provider, fullConfig, answers) {
-  const spinner = ora({
-    text: s.muted("  Testing connection..."),
-    spinner: "dots",
-  }).start();
+  const spin = spinner("Testing connection...");
+  spin.start();
   const result = await testProviderConnection(provider, fullConfig);
-  spinner.stop();
+  spin.stop();
 
   if (result.connected) {
     console.log(s.success("  ✓ Connection successful!"));
@@ -36,7 +34,7 @@ async function testAndSaveProvider(provider, fullConfig, answers) {
     console.log(
       s.error("  ✗ Connection failed: " + (result.error || "Unknown error")),
     );
-    const { saveAnyway } = await inquirer.prompt([
+    const { saveAnyway } = await prompt([
       {
         type: "confirm",
         name: "saveAnyway",
@@ -172,7 +170,8 @@ async function promptModelSearch(provider, answers, config) {
       break;
   }
 
-  const spinner = ora({ text: s.muted("  " + fetchLabel), spinner: "dots" }).start();
+  const spin = spinner(fetchLabel);
+  spin.start();
 
   switch (provider) {
     case "openai":
@@ -196,13 +195,13 @@ async function promptModelSearch(provider, answers, config) {
       break;
   }
 
-  spinner.stop();
+  spin.stop();
 
   if (models.length === 0) {
     console.log(
       s.muted("  Could not fetch models. You can type a model name manually."),
     );
-    const result = await inquirer.prompt([
+    const result = await prompt([
       {
         type: "input",
         name: configKey,
@@ -219,7 +218,7 @@ async function promptModelSearch(provider, answers, config) {
     short: m.id,
   }));
 
-  const result = await inquirer.prompt([
+  const result = await prompt([
     {
       type: "autocomplete",
       name: configKey,
@@ -246,7 +245,7 @@ async function promptModelSearch(provider, answers, config) {
  */
 async function askProviderConfig(provider, config) {
   const questions = getProviderQuestions(provider, config);
-  const answers = questions.length > 0 ? await inquirer.prompt(questions) : {};
+  const answers = questions.length > 0 ? await prompt(questions) : {};
 
   const modelAnswers = await promptModelSearch(provider, answers, config);
 
@@ -254,9 +253,7 @@ async function askProviderConfig(provider, config) {
 }
 
 async function doSettings() {
-  clear();
-  header();
-  console.log(s.bold("  Settings\n"));
+  open("Settings");
 
   const config = getConfig();
   const aiStatus = await checkAIConnection();
@@ -324,20 +321,20 @@ async function doSettings() {
   );
   console.log();
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        { name: s.text("  ⇄ Change Provider"), value: "provider" },
-        { name: s.text("  ⚙ Configure Provider Settings"), value: "configure" },
-        { name: s.text("  ◇ Change AI Instructions"), value: "instruction" },
-        { name: s.text("  ◐ Change Theme"), value: "theme" },
-        { type: "separator", line: " " },
-        { name: s.error("  ↺ Reset & Restart Onboarding"), value: "reset" },
-        { name: s.error("  ✕ Uninstall Eckra"), value: "uninstall" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("branch", "Change Provider", "text", "provider"),
+        menuItem("settings", "Configure Provider Settings", "text", "configure"),
+        menuItem("edit", "Change AI Instructions", "text", "instruction"),
+        menuItem("about", "Change Theme", "text", "theme"),
+        sep(),
+        menuItem("refresh", "Reset & Restart Onboarding", "danger", "reset"),
+        menuItem("remove", "Uninstall Eckra", "danger", "uninstall"),
+        backItem(),
       ],
       loop: true,
       pageSize: 15,
@@ -347,7 +344,7 @@ async function doSettings() {
   if (action === "back") return;
 
   if (action === "reset") {
-    const { confirmReset } = await inquirer.prompt([
+    const { confirmReset } = await prompt([
       {
         type: "confirm",
         name: "confirmReset",
@@ -371,7 +368,7 @@ async function doSettings() {
   }
 
   if (action === "uninstall") {
-    const { confirmUninstall } = await inquirer.prompt([
+    const { confirmUninstall } = await prompt([
       {
         type: "confirm",
         name: "confirmUninstall",
@@ -384,7 +381,7 @@ async function doSettings() {
 
     if (!confirmUninstall) return;
 
-    const { reallySure } = await inquirer.prompt([
+    const { reallySure } = await prompt([
       {
         type: "input",
         name: "reallySure",
@@ -399,20 +396,22 @@ async function doSettings() {
     console.log(s.muted("\n  Uninstalling Eckra...\n"));
 
     // Remove config directory
-    const spinner1 = ora({ text: s.muted("  Removing config files..."), spinner: "dots" }).start();
+    const spinner1 = spinner("Removing config files...");
+    spinner1.start();
     try {
       const configDir = require("path").join(require("os").homedir(), ".eckra");
       require("fs").rmSync(configDir, { recursive: true, force: true });
-      spinner1.succeed(s.success("  Config files removed"));
+      done(spinner1, "Config files removed");
     } catch {
-      spinner1.fail(s.error("  Failed to remove config files"));
+      fail(spinner1, "Failed to remove config files");
     }
 
     // Uninstall global package
-    const spinner2 = ora({ text: s.muted("  Uninstalling global package..."), spinner: "dots" }).start();
+    const spinner2 = spinner("Uninstalling global package...");
+    spinner2.start();
     try {
       execSync("npm uninstall -g eckra", { stdio: ["pipe", "pipe", "ignore"] });
-      spinner2.succeed(s.success("  Global package uninstalled"));
+      done(spinner2, "Global package uninstalled");
     } catch {
       spinner2.fail(s.warning("  Global package may not be installed or npm not found"));
     }
@@ -436,7 +435,7 @@ async function doSettings() {
       { name: "Google Gemini", value: "gemini" },
     ];
 
-    const { provider } = await inquirer.prompt([
+    const { provider } = await prompt([
       {
         type: "autocomplete",
         name: "provider",
@@ -479,7 +478,7 @@ async function doSettings() {
   }
 
   if (action === "instruction") {
-    const { instruction } = await inquirer.prompt([
+    const { instruction } = await prompt([
       {
         type: "input",
         name: "instruction",
@@ -493,15 +492,15 @@ async function doSettings() {
   }
 
   if (action === "theme") {
-    const { theme } = await inquirer.prompt([
+    const { theme } = await prompt([
       {
         type: "list",
         name: "theme",
         message: s.muted("Select Theme:"),
         choices: [
-          { name: "Auto (Detect terminal theme)", value: "auto" },
-          { name: "Dark", value: "dark" },
-          { name: "Light", value: "light" },
+          menuItem("about", "Auto (Detect terminal theme)", "text", "auto"),
+          menuItem("about", "Dark", "text", "dark"),
+          menuItem("about", "Light", "text", "light"),
         ],
         default: config.theme || "auto",
         loop: true,

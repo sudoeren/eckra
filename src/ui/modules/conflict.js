@@ -1,33 +1,31 @@
-const inquirer = require("inquirer");
 const { execFile } = require("child_process");
 const { getConflictDetails, acceptOurs, acceptTheirs, acceptBoth, abortMerge, stageFiles } = require("../../helpers/git");
-const { s, header, clear, pause, sleep } = require("../common");
+const { s, pause, sleep, clear, header } = require("../common");
+const { open, menuItem, backItem, sep, prompt } = require("../screen");
 
 async function doConflict() {
-  clear();
-  header();
-  console.log(s.bold("  Conflict Resolver\n"));
+  open("Conflict Resolver");
 
   const conflicts = await getConflictDetails();
 
   if (conflicts.length === 0) {
-    console.log(s.success("  ✓ No conflicts!\n"));
+    console.log(s.success(`  ${s.text("✓")} No conflicts!\n`));
     await pause();
     return;
   }
 
-  const { action } = await inquirer.prompt([
+  const { action } = await prompt([
     {
       type: "list",
       name: "action",
       message: s.muted(`Found ${conflicts.length} conflicted files:`),
       choices: [
-        { name: s.text("  ◉ Resolve file by file"), value: "each" },
-        { name: s.success("  ✓ Accept all 'ours'"), value: "ours" },
-        { name: s.primary("  ✓ Accept all 'theirs'"), value: "theirs" },
-        { type: "separator" },
-        { name: s.error("  ⚠ Abort merge"), value: "abort" },
-        { name: s.muted("  ← Back"), value: "back" },
+        menuItem("select", "Resolve file by file", "text", "each"),
+        menuItem("check", "Accept all 'ours'", "success", "ours"),
+        menuItem("check", "Accept all 'theirs'", "primary", "theirs"),
+        sep(),
+        menuItem("conflict", "Abort merge", "danger", "abort"),
+        backItem(),
       ],
       loop: true,
       pageSize: 20,
@@ -59,17 +57,17 @@ async function resolveFile(file) {
   header();
   console.log(s.bold(`  Resolving: ${file}\n`));
 
-  const { choice } = await inquirer.prompt([
+  const { choice } = await prompt([
     {
       type: "list",
       name: "choice",
       message: s.muted(`How to resolve ${file}?`),
       choices: [
-        { name: s.success("  Accept 'Ours' (Current Branch)"), value: "ours" },
-        { name: s.primary("  Accept 'Theirs' (Incoming Branch)"), value: "theirs" },
-        { name: s.warning("  Accept Both (Keep markers for manual merge)"), value: "both" },
-        { name: s.warning("  Edit manually (Opens default editor)"), value: "manual" },
-        { name: s.muted("  Skip for now"), value: "skip" },
+        menuItem("check", "Accept 'Ours' (Current Branch)", "success", "ours"),
+        menuItem("check", "Accept 'Theirs' (Incoming Branch)", "primary", "theirs"),
+        menuItem("edit", "Accept Both (Keep markers for manual merge)", "warning", "both"),
+        menuItem("edit", "Edit manually (Opens default editor)", "warning", "manual"),
+        menuItem("cross", "Skip for now", "muted", "skip"),
       ],
       loop: true,
       pageSize: 15,
@@ -87,11 +85,11 @@ async function resolveFile(file) {
       child.on("close", resolve);
       child.on("error", reject);
     });
-    
-    await inquirer.prompt([
-      { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") }
+
+    await prompt([
+      { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") },
     ]);
-    
+
     // After manual edit, we should add the file to mark as resolved
     await stageFiles([file]);
   }

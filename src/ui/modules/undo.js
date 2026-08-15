@@ -1,17 +1,14 @@
-const inquirer = require("inquirer");
-const ora = require("ora").default || require("ora");
 const { getLastCommit, undoLastCommit } = require("../../helpers/git");
-const { s, header, clear, pause, timeAgo } = require("../common");
+const { s, pause, timeAgo } = require("../common");
+const { open, emptyState, prompt, spinner, done } = require("../screen");
 
 async function doUndo() {
-  clear();
-  header();
-  console.log(s.bold("  Undo\n"));
+  open("Undo", "Revert the most recent commit (changes are preserved)");
 
   const lastCommit = await getLastCommit();
 
   if (!lastCommit) {
-    console.log(s.muted("  No commit to undo.\n"));
+    emptyState("No commit to undo.");
     await pause();
     return;
   }
@@ -24,7 +21,7 @@ async function doUndo() {
     s.muted(`  ${lastCommit.author_name} · ${timeAgo(lastCommit.date)}\n`),
   );
 
-  const { confirm } = await inquirer.prompt([
+  const { confirm } = await prompt([
     {
       type: "confirm",
       name: "confirm",
@@ -34,14 +31,10 @@ async function doUndo() {
   ]);
 
   if (confirm) {
-    const spin = ora({
-      text: s.muted(" Undoing..."),
-      spinner: "dots",
-    }).start();
+    const spin = spinner("Undoing...");
+    spin.start();
     await undoLastCommit();
-    spin.succeed(
-      s.success(" Commit undone! Changes are still staged."),
-    );
+    done(spin, "Commit undone! Changes are still staged.");
     await pause();
   }
 }
