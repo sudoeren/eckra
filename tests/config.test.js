@@ -3,6 +3,7 @@ const path = require("path");
 const os = require("os");
 const {
   getConfig,
+  saveConfig,
   DEFAULT_CONFIG,
   resetConfigCache,
 } = require("../src/helpers/config");
@@ -127,5 +128,74 @@ describe("Config Helper", () => {
 
     const config = getConfig();
     expect(config.aiInstruction).toBe(localConfig.aiInstruction);
+  });
+
+  test("should merge global and local configs per-key with local winning", () => {
+    const globalConfig = {
+      model: "global-model",
+      aiProvider: "openai",
+      theme: "dark",
+    };
+    const localConfig = { model: "local-model" };
+
+    fs.existsSync.mockImplementation((filePath) => {
+      if (filePath.includes(".eckra") && filePath.includes("config.json"))
+        return true;
+      if (filePath === path.join(MOCK_CWD, ".eckrarc")) return true;
+      return false;
+    });
+
+    fs.readFileSync.mockImplementation((filePath) => {
+      if (filePath.includes("config.json")) return JSON.stringify(globalConfig);
+      if (filePath.includes(".eckrarc")) return JSON.stringify(localConfig);
+      return "";
+    });
+
+    const config = getConfig();
+
+    // Local overrides its own key, global fills the rest
+    expect(config.model).toBe("local-model");
+    expect(config.aiProvider).toBe("openai");
+    expect(config.theme).toBe("dark");
+  });
+
+  test("should normalize trailing slashes in URL config", () => {
+    const globalConfig = {
+      lmStudioUrl: "http://localhost:1234///",
+      ollamaUrl: "http://localhost:11434/",
+    };
+
+    fs.existsSync.mockImplementation((filePath) => {
+      if (filePath.includes(".eckra") && filePath.includes("config.json"))
+        return true;
+      return false;
+    });
+
+    fs.readFileSync.mockImplementation((filePath) => {
+      if (filePath.includes("config.json")) return JSON.stringify(globalConfig);
+      return "";
+    });
+
+    const config = getConfig();
+
+    expect(config.lmStudioUrl).toBe("http://localhost:1234");
+    expect(config.ollamaUrl).toBe("http://localhost:11434");
+  });
+
+  test("should write config file with 0600 permissions", () => {
+    fs.writeFileSync.mockClear();
+    fs.chmodSync.mockClear();
+
+    saveConfig({ theme: "dark" });
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining("config.json"),
+      expect.any(String),
+      expect.objectContaining({ mode: 0o600 })
+    );
+    expect(fs.chmodSync).toHaveBeenCalledWith(
+      expect.stringContaining("config.json"),
+      0o600
+    );
   });
 });

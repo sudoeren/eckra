@@ -35,6 +35,27 @@ function ensureConfigDir() {
 }
 
 /**
+ * Enforce owner-only permissions on the global config file (it holds API keys)
+ */
+function secureConfigFile() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) fs.chmodSync(CONFIG_FILE, 0o600);
+  } catch {}
+}
+
+/**
+ * Write the global config file with 0600 permissions.
+ * writeFileSync only applies mode on creation, so chmod enforces it for
+ * existing files too.
+ */
+function writeConfigFile(data) {
+  fs.writeFileSync(CONFIG_FILE, data, { mode: 0o600 });
+  try {
+    fs.chmodSync(CONFIG_FILE, 0o600);
+  } catch {}
+}
+
+/**
  * Find local configuration file in current or parent directories
  */
 function findLocalConfig(startDir = process.cwd()) {
@@ -71,6 +92,7 @@ function getConfig() {
   if (_cachedConfig) return _cachedConfig;
 
   ensureConfigDir();
+  secureConfigFile();
 
   let config = { ...DEFAULT_CONFIG };
 
@@ -122,7 +144,7 @@ function saveConfig(config) {
   const currentConfig = getConfig();
   const newConfig = { ...currentConfig, ...config };
 
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2));
+  writeConfigFile(JSON.stringify(newConfig, null, 2));
   _cachedConfig = newConfig; // Update cache
   return newConfig;
 }
@@ -132,7 +154,7 @@ function saveConfig(config) {
  */
 function resetConfig() {
   ensureConfigDir();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
+  writeConfigFile(JSON.stringify(DEFAULT_CONFIG, null, 2));
   _cachedConfig = { ...DEFAULT_CONFIG }; // Update cache
   return DEFAULT_CONFIG;
 }
