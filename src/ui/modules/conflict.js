@@ -80,11 +80,18 @@ async function resolveFile(file) {
   if (choice === "manual") {
     const editor = process.env.EDITOR || (process.platform === "win32" ? "notepad" : "code");
     console.log(s.muted(`  Opening ${editor}...`));
-    await new Promise((resolve, reject) => {
-      const child = execFile(editor, [file], { stdio: "inherit" });
-      child.on("close", resolve);
-      child.on("error", reject);
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        const child = execFile(editor, [file], { stdio: "inherit" });
+        child.on("close", resolve);
+        child.on("error", reject);
+      });
+    } catch (err) {
+      console.log(s.danger(`  Could not launch ${editor}: ${err.message}`));
+      console.log(s.muted(`  Resolve the conflicts in ${file} manually, then run: git add ${file}`));
+      await stageFiles([file]);
+      return;
+    }
 
     await prompt([
       { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") },
