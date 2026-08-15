@@ -1,5 +1,12 @@
 const { execFile } = require("child_process");
-const { getConflictDetails, acceptOurs, acceptTheirs, acceptBoth, abortMerge, stageFiles } = require("../../helpers/git");
+const {
+  getConflictDetails,
+  acceptOurs,
+  acceptTheirs,
+  acceptBoth,
+  abortMerge,
+  stageFiles,
+} = require("../../helpers/git");
 const { s, pause, sleep, clear, header } = require("../common");
 const { open, menuItem, backItem, sep, prompt } = require("../screen");
 
@@ -65,7 +72,11 @@ async function resolveFile(file) {
       choices: [
         menuItem("Accept 'Ours' (Current Branch)", "success", "ours"),
         menuItem("Accept 'Theirs' (Incoming Branch)", "primary", "theirs"),
-        menuItem("Accept Both (Keep markers for manual merge)", "warning", "both"),
+        menuItem(
+          "Accept Both (Keep markers for manual merge)",
+          "warning",
+          "both"
+        ),
         menuItem("Edit manually (Opens default editor)", "warning", "manual"),
         menuItem("Skip for now", "muted", "skip"),
       ],
@@ -78,7 +89,8 @@ async function resolveFile(file) {
   if (choice === "theirs") await acceptTheirs(file);
   if (choice === "both") await acceptBoth(file);
   if (choice === "manual") {
-    const editor = process.env.EDITOR || (process.platform === "win32" ? "notepad" : "code");
+    const editor =
+      process.env.EDITOR || (process.platform === "win32" ? "notepad" : "code");
     console.log(s.muted(`  Opening ${editor}...`));
     try {
       await new Promise((resolve, reject) => {
@@ -88,13 +100,23 @@ async function resolveFile(file) {
       });
     } catch (err) {
       console.log(s.danger(`  Could not launch ${editor}: ${err.message}`));
-      console.log(s.muted(`  Resolve the conflicts in ${file} manually, then run: git add ${file}`));
+      console.log(
+        s.muted(
+          `  Resolve the conflicts in ${file} manually, then run: git add ${file}`
+        )
+      );
       await stageFiles([file]);
       return;
     }
 
     await prompt([
-      { type: "input", name: "done", message: s.success("  Press Enter once you saved the file and resolved conflicts...") },
+      {
+        type: "input",
+        name: "done",
+        message: s.success(
+          "  Press Enter once you saved the file and resolved conflicts..."
+        ),
+      },
     ]);
 
     // After manual edit, we should add the file to mark as resolved

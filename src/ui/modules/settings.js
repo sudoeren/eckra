@@ -5,7 +5,6 @@ const {
   getConfig,
   saveConfig,
   resetConfig,
-  getConfigPath,
   DEFAULT_CONFIG,
 } = require("../../helpers/config");
 const {
@@ -19,14 +18,23 @@ const {
   fetchLMStudioModels,
 } = require("../../helpers/ai");
 const { s, clear, sleep, pause } = require("../common");
-const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 
 inquirer.registerPrompt("autocomplete", autocomplete);
 
 /**
  * Test provider connection with a spinner, then save or let user decide
  */
-async function testAndSaveProvider(provider, fullConfig, answers) {
+async function testAndSaveProvider(provider, fullConfig, _answers) {
   const spin = spinner("Testing connection...");
   spin.start();
   const result = await testProviderConnection(provider, fullConfig);
@@ -38,7 +46,7 @@ async function testAndSaveProvider(provider, fullConfig, answers) {
     console.log(s.success("  ✓ Provider configured: " + provider));
   } else {
     console.log(
-      s.error("  ✗ Connection failed: " + (result.error || "Unknown error")),
+      s.error("  ✗ Connection failed: " + (result.error || "Unknown error"))
     );
     const { saveAnyway } = await prompt([
       {
@@ -137,10 +145,10 @@ function getProviderQuestions(provider, config) {
  * Prompt for model selection using autocomplete with models fetched from the provider's API
  */
 async function promptModelSearch(provider, answers, config) {
-  let models = [];
-  let currentModel = "";
-  let configKey = "";
-  let fetchLabel = "";
+  let models;
+  let currentModel;
+  let configKey;
+  let fetchLabel;
 
   switch (provider) {
     case "openai":
@@ -181,23 +189,31 @@ async function promptModelSearch(provider, answers, config) {
 
   switch (provider) {
     case "openai":
-      models = await fetchOpenAIModels(answers.openaiApiKey || config.openaiApiKey);
+      models = await fetchOpenAIModels(
+        answers.openaiApiKey || config.openaiApiKey
+      );
       break;
     case "anthropic":
       models = await fetchAnthropicModels();
       break;
     case "gemini":
-      models = await fetchGeminiModels(answers.geminiApiKey || config.geminiApiKey);
+      models = await fetchGeminiModels(
+        answers.geminiApiKey || config.geminiApiKey
+      );
       break;
     case "ollama":
       models = await fetchOllamaModels(answers.ollamaUrl || config.ollamaUrl);
       break;
     case "openrouter":
-      models = await fetchOpenRouterModels(answers.openrouterApiKey || config.openrouterApiKey);
+      models = await fetchOpenRouterModels(
+        answers.openrouterApiKey || config.openrouterApiKey
+      );
       break;
     case "lmstudio":
     default:
-      models = await fetchLMStudioModels(answers.lmStudioUrl || config.lmStudioUrl);
+      models = await fetchLMStudioModels(
+        answers.lmStudioUrl || config.lmStudioUrl
+      );
       break;
   }
 
@@ -205,7 +221,7 @@ async function promptModelSearch(provider, answers, config) {
 
   if (models.length === 0) {
     console.log(
-      s.muted("  Could not fetch models. You can type a model name manually."),
+      s.muted("  Could not fetch models. You can type a model name manually.")
     );
     const result = await prompt([
       {
@@ -235,7 +251,7 @@ async function promptModelSearch(provider, answers, config) {
         return modelChoices.filter(
           (c) =>
             c.name.toLowerCase().includes(term) ||
-            c.value.toLowerCase().includes(term),
+            c.value.toLowerCase().includes(term)
         );
       },
       default: currentModel,
@@ -265,7 +281,7 @@ async function doSettings() {
   const aiStatus = await checkAIConnection();
 
   console.log(
-    s.muted("  Provider: ") + s.text(config.aiProvider || "lmstudio"),
+    s.muted("  Provider: ") + s.text(config.aiProvider || "lmstudio")
   );
 
   if (config.aiProvider === "openai") {
@@ -273,8 +289,8 @@ async function doSettings() {
     console.log(
       s.muted("  API Key: ") +
         s.text(
-          config.openaiApiKey ? "****" + config.openaiApiKey.slice(-4) : "None",
-        ),
+          config.openaiApiKey ? "****" + config.openaiApiKey.slice(-4) : "None"
+        )
     );
   } else if (config.aiProvider === "anthropic") {
     console.log(s.muted("  Model: ") + s.text(config.anthropicModel));
@@ -283,8 +299,8 @@ async function doSettings() {
         s.text(
           config.anthropicApiKey
             ? "****" + config.anthropicApiKey.slice(-4)
-            : "None",
-        ),
+            : "None"
+        )
     );
   } else if (config.aiProvider === "ollama") {
     console.log(s.muted("  URL: ") + s.text(config.ollamaUrl));
@@ -296,16 +312,16 @@ async function doSettings() {
         s.text(
           config.openrouterApiKey
             ? "****" + config.openrouterApiKey.slice(-4)
-            : "None",
-        ),
+            : "None"
+        )
     );
   } else if (config.aiProvider === "gemini") {
     console.log(s.muted("  Model: ") + s.text(config.geminiModel));
     console.log(
       s.muted("  API Key: ") +
         s.text(
-          config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None",
-        ),
+          config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None"
+        )
     );
   } else {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
@@ -318,8 +334,8 @@ async function doSettings() {
       (aiStatus.connected
         ? s.success("Connected ✓")
         : s.error(
-            "Not connected ✗ (" + (aiStatus.error || "Unknown error") + ")",
-          )),
+            "Not connected ✗ (" + (aiStatus.error || "Unknown error") + ")"
+          ))
   );
   console.log();
 
@@ -352,7 +368,7 @@ async function doSettings() {
         type: "confirm",
         name: "confirmReset",
         message: s.error(
-          "Are you sure? This will delete all your API keys and settings.",
+          "Are you sure? This will delete all your API keys and settings."
         ),
         default: false,
       },
@@ -361,7 +377,7 @@ async function doSettings() {
     if (confirmReset) {
       resetConfig();
       console.log(
-        s.success("\n  ✓ Settings reset to default. Starting onboarding..."),
+        s.success("\n  ✓ Settings reset to default. Starting onboarding...")
       );
       await sleep(1000);
       await require("./onboarding").doOnboarding();
@@ -376,7 +392,7 @@ async function doSettings() {
         type: "confirm",
         name: "confirmUninstall",
         message: s.error(
-          "This will DELETE all Eckra settings, API keys, and remove the global package. Continue?",
+          "This will DELETE all Eckra settings, API keys, and remove the global package. Continue?"
         ),
         default: false,
       },
@@ -416,13 +432,17 @@ async function doSettings() {
       execSync("npm uninstall -g eckra", { stdio: ["pipe", "pipe", "ignore"] });
       done(spinner2, "Global package uninstalled");
     } catch {
-      spinner2.fail(s.warning("  Global package may not be installed or npm not found"));
+      spinner2.fail(
+        s.warning("  Global package may not be installed or npm not found")
+      );
     }
 
     console.log();
     console.log(s.success("  Eckra has been uninstalled."));
     console.log(s.muted("  You can delete the project folder manually:"));
-    console.log(s.dim("    rm -rf " + require("path").join(__dirname, "..", "..", "..")));
+    console.log(
+      s.dim("    rm -rf " + require("path").join(__dirname, "..", "..", ".."))
+    );
     console.log();
     await sleep(2000);
     process.exit(0);
@@ -449,7 +469,7 @@ async function doSettings() {
           return providerChoices.filter(
             (c) =>
               c.name.toLowerCase().includes(term) ||
-              c.value.toLowerCase().includes(term),
+              c.value.toLowerCase().includes(term)
           );
         },
         default: config.aiProvider,
@@ -464,7 +484,7 @@ async function doSettings() {
     let answers = {};
     if (needsSetup) {
       console.log(
-        s.muted("\n  This provider requires configuration. Let's set it up:\n"),
+        s.muted("\n  This provider requires configuration. Let's set it up:\n")
       );
       answers = await askProviderConfig(provider, config);
     }
@@ -484,7 +504,7 @@ async function doSettings() {
     console.log();
     console.log(s.muted("  AI Instruction:"));
     console.log(
-      s.text("  " + (config.aiInstruction || "No custom instruction set.")),
+      s.text("  " + (config.aiInstruction || "No custom instruction set."))
     );
     console.log();
     await pause();

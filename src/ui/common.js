@@ -45,14 +45,19 @@ function isDarkMode() {
 
   try {
     if (process.platform === "win32") {
-      const command = 'reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme';
-      const output = execSync(command, { stdio: ["pipe", "pipe", "ignore"] }).toString();
+      const command =
+        'reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" /v AppsUseLightTheme';
+      const output = execSync(command, {
+        stdio: ["pipe", "pipe", "ignore"],
+      }).toString();
       _isDark = output.includes("0x0");
       return _isDark;
     }
 
     if (process.platform === "darwin") {
-      const output = execSync("defaults read -g AppleInterfaceStyle", { stdio: ["pipe", "pipe", "ignore"] }).toString();
+      const output = execSync("defaults read -g AppleInterfaceStyle", {
+        stdio: ["pipe", "pipe", "ignore"],
+      }).toString();
       _isDark = output.trim() === "Dark";
       return _isDark;
     }
@@ -61,12 +66,23 @@ function isDarkMode() {
 
     // 1. GNOME via gsettings
     try {
-      const out = execSync("gsettings get org.gnome.desktop.interface color-scheme", {
-        stdio: ["pipe", "pipe", "ignore"],
-        timeout: 2000,
-      }).toString().trim();
-      if (out === "'prefer-dark'") { _isDark = true; return true; }
-      if (out === "'default'" || out === "'prefer-light'") { _isDark = false; return false; }
+      const out = execSync(
+        "gsettings get org.gnome.desktop.interface color-scheme",
+        {
+          stdio: ["pipe", "pipe", "ignore"],
+          timeout: 2000,
+        }
+      )
+        .toString()
+        .trim();
+      if (out === "'prefer-dark'") {
+        _isDark = true;
+        return true;
+      }
+      if (out === "'default'" || out === "'prefer-light'") {
+        _isDark = false;
+        return false;
+      }
     } catch {}
 
     // 2. KDE via kreadconfig5
@@ -74,9 +90,18 @@ function isDarkMode() {
       const out = execSync("kreadconfig5 --group General --key ColorScheme", {
         stdio: ["pipe", "pipe", "ignore"],
         timeout: 2000,
-      }).toString().trim().toLowerCase();
-      if (out.includes("dark")) { _isDark = true; return true; }
-      if (out.length > 0) { _isDark = false; return false; }
+      })
+        .toString()
+        .trim()
+        .toLowerCase();
+      if (out.includes("dark")) {
+        _isDark = true;
+        return true;
+      }
+      if (out.length > 0) {
+        _isDark = false;
+        return false;
+      }
     } catch {}
 
     // 3. KDE via kdeglobals
@@ -86,8 +111,17 @@ function isDarkMode() {
       const kdegl = p.join(require("os").homedir(), ".config", "kdeglobals");
       if (fs.existsSync(kdegl)) {
         const c = fs.readFileSync(kdegl, "utf8");
-        if (c.includes("ColorScheme=KDE Breeze Dark") || c.includes("ColorScheme=BreezeDark")) { _isDark = true; return true; }
-        if (/ColorScheme=/.test(c)) { _isDark = false; return false; }
+        if (
+          c.includes("ColorScheme=KDE Breeze Dark") ||
+          c.includes("ColorScheme=BreezeDark")
+        ) {
+          _isDark = true;
+          return true;
+        }
+        if (/ColorScheme=/.test(c)) {
+          _isDark = false;
+          return false;
+        }
       }
     } catch {}
 
@@ -95,10 +129,18 @@ function isDarkMode() {
     try {
       const fs = require("fs");
       const p = require("path");
-      const gtkIni = p.join(require("os").homedir(), ".config", "gtk-3.0", "settings.ini");
+      const gtkIni = p.join(
+        require("os").homedir(),
+        ".config",
+        "gtk-3.0",
+        "settings.ini"
+      );
       if (fs.existsSync(gtkIni)) {
         const c = fs.readFileSync(gtkIni, "utf8");
-        if (/gtk-application-prefer-dark-theme\s*=\s*1/.test(c)) { _isDark = true; return true; }
+        if (/gtk-application-prefer-dark-theme\s*=\s*1/.test(c)) {
+          _isDark = true;
+          return true;
+        }
       }
     } catch {}
 
@@ -108,19 +150,28 @@ function isDarkMode() {
       const bg = parts[parts.length - 1];
       if (bg) {
         const val = parseInt(bg, 10);
-        if (!isNaN(val)) { _isDark = val < 8; return _isDark; }
+        if (!isNaN(val)) {
+          _isDark = val < 8;
+          return _isDark;
+        }
       }
     }
 
     // 6. GTK_THEME env
-    if (env.GTK_THEME && env.GTK_THEME.endsWith("-dark")) { _isDark = true; return true; }
+    if (env.GTK_THEME && env.GTK_THEME.endsWith("-dark")) {
+      _isDark = true;
+      return true;
+    }
   } catch {
     // fall through
   }
 
   // Fallback: check terminal emulator env hints
   const term = (env.COLORTERM || env.TERM || "").toLowerCase();
-  if (term.includes("dark") || term.includes("black")) { _isDark = true; return true; }
+  if (term.includes("dark") || term.includes("black")) {
+    _isDark = true;
+    return true;
+  }
 
   _isDark = false; // Default to light (safer for most terminals)
   return _isDark;
@@ -149,12 +200,15 @@ function getTheme() {
 }
 
 // Proxy so every access to s.primary etc. reads the current theme
-const s = new Proxy({}, {
-  get(_target, prop) {
-    const theme = getTheme();
-    return theme[prop];
-  },
-});
+const s = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      const theme = getTheme();
+      return theme[prop];
+    },
+  }
+);
 
 // ═══════════════════════════════════════════════════════════════
 // UTILS
@@ -177,21 +231,6 @@ function timeAgo(date) {
   if (seconds < 86400) return Math.floor(seconds / 3600) + " hr";
   if (seconds < 604800) return Math.floor(seconds / 86400) + " days";
   return Math.floor(seconds / 604800) + " weeks";
-}
-
-function box(content, title = "") {
-  const width = Math.min(cols() - 4, 70);
-  const top = title
-    ? s.dim("╭─") +
-    s.muted(` ${title} `) +
-    s.dim("─".repeat(width - title.length - 5) + "╮")
-    : s.dim("╭" + "─".repeat(width - 2) + "╮");
-  const bottom = s.dim("╰" + "─".repeat(width - 2) + "╯");
-  const lines = content.split("\n").map((line) => {
-    const padded = line.padEnd(width - 4);
-    return s.dim("│") + " " + padded + " " + s.dim("│");
-  });
-  return [top, ...lines, bottom].join("\n");
 }
 
 function header() {
@@ -220,7 +259,6 @@ module.exports = {
   rows,
   truncate,
   timeAgo,
-  box,
   header,
   pause,
   resetThemeCache,

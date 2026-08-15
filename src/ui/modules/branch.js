@@ -1,6 +1,21 @@
-const { getBranches, createBranch, switchBranch, mergeBranch, deleteBranch, compareBranches } = require("../../helpers/git");
+const {
+  getBranches,
+  createBranch,
+  switchBranch,
+  mergeBranch,
+  deleteBranch,
+  compareBranches,
+} = require("../../helpers/git");
 const { s, sleep, pause } = require("../common");
-const { open, emptyState, menuItem, backItem, sep, prompt, rule } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  rule,
+} = require("../screen");
 
 async function doBranch() {
   open("Branch");
@@ -43,7 +58,7 @@ async function doBranch() {
   if (action === "back") return;
 
   switch (action) {
-    case "new":
+    case "new": {
       const { name } = await prompt([
         {
           type: "input",
@@ -61,8 +76,9 @@ async function doBranch() {
         await pause();
       }
       break;
+    }
 
-    case "switch":
+    case "switch": {
       const others = locals.filter((b) => b !== current);
       if (others.length === 0) {
         emptyState("No other branches.");
@@ -88,8 +104,9 @@ async function doBranch() {
         }
       }
       break;
+    }
 
-    case "compare":
+    case "compare": {
       const compareTargets = branches.all.filter((b) => b !== current);
       if (compareTargets.length === 0) {
         emptyState("No other branches to compare.");
@@ -109,9 +126,15 @@ async function doBranch() {
           const stats = await compareBranches(current, target);
           console.log(s.bold(`\n  Comparison: ${current} vs ${target}`));
           console.log(rule("branch comparison"));
-          console.log(`  Ahead:  ${s.success(stats.ahead)} commits (commits in ${target} not in ${current})`);
-          console.log(`  Behind: ${s.warning(stats.behind)} commits (commits in ${current} not in ${target})`);
-          console.log(`  Diff:   ${s.text(stats.diffStat || "No file changes")}`);
+          console.log(
+            `  Ahead:  ${s.success(stats.ahead)} commits (commits in ${target} not in ${current})`
+          );
+          console.log(
+            `  Behind: ${s.warning(stats.behind)} commits (commits in ${current} not in ${target})`
+          );
+          console.log(
+            `  Diff:   ${s.text(stats.diffStat || "No file changes")}`
+          );
           await pause();
         } catch (err) {
           console.log(s.error(`\n  ✗ ${err.message}`));
@@ -119,6 +142,7 @@ async function doBranch() {
         }
       }
       break;
+    }
 
     case "remote":
       if (remotes.length === 0) {
@@ -165,7 +189,7 @@ async function doBranch() {
       }
       break;
 
-    case "merge":
+    case "merge": {
       const mergeable = locals.filter((b) => b !== current);
       if (mergeable.length === 0) {
         emptyState("No branches to merge.");
@@ -191,8 +215,9 @@ async function doBranch() {
         }
       }
       break;
+    }
 
-    case "delete":
+    case "delete": {
       const deletable = locals.filter((b) => b !== current);
       if (deletable.length === 0) {
         emptyState("No branches to delete.");
@@ -228,6 +253,7 @@ async function doBranch() {
         }
       }
       break;
+    }
   }
 }
 

@@ -36,12 +36,14 @@ function processHunk(hunk) {
     for (let i = 0; i < n; i++) {
       rows.push({
         type: "change",
-        removed: removedQueue[i] !== undefined
-          ? { num: oldN - removedQueue.length + i, text: removedQueue[i] }
-          : null,
-        added: addedQueue[i] !== undefined
-          ? { num: newN - addedQueue.length + i, text: addedQueue[i] }
-          : null,
+        removed:
+          removedQueue[i] !== undefined
+            ? { num: oldN - removedQueue.length + i, text: removedQueue[i] }
+            : null,
+        added:
+          addedQueue[i] !== undefined
+            ? { num: newN - addedQueue.length + i, text: addedQueue[i] }
+            : null,
       });
     }
     removedQueue = [];
@@ -57,7 +59,12 @@ function processHunk(hunk) {
       oldN += 1;
     } else if (line.startsWith(" ")) {
       flush();
-      rows.push({ type: "context", oldNum: oldN, newNum: newN, text: line.slice(1) });
+      rows.push({
+        type: "context",
+        oldNum: oldN,
+        newNum: newN,
+        text: line.slice(1),
+      });
       oldN += 1;
       newN += 1;
     } else {
@@ -99,6 +106,7 @@ function padNum(num, w) {
   return num == null ? " ".repeat(w) : String(num).padStart(w);
 }
 
+// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 function vlen(str) {
   return strWidth(str.replace(ANSI_RE, ""));
@@ -115,7 +123,7 @@ function renderHunkBody(hunk, numW) {
     }
     if (row.type === "context") {
       lines.push(
-        `${s.dim(padNum(row.oldNum, numW))} ${s.dim(padNum(row.newNum, numW))} ${s.text(row.text)}`,
+        `${s.dim(padNum(row.oldNum, numW))} ${s.dim(padNum(row.newNum, numW))} ${s.text(row.text)}`
       );
       continue;
     }
@@ -127,13 +135,13 @@ function renderHunkBody(hunk, numW) {
     if (row.removed) {
       const words = hl ? hl.removed : null;
       lines.push(
-        `${s.dim(padNum(row.removed.num, numW))} ${" ".repeat(numW)} ${s.error("-")}${renderWords(row.removed.text, words, s.error, REM_HL)}`,
+        `${s.dim(padNum(row.removed.num, numW))} ${" ".repeat(numW)} ${s.error("-")}${renderWords(row.removed.text, words, s.error, REM_HL)}`
       );
     }
     if (row.added) {
       const words = hl ? hl.added : null;
       lines.push(
-        `${" ".repeat(numW)} ${s.dim(padNum(row.added.num, numW))} ${s.success("+")}${renderWords(row.added.text, words, s.success, ADD_HL)}`,
+        `${" ".repeat(numW)} ${s.dim(padNum(row.added.num, numW))} ${s.success("+")}${renderWords(row.added.text, words, s.success, ADD_HL)}`
       );
     }
   }
@@ -161,7 +169,11 @@ function renderHunkSideBySide(hunk, numW) {
       const left = pColored(row.oldNum, row.newNum) + s.text(content);
       const pad = Math.max(0, half - 1 - vlen(left));
       lines.push(
-        left + " ".repeat(pad) + s.dim("│ ") + pColored(row.oldNum, row.newNum) + s.text(content),
+        left +
+          " ".repeat(pad) +
+          s.dim("│ ") +
+          pColored(row.oldNum, row.newNum) +
+          s.text(content)
       );
       continue;
     }
@@ -170,23 +182,31 @@ function renderHunkSideBySide(hunk, numW) {
         ? highlightPair(row.removed.text, row.added.text)
         : null;
 
-    let left = "";
-    let leftPad = half - 1;
+    let left;
+    let leftPad;
     if (row.removed) {
       const content =
-        row.removed.text.length > sideW ? row.removed.text.slice(0, sideW) : row.removed.text;
-      left = pColored(row.removed.num, null) + renderWords(content, hl ? hl.removed : null, s.error, REM_HL);
+        row.removed.text.length > sideW
+          ? row.removed.text.slice(0, sideW)
+          : row.removed.text;
+      left =
+        pColored(row.removed.num, null) +
+        renderWords(content, hl ? hl.removed : null, s.error, REM_HL);
       leftPad = Math.max(0, half - 1 - vlen(left));
     } else {
       left = pColored(null, null);
       leftPad = Math.max(0, half - 1 - vlen(left));
     }
 
-    let right = "";
+    let right;
     if (row.added) {
       const content =
-        row.added.text.length > sideW ? row.added.text.slice(0, sideW) : row.added.text;
-      right = pColored(null, row.added.num) + renderWords(content, hl ? hl.added : null, s.success, ADD_HL);
+        row.added.text.length > sideW
+          ? row.added.text.slice(0, sideW)
+          : row.added.text;
+      right =
+        pColored(null, row.added.num) +
+        renderWords(content, hl ? hl.added : null, s.success, ADD_HL);
     } else {
       right = pColored(null, null);
     }
@@ -213,10 +233,9 @@ function renderFile(file, opts, numW) {
 
   for (const hunk of file.hunks) {
     lines.push(s.primary(hunk.header));
-    const body =
-      opts.sideBySide
-        ? renderHunkSideBySide(hunk, numW)
-        : renderHunkBody(hunk, numW);
+    const body = opts.sideBySide
+      ? renderHunkSideBySide(hunk, numW)
+      : renderHunkBody(hunk, numW);
     for (const l of body) lines.push(l);
   }
 
@@ -229,7 +248,8 @@ function computeNumWidth(files) {
     for (const hunk of file.hunks) {
       const { rows } = processHunk(hunk);
       for (const row of rows) {
-        if (row.type === "context") maxNum = Math.max(maxNum, row.oldNum, row.newNum);
+        if (row.type === "context")
+          maxNum = Math.max(maxNum, row.oldNum, row.newNum);
         if (row.removed) maxNum = Math.max(maxNum, row.removed.num);
         if (row.added) maxNum = Math.max(maxNum, row.added.num);
       }
@@ -257,7 +277,7 @@ function renderDiff(rawDiff, opts = {}) {
   if (lines.length > maxLines) {
     lines.splice(maxLines);
     lines.push(
-      s.warning(`\n  ... diff truncated (${lines.length} of more lines shown)`),
+      s.warning(`\n  ... diff truncated (${lines.length} of more lines shown)`)
     );
   }
   return lines;

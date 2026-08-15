@@ -1,7 +1,16 @@
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
 const { s, pause, cols } = require("../common");
-const { open, rule, menuItem, backItem, prompt, spinner, done, fail, tone } = require("../screen");
+const {
+  open,
+  rule,
+  menuItem,
+  backItem,
+  prompt,
+  spinner,
+  fail,
+  tone,
+} = require("../screen");
 
 function parseSections(text) {
   const sections = [];
@@ -65,8 +74,16 @@ function renderStory(story, commitCount, commits) {
   open("Project Story");
 
   if (firstDate && lastDate) {
-    const from = new Date(firstDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-    const to = new Date(lastDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    const from = new Date(firstDate).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    const to = new Date(lastDate).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
     console.log(s.muted(`  ${commitCount} commits  ·  ${from} → ${to}\n`));
   } else {
     console.log(s.muted(`  ${commitCount} commits analyzed\n`));
@@ -75,9 +92,9 @@ function renderStory(story, commitCount, commits) {
   const sections = parseSections(story);
 
   const styleMap = {
-    "timeline": "primary",
+    timeline: "primary",
     "key milestones": "success",
-    "contributors": "ai",
+    contributors: "ai",
     "patterns & insights": "warning",
     "patterns and insights": "warning",
   };
@@ -90,7 +107,10 @@ function renderStory(story, commitCount, commits) {
 }
 
 async function doTimeline() {
-  open("Project Story", "AI analyzes your commit history and tells the story of this project.");
+  open(
+    "Project Story",
+    "AI analyzes your commit history and tells the story of this project."
+  );
 
   const { count } = await prompt([
     {
@@ -136,7 +156,9 @@ async function doTimeline() {
     renderStory(story, commits.length, commits);
   } catch (err) {
     fail(spin, `AI Error: ${err.message}`);
-    console.log(s.muted("\n  Check your AI provider configuration in Settings."));
+    console.log(
+      s.muted("\n  Check your AI provider configuration in Settings.")
+    );
   }
 
   await pause();

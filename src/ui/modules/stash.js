@@ -1,4 +1,11 @@
-const { getGitStatus, listStashes, stashChanges, popStash, applyStash, dropStash } = require("../../helpers/git");
+const {
+  getGitStatus,
+  listStashes,
+  stashChanges,
+  popStash,
+  applyStash,
+  dropStash,
+} = require("../../helpers/git");
 const { s, pause, sleep } = require("../common");
 const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
 

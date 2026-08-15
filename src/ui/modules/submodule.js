@@ -1,6 +1,20 @@
-const { listSubmodules, initSubmodules, updateSubmodules } = require("../../helpers/git");
+const {
+  listSubmodules,
+  initSubmodules,
+  updateSubmodules,
+} = require("../../helpers/git");
 const { s, pause } = require("../common");
-const { open, emptyState, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 
 async function doSubmodule() {
   open("Submodule Management");
@@ -12,8 +26,12 @@ async function doSubmodule() {
   } else {
     console.log(s.muted("  Submodules:"));
     submodules.forEach((sub) => {
-      const statusIcon = sub.status.startsWith("-") ? s.error("○") : s.success("●");
-      console.log(`    ${statusIcon} ${s.primary(sub.path)} ${s.muted("(" + sub.hash.substring(0, 7) + ")")}`);
+      const statusIcon = sub.status.startsWith("-")
+        ? s.error("○")
+        : s.success("●");
+      console.log(
+        `    ${statusIcon} ${s.primary(sub.path)} ${s.muted("(" + sub.hash.substring(0, 7) + ")")}`
+      );
     });
   }
   console.log();

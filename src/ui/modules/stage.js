@@ -7,7 +7,16 @@ const {
 } = require("../../helpers/git");
 const { parseDiff, generatePatch } = require("../../helpers/patch");
 const { s, sleep, pause } = require("../common");
-const { open, emptyState, menuItem, backItem, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 const { doCommit } = require("./commit");
 
 async function doStage(info) {
@@ -126,7 +135,7 @@ async function doStage(info) {
 async function doPartialStage(status) {
   if (status.modified.length === 0) {
     console.log(
-      s.warning("\n  No modified files suitable for partial staging."),
+      s.warning("\n  No modified files suitable for partial staging.")
     );
     console.log(s.muted("  (Untracked files cannot be partially staged)"));
     await pause();

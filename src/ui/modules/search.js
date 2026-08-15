@@ -1,6 +1,16 @@
 const { searchCommits, cherryPick } = require("../../helpers/git");
 const { s, pause, truncate, cols } = require("../common");
-const { open, menuItem, backItem, sep, prompt, spinner, done, fail, rule } = require("../screen");
+const {
+  open,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+  rule,
+} = require("../screen");
 
 async function doSearch() {
   open("Search Commits", "Find commits by message text");
@@ -59,8 +69,13 @@ async function showSearchResults(commits, query) {
 
   open("Commit Details");
   console.log(s.muted("  Hash:    ") + s.primary(selected.hash));
-  console.log(s.muted("  Author:  ") + s.text(selected.author_name + " <" + selected.author_email + ">"));
-  console.log(s.muted("  Date:    ") + s.text(new Date(selected.date).toLocaleString()));
+  console.log(
+    s.muted("  Author:  ") +
+      s.text(selected.author_name + " <" + selected.author_email + ">")
+  );
+  console.log(
+    s.muted("  Date:    ") + s.text(new Date(selected.date).toLocaleString())
+  );
   console.log(rule("message"));
   console.log(s.white(selected.message));
   console.log();

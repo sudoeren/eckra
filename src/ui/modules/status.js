@@ -40,11 +40,9 @@ function statusLine(info) {
     parts.push(s.success("clean"));
   } else {
     if (info.staged > 0) parts.push(s.success(`${info.staged} staged`));
-    if (info.modified > 0)
-      parts.push(s.warning(`${info.modified} modified`));
+    if (info.modified > 0) parts.push(s.warning(`${info.modified} modified`));
     if (info.deleted > 0) parts.push(s.error(`${info.deleted} deleted`));
-    if (info.untracked > 0)
-      parts.push(s.muted(`${info.untracked} untracked`));
+    if (info.untracked > 0) parts.push(s.muted(`${info.untracked} untracked`));
   }
 
   return "  " + parts.join(s.dim(" | ")) + "\n";

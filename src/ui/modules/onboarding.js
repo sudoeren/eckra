@@ -15,9 +15,14 @@ async function doOnboarding() {
 
   const welcome = boxen(
     s.brand("Welcome to Eckra! 🚀\n\n") +
-    s.text("Your AI-powered Git management companion.\n") +
-    s.muted("Let's get you set up in less than a minute."),
-    { padding: 1, borderStyle: "round", borderColor: "cyan", textAlign: "center" },
+      s.text("Your AI-powered Git management companion.\n") +
+      s.muted("Let's get you set up in less than a minute."),
+    {
+      padding: 1,
+      borderStyle: "round",
+      borderColor: "cyan",
+      textAlign: "center",
+    }
   );
 
   console.log("\n" + welcome + "\n");
@@ -43,7 +48,7 @@ async function doOnboarding() {
         return providerChoices.filter(
           (c) =>
             c.name.toLowerCase().includes(term) ||
-            c.value.toLowerCase().includes(term),
+            c.value.toLowerCase().includes(term)
         );
       },
     },
@@ -54,44 +59,81 @@ async function doOnboarding() {
 
   if (provider === "openai") {
     answers = await prompt([
-      { type: "input", name: "openaiApiKey", message: "Enter your OpenAI API Key:", validate: (v) => v.length > 0 },
+      {
+        type: "input",
+        name: "openaiApiKey",
+        message: "Enter your OpenAI API Key:",
+        validate: (v) => v.length > 0,
+      },
     ]);
   } else if (provider === "anthropic") {
     answers = await prompt([
-      { type: "input", name: "anthropicApiKey", message: "Enter your Anthropic API Key:", validate: (v) => v.length > 0 },
+      {
+        type: "input",
+        name: "anthropicApiKey",
+        message: "Enter your Anthropic API Key:",
+        validate: (v) => v.length > 0,
+      },
     ]);
   } else if (provider === "gemini") {
     answers = await prompt([
-      { type: "input", name: "geminiApiKey", message: "Enter your Google Gemini API Key:", validate: (v) => v.length > 0 },
+      {
+        type: "input",
+        name: "geminiApiKey",
+        message: "Enter your Google Gemini API Key:",
+        validate: (v) => v.length > 0,
+      },
     ]);
   } else if (provider === "ollama") {
     answers = await prompt([
-      { type: "input", name: "ollamaUrl", message: "Ollama URL:", default: "http://localhost:11434" },
+      {
+        type: "input",
+        name: "ollamaUrl",
+        message: "Ollama URL:",
+        default: "http://localhost:11434",
+      },
     ]);
   } else if (provider === "openrouter") {
     answers = await prompt([
-      { type: "input", name: "openrouterApiKey", message: "Enter your OpenRouter API Key:", validate: (v) => v.length > 0 },
+      {
+        type: "input",
+        name: "openrouterApiKey",
+        message: "Enter your OpenRouter API Key:",
+        validate: (v) => v.length > 0,
+      },
     ]);
   } else if (provider === "lmstudio") {
     answers = await prompt([
-      { type: "input", name: "lmStudioUrl", message: "LM Studio URL:", default: "http://localhost:1234" },
+      {
+        type: "input",
+        name: "lmStudioUrl",
+        message: "LM Studio URL:",
+        default: "http://localhost:1234",
+      },
     ]);
   }
 
   configData = { ...configData, ...answers };
 
-  const modelAnswers = await require("./settings").promptModelSearch(provider, answers, DEFAULT_CONFIG);
+  const modelAnswers = await require("./settings").promptModelSearch(
+    provider,
+    answers,
+    DEFAULT_CONFIG
+  );
   configData = { ...configData, ...modelAnswers };
 
   // Save the config
   saveConfig(configData);
 
   clear();
-  console.log(boxen(
-    s.success("Configuration complete! ✓\n\n") +
-    s.text("You can always change these settings in: ") + s.primary("More > Settings"),
-    { padding: 1, borderStyle: "round", borderColor: "green" },
-  ));
+  console.log(
+    boxen(
+      s.success("Configuration complete! ✓\n\n") +
+        s.text("You can always change these settings in: ") +
+        s.primary("More > Settings"),
+      { padding: 1, borderStyle: "round", borderColor: "green" }
+    )
+  );
 
   await sleep(1500);
 }

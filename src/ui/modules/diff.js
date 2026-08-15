@@ -4,7 +4,7 @@ const {
   getUnstagedDiff,
 } = require("../../helpers/git");
 const { s, pause, clear } = require("../common");
-const { open, menuItem, backItem, sep, prompt } = require("../screen");
+const { open, menuItem, backItem, prompt } = require("../screen");
 const { renderDiff } = require("../diff-view");
 
 async function doDiff() {
@@ -32,7 +32,7 @@ async function doDiff() {
         menuItem(
           `Unstaged (${status.modified.length + status.deleted.length})`,
           "warning",
-          "unstaged",
+          "unstaged"
         ),
         backItem(),
       ],
@@ -56,7 +56,8 @@ async function doDiff() {
 
   if (view === "back") return;
 
-  const diff = type === "staged" ? await getStagedDiff() : await getUnstagedDiff();
+  const diff =
+    type === "staged" ? await getStagedDiff() : await getUnstagedDiff();
 
   if (!diff) {
     console.log(s.muted("\n  No diff.\n"));
@@ -65,7 +66,9 @@ async function doDiff() {
   }
 
   clear();
-  console.log(s.bold(`\n  ${type === "staged" ? "Staged" : "Unstaged"} Diff\n`));
+  console.log(
+    s.bold(`\n  ${type === "staged" ? "Staged" : "Unstaged"} Diff\n`)
+  );
 
   const lines = renderDiff(diff, { sideBySide: view === "side" });
   if (lines.length === 0) {

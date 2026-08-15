@@ -1,4 +1,10 @@
-const { listWorktrees, addWorktree, addWorktreeNewBranch, removeWorktree, getBranches } = require("../../helpers/git");
+const {
+  listWorktrees,
+  addWorktree,
+  addWorktreeNewBranch,
+  removeWorktree,
+  getBranches,
+} = require("../../helpers/git");
 const { s, sleep, pause } = require("../common");
 const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
 
@@ -18,7 +24,10 @@ async function doWorktree() {
         console.log();
       });
     } else {
-      emptyState("No worktrees found.", "Worktrees let you check out branches in parallel.");
+      emptyState(
+        "No worktrees found.",
+        "Worktrees let you check out branches in parallel."
+      );
     }
 
     const { action } = await prompt([
@@ -37,7 +46,7 @@ async function doWorktree() {
     ]);
 
     switch (action) {
-      case "add":
+      case "add": {
         const { path: wtPath } = await prompt([
           {
             type: "input",
@@ -92,7 +101,9 @@ async function doWorktree() {
           ]);
           try {
             await addWorktreeNewBranch(wtPath, newBranch);
-            console.log(s.success(`\n  ✓ Worktree created with branch ${newBranch}`));
+            console.log(
+              s.success(`\n  ✓ Worktree created with branch ${newBranch}`)
+            );
             await sleep(600);
           } catch (err) {
             console.log(s.error(`\n  ✗ ${err.message}`));
@@ -100,6 +111,7 @@ async function doWorktree() {
           }
         }
         break;
+      }
 
       case "remove":
         if (worktrees.length === 0) {

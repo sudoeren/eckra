@@ -15,10 +15,10 @@ async function doUndo() {
 
   console.log(s.muted("  Last commit:"));
   console.log(
-    s.text(`  ${lastCommit.hash.substring(0, 7)} - ${lastCommit.message}`),
+    s.text(`  ${lastCommit.hash.substring(0, 7)} - ${lastCommit.message}`)
   );
   console.log(
-    s.muted(`  ${lastCommit.author_name} · ${timeAgo(lastCommit.date)}\n`),
+    s.muted(`  ${lastCommit.author_name} · ${timeAgo(lastCommit.date)}\n`)
   );
 
   const { confirm } = await prompt([

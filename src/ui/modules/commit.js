@@ -9,7 +9,16 @@ const {
   checkAIConnection,
 } = require("../../helpers/ai");
 const { s, pause, clear, header } = require("../common");
-const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 const { renderDiff } = require("../diff-view");
 const { doPush } = require("./sync");
 
@@ -81,7 +90,7 @@ async function doCommit(info) {
       .forEach((f) => console.log(s.success(`    + ${f}`)));
     if (status.staged.length > 5)
       console.log(
-        s.muted(`    ... and ${status.staged.length - 5} more files`),
+        s.muted(`    ... and ${status.staged.length - 5} more files`)
       );
     console.log();
 
@@ -119,7 +128,7 @@ async function doCommit(info) {
         const suggestions = await generateCommitSuggestions(
           diff,
           status.staged,
-          3,
+          3
         );
         spin.stop();
 
@@ -158,12 +167,12 @@ async function doCommit(info) {
             type: "list",
             name: "aiAction",
             message: s.muted("Action:"),
-          choices: [
-            menuItem("Use as is", "success", "use"),
-            menuItem("Edit subject line", "text", "edit"),
-            menuItem("Regenerate", "primary", "regenerate"),
-            backItem("Back"),
-          ],
+            choices: [
+              menuItem("Use as is", "success", "use"),
+              menuItem("Edit subject line", "text", "edit"),
+              menuItem("Regenerate", "primary", "regenerate"),
+              backItem("Back"),
+            ],
             loop: true,
             pageSize: 20,
           },

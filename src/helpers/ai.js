@@ -17,7 +17,7 @@ async function callProvider(
   provider,
   messages,
   temperature = 0.3,
-  max_tokens = 100,
+  max_tokens = 100
 ) {
   const config = getConfig();
   let url, headers, body;
@@ -37,7 +37,7 @@ async function callProvider(
       };
       break;
 
-    case "anthropic":
+    case "anthropic": {
       url = "https://api.anthropic.com/v1/messages";
       headers = {
         "Content-Type": "application/json",
@@ -55,6 +55,7 @@ async function callProvider(
         temperature,
       };
       break;
+    }
 
     case "ollama":
       url = `${config.ollamaUrl || "http://localhost:11434"}/api/chat`;
@@ -83,7 +84,7 @@ async function callProvider(
       };
       break;
 
-    case "gemini":
+    case "gemini": {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || DEFAULT_CONFIG.geminiModel}:generateContent`;
       headers = {
         "Content-Type": "application/json",
@@ -97,7 +98,7 @@ async function callProvider(
           parts: [{ text: m.content }],
         }));
       const geminiSystemInstruction = messages.find(
-        (m) => m.role === "system",
+        (m) => m.role === "system"
       )?.content;
       body = {
         contents: geminiContents,
@@ -110,6 +111,7 @@ async function callProvider(
         body.systemInstruction = { parts: [{ text: geminiSystemInstruction }] };
       }
       break;
+    }
 
     case "lmstudio":
     default:
@@ -142,7 +144,7 @@ async function callProvider(
           openrouter: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
         };
         throw new Error(
-          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`,
+          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`
         );
       }
       content = response.data.choices[0].message.content;
@@ -152,7 +154,7 @@ async function callProvider(
   } catch (error) {
     if (error.response) {
       throw new Error(
-        `AI Provider Error (${provider}): ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+        `AI Provider Error (${provider}): ${error.response.status} - ${JSON.stringify(error.response.data)}`
       );
     }
     throw error;
@@ -236,7 +238,7 @@ async function generateCommitSuggestions(
   diff,
   filesList,
   count = 3,
-  instruction = null,
+  instruction = null
 ) {
   const config = getConfig();
   const activeInstruction = instruction || config.aiInstruction;
@@ -304,12 +306,12 @@ Write exactly ${count} suggestions following this format. Separate each with "--
         config.aiProvider,
         messages,
         0.7,
-        1000,
+        1000
       );
 
       if (!content || content.trim().length < 10) {
         throw new Error(
-          `AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`,
+          `AI Provider (${config.aiProvider}) returned empty or too short response: "${content}"`
         );
       }
 
@@ -336,7 +338,7 @@ Write exactly ${count} suggestions following this format. Separate each with "--
           return [lines.join("\n").substring(0, 200)];
         }
         throw new Error(
-          `AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`,
+          `AI returned suggestions that couldn't be parsed. Raw response: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"`
         );
       }
 
@@ -358,11 +360,13 @@ Write exactly ${count} suggestions following this format. Separate each with "--
 async function testProviderConnection(provider, providerConfig) {
   try {
     if (provider === "lmstudio") {
-      const url = normalizeUrl(providerConfig.lmStudioUrl) || "http://localhost:1234";
+      const url =
+        normalizeUrl(providerConfig.lmStudioUrl) || "http://localhost:1234";
       await axios.get(`${url}/v1/models`, { timeout: 5000 });
       return { connected: true };
     } else if (provider === "ollama") {
-      const url = normalizeUrl(providerConfig.ollamaUrl) || "http://localhost:11434";
+      const url =
+        normalizeUrl(providerConfig.ollamaUrl) || "http://localhost:11434";
       await axios.get(`${url}/api/tags`, { timeout: 5000 });
       return { connected: true };
     } else if (provider === "openai") {
@@ -377,7 +381,7 @@ async function testProviderConnection(provider, providerConfig) {
       const apiKey = providerConfig.anthropicApiKey;
       if (!apiKey) return { connected: false, error: "API Key is missing" };
       // Anthropic doesn't have a free list endpoint; send a minimal real request
-      const res = await axios.post(
+      await axios.post(
         "https://api.anthropic.com/v1/messages",
         {
           model: providerConfig.anthropicModel || DEFAULT_CONFIG.anthropicModel,
@@ -391,7 +395,7 @@ async function testProviderConnection(provider, providerConfig) {
             "Content-Type": "application/json",
           },
           timeout: 8000,
-        },
+        }
       );
       return { connected: true };
     } else if (provider === "openrouter") {
@@ -410,7 +414,7 @@ async function testProviderConnection(provider, providerConfig) {
         {
           headers: { "x-goog-api-key": apiKey },
           timeout: 5000,
-        },
+        }
       );
       return { connected: true };
     }
@@ -473,7 +477,7 @@ async function checkAIConnection() {
         {
           headers: { "x-goog-api-key": config.geminiApiKey },
           timeout: 5000,
-        },
+        }
       );
       return { connected: true, models: response.data?.models || [] };
     }
@@ -502,7 +506,7 @@ async function fetchOpenRouterModels(apiKey) {
       name: m.name || m.id,
       pricing: m.pricing,
     }));
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -520,7 +524,7 @@ async function fetchOpenAIModels(apiKey) {
     return models
       .map((m) => ({ id: m.id, name: m.id }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -549,7 +553,7 @@ async function fetchGeminiModels(apiKey) {
       {
         headers: { "x-goog-api-key": apiKey },
         timeout: 10000,
-      },
+      }
     );
     const models = response.data?.models || [];
     return models
@@ -559,7 +563,7 @@ async function fetchGeminiModels(apiKey) {
         return { id, name: m.displayName || id };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -573,13 +577,13 @@ async function fetchOllamaModels(url) {
       `${normalizeUrl(url) || "http://localhost:11434"}/api/tags`,
       {
         timeout: 10000,
-      },
+      }
     );
     const models = response.data?.models || [];
     return models
       .map((m) => ({ id: m.name, name: m.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -593,13 +597,13 @@ async function fetchLMStudioModels(url) {
       `${normalizeUrl(url) || "http://localhost:1234"}/v1/models`,
       {
         timeout: 10000,
-      },
+      }
     );
     const models = response.data?.data || [];
     return models
       .map((m) => ({ id: m.id, name: m.id }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -644,7 +648,8 @@ Write in a natural, narrative tone. Keep each section concise and scannable.`;
   const messages = [
     {
       role: "system",
-      content: "You are a software historian who crafts clear, engaging narratives from git commit histories. You help developers understand the story and evolution of a codebase at a glance.",
+      content:
+        "You are a software historian who crafts clear, engaging narratives from git commit histories. You help developers understand the story and evolution of a codebase at a glance.",
     },
     {
       role: "user",
@@ -669,6 +674,4 @@ module.exports = {
   fetchGeminiModels,
   fetchOllamaModels,
   fetchLMStudioModels,
-  // Alias for backward compatibility
-  checkLMStudioConnection: checkAIConnection,
 };

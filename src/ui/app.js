@@ -8,11 +8,7 @@ const { generateCommitMessage } = require("../helpers/ai");
 
 const configHelper = require("../helpers/config");
 
-const {
-  s,
-  clear,
-  header,
-} = require("./common");
+const { s, clear, header } = require("./common");
 const { menuItem, sep, prompt, spinner, done, fail } = require("./screen");
 
 // Lazy load modules
@@ -47,7 +43,9 @@ async function startApp() {
     if (!info) {
       console.log(s.error("  ✗ not a git repository\n"));
       console.log(s.muted("  Navigate to a git project or run 'git init'.\n"));
-      await prompt([{ type: "input", name: "x", message: s.muted("Press Enter...") }]);
+      await prompt([
+        { type: "input", name: "x", message: s.muted("Press Enter...") },
+      ]);
       return;
     }
 
@@ -66,10 +64,13 @@ async function startApp() {
     if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
       choices.push(
         menuItem(
-          "Stage" + s.muted(` (${info.modified + info.untracked + info.deleted} files)`),
+          "Stage" +
+            s.muted(
+              ` (${info.modified + info.untracked + info.deleted} files)`
+            ),
           "success",
-          "stage",
-        ),
+          "stage"
+        )
       );
     }
 
@@ -81,10 +82,11 @@ async function startApp() {
     ) {
       choices.push(
         menuItem(
-          "Commit" + (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
+          "Commit" +
+            (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
           "primary",
-          "commit",
-        ),
+          "commit"
+        )
       );
     }
 
@@ -197,7 +199,7 @@ async function easyWorkflow() {
   while (!finalMessage) {
     const spinAi = spinner("🤖 Generating AI commit message...");
     spinAi.start();
-    let aiMessage = "";
+    let aiMessage;
 
     try {
       const diff = await getStagedDiff();
@@ -280,8 +282,8 @@ async function easyWorkflow() {
 
     console.log(
       s.success(
-        `\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`,
-      ),
+        `\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`
+      )
     );
   } catch (err) {
     console.log(s.error(`\n  ❌ Error: ${err.message}`));
@@ -293,11 +295,13 @@ async function quickTimeline(count) {
   if (count) {
     const { getCommitHistory } = require("../helpers/git");
     const { generateTimeline } = require("../helpers/ai");
-    const { s, header, clear, pause } = require("./common");
+    const { s, pause } = require("./common");
 
     const n = parseInt(count, 10);
     if (isNaN(n) || n < 1) {
-      console.log(s.error("  Invalid count. Please provide a number greater than 0.\n"));
+      console.log(
+        s.error("  Invalid count. Please provide a number greater than 0.\n")
+      );
       return;
     }
 

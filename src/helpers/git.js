@@ -18,26 +18,6 @@ async function getGitStatus() {
 }
 
 /**
- * Get staged files
- */
-async function getStagedFiles() {
-  const status = await getGit().status();
-  return status.staged;
-}
-
-/**
- * Get unstaged files (modified but not staged)
- */
-async function getUnstagedFiles() {
-  const status = await getGit().status();
-  return {
-    modified: status.modified,
-    deleted: status.deleted,
-    untracked: status.not_added,
-  };
-}
-
-/**
  * Stage specific files
  */
 async function stageFiles(files) {
@@ -241,38 +221,10 @@ async function discardChanges(file) {
 }
 
 /**
- * Reset to specific commit
- */
-async function resetToCommit(commitHash, mode = "mixed") {
-  return await getGit().reset([`--${mode}`, commitHash]);
-}
-
-/**
- * Get file content at specific commit
- */
-async function getFileAtCommit(file, commitHash) {
-  return await getGit().show([`${commitHash}:${file}`]);
-}
-
-/**
- * Initialize git repository
- */
-async function initRepo() {
-  return await getGit().init();
-}
-
-/**
  * Add remote
  */
 async function addRemote(name, url) {
   return await getGit().addRemote(name, url);
-}
-
-/**
- * Fetch from remote
- */
-async function fetchRemote(remote = "origin") {
-  return await getGit().fetch(remote);
 }
 
 /**
@@ -353,7 +305,7 @@ async function cherryPick(commitHash) {
  * Get commits from other branches (not in current)
  */
 async function getOtherBranchCommits(branch, count = 20) {
-  const current = (await getCurrentBranch());
+  const current = await getCurrentBranch();
   if (/[;&|`$(){}]/.test(branch) || branch.includes("..")) {
     throw new Error("Invalid branch name");
   }
@@ -365,20 +317,6 @@ async function getOtherBranchCommits(branch, count = 20) {
  */
 async function removeRemote(name) {
   return await getGit().removeRemote(name);
-}
-
-/**
- * Rename a remote
- */
-async function renameRemote(oldName, newName) {
-  return await getGit().raw(["remote", "rename", oldName, newName]);
-}
-
-/**
- * Set remote URL
- */
-async function setRemoteUrl(name, url) {
-  return await getGit().raw(["remote", "set-url", name, url]);
 }
 
 /**
@@ -417,20 +355,6 @@ async function getRepoStats() {
 async function squashCommits(count, message) {
   await getGit().reset(["--soft", `HEAD~${count}`]);
   return await getGit().commit(message);
-}
-
-/**
- * Reword a commit (only works for last commit)
- */
-async function rewordLastCommit(message) {
-  return await getGit().commit(message, ["--amend"]);
-}
-
-/**
- * Drop last commit (hard reset)
- */
-async function dropLastCommit() {
-  return await getGit().reset(["--hard", "HEAD~1"]);
 }
 
 /**
@@ -558,7 +482,7 @@ async function getGitGraph(count = 20) {
     "--all",
     "-n",
     count.toString(),
-    "--color=always" // Keep colors for display
+    "--color=always", // Keep colors for display
   ]);
 }
 
@@ -566,14 +490,22 @@ async function getGitGraph(count = 20) {
  * Compare two branches
  */
 async function compareBranches(base, target) {
-  const ahead = await getGit().raw(["rev-list", "--count", `${base}..${target}`]);
-  const behind = await getGit().raw(["rev-list", "--count", `${target}..${base}`]);
+  const ahead = await getGit().raw([
+    "rev-list",
+    "--count",
+    `${base}..${target}`,
+  ]);
+  const behind = await getGit().raw([
+    "rev-list",
+    "--count",
+    `${target}..${base}`,
+  ]);
   const diffStat = await getGit().raw(["diff", "--shortstat", base, target]);
-  
+
   return {
     ahead: parseInt(ahead.trim()),
     behind: parseInt(behind.trim()),
-    diffStat: diffStat.trim()
+    diffStat: diffStat.trim(),
   };
 }
 
@@ -645,8 +577,11 @@ async function acceptBoth(file) {
     const ours = fs.readFileSync(filePath, "utf8");
     await getGit().checkout(["--theirs", file]);
     const theirs = fs.readFileSync(filePath, "utf8");
-    
-    fs.writeFileSync(filePath, `<<<<<<< OURS\n${ours}\n=======\n${theirs}\n>>>>>>> THEIRS`);
+
+    fs.writeFileSync(
+      filePath,
+      `<<<<<<< OURS\n${ours}\n=======\n${theirs}\n>>>>>>> THEIRS`
+    );
     await getGit().add(file);
     return true;
   } catch (error) {
@@ -660,12 +595,18 @@ async function acceptBoth(file) {
 async function applyPatchString(patchContent) {
   const fs = require("fs");
   const os = require("os");
-  
+
   const tempFile = path.join(os.tmpdir(), `eckra_patch_${Date.now()}.diff`);
-  
+
   try {
     fs.writeFileSync(tempFile, patchContent);
-    await getGit().raw(["apply", "--cached", "--ignore-space-change", "--whitespace=nowarn", tempFile]);
+    await getGit().raw([
+      "apply",
+      "--cached",
+      "--ignore-space-change",
+      "--whitespace=nowarn",
+      tempFile,
+    ]);
     fs.unlinkSync(tempFile);
     return true;
   } catch (error) {
@@ -681,8 +622,6 @@ function resetGitCache() {
 module.exports = {
   getGit,
   getGitStatus,
-  getStagedFiles,
-  getUnstagedFiles,
   stageFiles,
   stageAll,
   unstageFiles,
@@ -710,11 +649,7 @@ module.exports = {
   dropStash,
   listStashes,
   discardChanges,
-  resetToCommit,
-  getFileAtCommit,
-  initRepo,
   addRemote,
-  fetchRemote,
   undoLastCommit,
   getLastCommit,
   amendCommit,
@@ -727,12 +662,8 @@ module.exports = {
   cherryPick,
   getOtherBranchCommits,
   removeRemote,
-  renameRemote,
-  setRemoteUrl,
   getRepoStats,
   squashCommits,
-  rewordLastCommit,
-  dropLastCommit,
   getConflictDetails,
   acceptOurs,
   acceptTheirs,

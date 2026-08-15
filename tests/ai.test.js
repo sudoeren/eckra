@@ -50,7 +50,7 @@ describe("AI Helper", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer sk-test",
         }),
-      }),
+      })
     );
   });
 
@@ -77,7 +77,7 @@ describe("AI Helper", () => {
         headers: expect.objectContaining({
           "x-api-key": "sk-ant-test",
         }),
-      }),
+      })
     );
   });
 
@@ -107,7 +107,7 @@ describe("AI Helper", () => {
         headers: expect.objectContaining({
           "x-api-key": "sk-ant-test",
         }),
-      }),
+      })
     );
   });
 
@@ -133,7 +133,7 @@ describe("AI Helper", () => {
         model: "llama3",
         stream: false,
       }),
-      expect.any(Object),
+      expect.any(Object)
     );
   });
 
@@ -145,7 +145,7 @@ describe("AI Helper", () => {
     });
 
     await expect(generateCommitMessage(mockDiff, mockFiles)).rejects.toThrow(
-      "AI Provider Error (openai): 401",
+      "AI Provider Error (openai): 401"
     );
   });
 
@@ -177,7 +177,7 @@ describe("AI Helper", () => {
           "HTTP-Referer": "https://github.com/eckra/eckra",
           "X-Title": "Eckra",
         }),
-      }),
+      })
     );
   });
 
@@ -199,7 +199,7 @@ describe("AI Helper", () => {
     expect(message).toBe("feat: gemini commit");
     expect(axios.post).toHaveBeenCalledWith(
       expect.stringContaining(
-        "generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash",
+        "generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash"
       ),
       expect.objectContaining({
         contents: expect.any(Array),
@@ -207,7 +207,7 @@ describe("AI Helper", () => {
           temperature: expect.any(Number),
         }),
       }),
-      expect.any(Object),
+      expect.any(Object)
     );
   });
 });

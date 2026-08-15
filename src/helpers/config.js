@@ -20,12 +20,9 @@ const DEFAULT_CONFIG = {
   geminiApiKey: "",
   geminiModel: "gemini-3.1-flash-lite",
   model: "git-commit-message/unsloth.Q4_K_M.gguf",
-  language: "en",
-  autoStage: false,
-  autoPush: false,
-  commitPrefix: true,
   theme: "auto",
-  aiInstruction: "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
+  aiInstruction:
+    "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };
 
 /**
@@ -85,8 +82,10 @@ function getConfig() {
       if (typeof parsed === "object" && parsed !== null) {
         config = { ...config, ...parsed };
       }
-    } catch (error) {
-      console.warn(`\n  ⚠️  Warning: Malformed global config file at ${CONFIG_FILE}. Using defaults.\n`);
+    } catch {
+      console.warn(
+        `\n  ⚠️  Warning: Malformed global config file at ${CONFIG_FILE}. Using defaults.\n`
+      );
     }
   }
 
@@ -99,8 +98,10 @@ function getConfig() {
       if (typeof parsed === "object" && parsed !== null) {
         config = { ...config, ...parsed };
       }
-    } catch (error) {
-      console.warn(`\n  ⚠️  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`);
+    } catch {
+      console.warn(
+        `\n  ⚠️  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`
+      );
     }
   }
 

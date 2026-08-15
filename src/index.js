@@ -14,7 +14,7 @@ async function checkGitRepo() {
   try {
     await getGitStatus();
     return true;
-  } catch (error) {
+  } catch {
     console.log(s.error("\n  ⚠️  This folder is not a Git repository!\n"));
     console.log(s.muted("  Solution: Run git init command\n"));
     return false;

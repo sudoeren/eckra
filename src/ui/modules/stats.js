@@ -1,6 +1,6 @@
 const { getRepoStats } = require("../../helpers/git");
 const { s, pause } = require("../common");
-const { open, spinner, done, fail } = require("../screen");
+const { open, spinner, fail } = require("../screen");
 
 async function doStats() {
   open("Statistics");
@@ -20,11 +20,11 @@ async function doStats() {
     if (stats.firstCommit) {
       console.log(
         s.muted("  First commit: ") +
-        s.text(new Date(stats.firstCommit.date).toLocaleDateString("en-US")),
+          s.text(new Date(stats.firstCommit.date).toLocaleDateString("en-US"))
       );
       console.log(
         s.muted("  Last commit: ") +
-        s.text(new Date(stats.lastCommit.date).toLocaleDateString("en-US")),
+          s.text(new Date(stats.lastCommit.date).toLocaleDateString("en-US"))
       );
       console.log();
     }
@@ -37,7 +37,7 @@ async function doStats() {
       console.log(s.muted("  Top contributors:"));
       authors.forEach(([name, count]) => {
         const bar = "█".repeat(
-          Math.min(Math.round((count / stats.totalCommits) * 15), 15),
+          Math.min(Math.round((count / stats.totalCommits) * 15), 15)
         );
         console.log(`  ${s.primary(bar)} ${name} (${count})`);
       });

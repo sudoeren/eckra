@@ -9,6 +9,9 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "jest",
+    "lint": "eslint src tests && prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
+    "lint:fix": "eslint src tests --fix && prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
+    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:minor": "npm version minor && git push --follow-tags",
     "release:major": "npm version major && git push --follow-tags"
@@ -36,7 +39,6 @@
     "axios": "^1.7.9",
     "boxen": "^4.2.0",
     "chalk": "^4.1.2",
-    "cli-table3": "^0.6.3",
     "commander": "15.0.0",
     "diff": "^7.0.0",
     "eastasianwidth": "^0.3.0",
@@ -53,6 +55,11 @@
     "url": "https://github.com/sudoeren/eckra"
   },
   "devDependencies": {
-    "jest": "^30.2.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.11.0",
+    "jest": "^30.2.0",
+    "prettier": "^3.9.6"
   }
 }

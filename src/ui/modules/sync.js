@@ -1,4 +1,9 @@
-const { getGit, getGitStatus, pushToRemote, pullFromRemote, getCurrentBranch } = require("../../helpers/git");
+const {
+  getGit,
+  pushToRemote,
+  pullFromRemote,
+  getCurrentBranch,
+} = require("../../helpers/git");
 const { s, pause, sleep } = require("../common");
 const { prompt, spinner, done, fail } = require("../screen");
 
@@ -40,9 +45,11 @@ async function doPush(silent = false) {
         }
       }
     } else {
-      console.log(s.error(`
+      console.log(
+        s.error(`
   ${err.message}
-`));
+`)
+      );
     }
     if (!silent) await pause();
   }

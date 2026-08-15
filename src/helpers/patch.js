@@ -18,14 +18,14 @@ function parseDiff(diffOutput) {
       if (currentFile) {
         files.push(currentFile);
       }
-      
+
       const matches = line.match(/diff --git a\/(.*) b\/(.*)/);
       const fileName = matches ? matches[2] : "unknown";
-      
+
       currentFile = {
         name: fileName,
         header: [line],
-        hunks: []
+        hunks: [],
       };
       continue;
     }
@@ -33,7 +33,13 @@ function parseDiff(diffOutput) {
     if (!currentFile) continue;
 
     // Header lines (index, ---, +++)
-    if (line.startsWith("index") || line.startsWith("---") || line.startsWith("+++") || line.startsWith("new file") || line.startsWith("deleted file")) {
+    if (
+      line.startsWith("index") ||
+      line.startsWith("---") ||
+      line.startsWith("+++") ||
+      line.startsWith("new file") ||
+      line.startsWith("deleted file")
+    ) {
       currentFile.header.push(line);
       continue;
     }
@@ -45,7 +51,7 @@ function parseDiff(diffOutput) {
       }
       currentHunk = {
         header: line,
-        lines: []
+        lines: [],
       };
       continue;
     }
@@ -74,7 +80,7 @@ function generatePatch(file, selectedHunkIndices) {
   if (selectedHunkIndices.length === 0) return null;
 
   let patch = file.header.join("\n") + "\n";
-  
+
   file.hunks.forEach((hunk, index) => {
     if (selectedHunkIndices.includes(index)) {
       patch += hunk.header + "\n";
@@ -87,5 +93,5 @@ function generatePatch(file, selectedHunkIndices) {
 
 module.exports = {
   parseDiff,
-  generatePatch
+  generatePatch,
 };

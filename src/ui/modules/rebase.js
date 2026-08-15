@@ -1,6 +1,23 @@
-const { getCommitLog, squashCommits, rebase, abortRebase, continueRebase, getBranches, getCurrentBranch } = require("../../helpers/git");
+const {
+  getCommitLog,
+  squashCommits,
+  rebase,
+  abortRebase,
+  continueRebase,
+  getBranches,
+  getCurrentBranch,
+} = require("../../helpers/git");
 const { s, pause } = require("../common");
-const { open, menuItem, backItem, sep, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 
 async function doRebase() {
   open("Advanced Git Operations (Rebase)");
@@ -67,7 +84,11 @@ async function doRebaseOnto() {
     done(spin, `Successfully rebased onto ${target}`);
   } catch (error) {
     fail(spin, `Rebase failed: ${error.message}`);
-    console.log(s.muted("\n  You may need to resolve conflicts and then 'Continue Rebase'."));
+    console.log(
+      s.muted(
+        "\n  You may need to resolve conflicts and then 'Continue Rebase'."
+      )
+    );
   }
 
   await pause();
@@ -113,7 +134,10 @@ async function doSquash() {
       name: "count",
       message: "How many commits to squash (from HEAD)?",
       default: 2,
-      validate: (val) => (val > 1 && val <= log.all.length ? true : `Enter a number between 2 and ${log.all.length}`),
+      validate: (val) =>
+        val > 1 && val <= log.all.length
+          ? true
+          : `Enter a number between 2 and ${log.all.length}`,
     },
   ]);
 

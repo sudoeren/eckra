@@ -5,7 +5,16 @@ const {
   pushTags,
 } = require("../../helpers/git");
 const { s, pause, sleep } = require("../common");
-const { open, emptyState, menuItem, backItem, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 
 async function doTag() {
   open("Tag");

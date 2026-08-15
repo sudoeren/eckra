@@ -118,8 +118,11 @@ function sep() {
 async function prompt(questions, ...rest) {
   const qs = Array.isArray(questions) ? questions : [questions];
   return inquirer.prompt(
-    qs.map((q) => ({ ...q, prefix: q.prefix === null ? undefined : (q.prefix || s.primary("?")) })),
-    ...rest,
+    qs.map((q) => ({
+      ...q,
+      prefix: q.prefix === null ? undefined : q.prefix || s.primary("?"),
+    })),
+    ...rest
   );
 }
 

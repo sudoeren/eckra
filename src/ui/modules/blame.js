@@ -1,6 +1,6 @@
 const { getTrackedFiles, getBlame } = require("../../helpers/git");
 const { s, pause, truncate, cols, rows } = require("../common");
-const { open, emptyState, prompt, spinner, done, fail, clear } = require("../screen");
+const { open, emptyState, prompt, spinner, fail, clear } = require("../screen");
 
 async function doBlame() {
   open("Blame", "Show who changed each line of a file");
