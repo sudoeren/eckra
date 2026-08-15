@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require("ora");
+const ora = require("ora").default || require("ora");
 const { getCommitLog, getGitGraph, cherryPick } = require("../../helpers/git");
 const { s, header, clear, truncate, timeAgo, pause, cols } = require("../common");
 

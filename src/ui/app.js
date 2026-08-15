@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require("ora");
+const ora = require("ora").default || require("ora");
 
 const {
   getGitStatus,
@@ -321,7 +321,7 @@ async function quickTimeline(count) {
       return;
     }
 
-    const ora = require("ora");
+    const ora = require("ora").default || require("ora");
     const spin = ora({ text: s.muted(` Fetching ${n} commits...`), spinner: "dots" }).start();
     let commits;
     try {

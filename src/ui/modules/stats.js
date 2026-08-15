@@ -1,4 +1,4 @@
-const ora = require("ora");
+const ora = require("ora").default || require("ora");
 const { getRepoStats } = require("../../helpers/git");
 const { s, header, clear, pause } = require("../common");
 
