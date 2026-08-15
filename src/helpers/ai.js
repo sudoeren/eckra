@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { getConfig, DEFAULT_CONFIG } = require("./config");
+const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
 
 const MAX_DIFF_CHARS = 3000;
 
@@ -358,11 +358,11 @@ Write exactly ${count} suggestions following this format. Separate each with "--
 async function testProviderConnection(provider, providerConfig) {
   try {
     if (provider === "lmstudio") {
-      const url = providerConfig.lmStudioUrl || "http://localhost:1234";
+      const url = normalizeUrl(providerConfig.lmStudioUrl) || "http://localhost:1234";
       await axios.get(`${url}/v1/models`, { timeout: 5000 });
       return { connected: true };
     } else if (provider === "ollama") {
-      const url = providerConfig.ollamaUrl || "http://localhost:11434";
+      const url = normalizeUrl(providerConfig.ollamaUrl) || "http://localhost:11434";
       await axios.get(`${url}/api/tags`, { timeout: 5000 });
       return { connected: true };
     } else if (provider === "openai") {
@@ -570,7 +570,7 @@ async function fetchGeminiModels(apiKey) {
 async function fetchOllamaModels(url) {
   try {
     const response = await axios.get(
-      `${url || "http://localhost:11434"}/api/tags`,
+      `${normalizeUrl(url) || "http://localhost:11434"}/api/tags`,
       {
         timeout: 10000,
       },
@@ -590,7 +590,7 @@ async function fetchOllamaModels(url) {
 async function fetchLMStudioModels(url) {
   try {
     const response = await axios.get(
-      `${url || "http://localhost:1234"}/v1/models`,
+      `${normalizeUrl(url) || "http://localhost:1234"}/v1/models`,
       {
         timeout: 10000,
       },

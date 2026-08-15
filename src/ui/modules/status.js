@@ -54,7 +54,7 @@ async function doStatus() {
   open("Status");
 
   const status = await getGitStatus();
-  const branch = status.current;
+  const branch = status.current || "master";
 
   console.log(s.bold(`  Branch: ${branch}\n`));
 

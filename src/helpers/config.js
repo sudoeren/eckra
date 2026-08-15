@@ -60,6 +60,14 @@ function findLocalConfig(startDir = process.cwd()) {
 let _cachedConfig = null;
 
 /**
+ * Strip trailing slashes from a URL so path concatenation never yields "//"
+ */
+function normalizeUrl(url) {
+  if (!url) return url;
+  return String(url).replace(/\/+$/, "");
+}
+
+/**
  * Get current configuration
  */
 function getConfig() {
@@ -95,6 +103,10 @@ function getConfig() {
       console.warn(`\n  ⚠️  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`);
     }
   }
+
+  // Normalize URL fields once so downstream path concatenation is safe
+  config.lmStudioUrl = normalizeUrl(config.lmStudioUrl);
+  config.ollamaUrl = normalizeUrl(config.ollamaUrl);
 
   _cachedConfig = config;
   return config;
@@ -132,10 +144,10 @@ function getConfigPath() {
 }
 
 /**
- * Check if the application is configured (config file exists)
+ * Check if the application is configured (global config file or local .eckrarc)
  */
 function isConfigured() {
-  return fs.existsSync(CONFIG_FILE);
+  return fs.existsSync(CONFIG_FILE) || findLocalConfig() !== null;
 }
 
 function resetConfigCache() {
@@ -150,4 +162,5 @@ module.exports = {
   getConfigPath,
   isConfigured,
   DEFAULT_CONFIG,
+  normalizeUrl,
 };
