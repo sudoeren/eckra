@@ -22,8 +22,8 @@ async function doRemote() {
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        menuItem("new", "Add Remote", "success", "add"),
-        menuItem("remove", "Remove Remote", "danger", "remove"),
+        menuItem("Add Remote", "success", "add"),
+        menuItem("Remove Remote", "danger", "remove"),
         backItem(),
       ],
       loop: true,

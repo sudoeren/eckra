@@ -27,8 +27,8 @@ async function doWorktree() {
         name: "action",
         message: s.muted("What should I do?"),
         choices: [
-          menuItem("new", "Add Worktree", "success", "add"),
-          menuItem("remove", "Remove Worktree", "danger", "remove"),
+          menuItem("Add Worktree", "success", "add"),
+          menuItem("Remove Worktree", "danger", "remove"),
           backItem(),
         ],
         loop: true,
@@ -53,8 +53,8 @@ async function doWorktree() {
             name: "type",
             message: s.muted("Branch type:"),
             choices: [
-              menuItem("branch", "Existing Branch", "text", "existing"),
-              menuItem("new", "New Branch", "primary", "new"),
+              menuItem("Existing Branch", "text", "existing"),
+              menuItem("New Branch", "primary", "new"),
             ],
             loop: true,
             pageSize: 15,

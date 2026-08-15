@@ -25,9 +25,9 @@ async function doTag() {
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        menuItem("new", "New Tag", "success", "new"),
-        menuItem("push", "Push Tags", "primary", "push"),
-        menuItem("remove", "Delete Tag", "danger", "delete"),
+        menuItem("New Tag", "success", "new"),
+        menuItem("Push Tags", "primary", "push"),
+        menuItem("Delete Tag", "danger", "delete"),
         backItem(),
       ],
       loop: true,

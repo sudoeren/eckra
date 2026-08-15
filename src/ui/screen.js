@@ -1,10 +1,13 @@
 const inquirer = require("inquirer");
-const { s, icons, icon, cols, clear, header } = require("./common");
+const eaw = require("eastasianwidth");
+const { s, cols, clear, header } = require("./common");
 
 // ═══════════════════════════════════════════════════════════════
 // SCREEN ANATOMY
 // Every screen follows the same skeleton:
 //   title -> rule -> content -> footer hint
+// Menu items use PLAIN TEXT (no glyphs) so columns align in every
+// terminal/font; color tones carry the hierarchy instead.
 // ═══════════════════════════════════════════════════════════════
 
 const TONES = {
@@ -26,49 +29,6 @@ function tone(name) {
 const ruleWidth = () => Math.min(cols() - 4, 60);
 
 /**
- * Approximate display width of a code point (0 = zero-width, 1 = narrow,
- * 2 = wide/fullwidth). Used to keep menu icons column-aligned.
- */
-function charWidth(code) {
-  if (code === 0 || code < 32 || (code >= 0x7f && code < 0xa0)) return 0;
-  if (code >= 0x0300 && code <= 0x036f) return 0;
-  if (code >= 0x20d0 && code <= 0x20ff) return 0;
-  if (code >= 0xfe20 && code <= 0xfe2f) return 0;
-  if (
-    (code >= 0x1100 && code <= 0x115f) ||
-    (code >= 0x2e80 && code <= 0xa4cf) ||
-    (code >= 0xac00 && code <= 0xd7a3) ||
-    (code >= 0xf900 && code <= 0xfaff) ||
-    (code >= 0xfe10 && code <= 0xfe19) ||
-    (code >= 0xfe30 && code <= 0xfe6f) ||
-    (code >= 0xff00 && code <= 0xff60) ||
-    (code >= 0xffe0 && code <= 0xffe6) ||
-    (code >= 0x1f300 && code <= 0x1f64f) ||
-    (code >= 0x1f900 && code <= 0x1f9ff) ||
-    (code >= 0x1fa70 && code <= 0x1faff) ||
-    (code >= 0x20000 && code <= 0x2fffd) ||
-    (code >= 0x30000 && code <= 0x3fffd)
-  ) {
-    return 2;
-  }
-  return 1;
-}
-
-function strWidth(str) {
-  let w = 0;
-  for (const ch of String(str)) w += charWidth(ch.codePointAt(0));
-  return w;
-}
-
-/**
- * Pad a glyph to `target` display columns so all menu icons line up.
- */
-function padGlyph(glyph, target = 2) {
-  const w = strWidth(glyph);
-  return w >= target ? glyph : glyph + " ".repeat(target - w);
-}
-
-/**
  * Screen opener: clears, draws the brand header, the screen title,
  * an optional subtitle and a rule line.
  */
@@ -77,7 +37,7 @@ function open(title, subtitle) {
   header();
   console.log(s.bold("  " + title));
   if (subtitle) console.log(s.muted("  " + subtitle));
-  console.log(s.dim("  " + "─".repeat(ruleWidth())));
+  console.log(s.dim("  " + "-".repeat(ruleWidth())));
   console.log();
 }
 
@@ -86,10 +46,11 @@ function open(title, subtitle) {
  */
 function rule(label) {
   const width = ruleWidth();
-  if (!label) return s.dim("  " + "─".repeat(width));
+  if (!label) return s.dim("  " + "-".repeat(width));
   const inner = ` ${label} `;
-  const side = "─".repeat(Math.max(1, Math.floor((width - inner.length) / 2)));
-  return s.dim(side) + s.muted(inner) + s.dim(side);
+  const side = Math.max(1, Math.floor((width - inner.length) / 2));
+  const rest = Math.max(0, width - side - inner.length);
+  return s.dim("-".repeat(side)) + s.muted(inner) + s.dim("-".repeat(rest));
 }
 
 /**
@@ -109,14 +70,27 @@ function line(text, t = "text") {
 }
 
 /**
- * A styled inquirer menu choice: "  <icon> <label>".
- * `t` is one of the TONES above. `value` defaults to the plain label.
- * Icons are padded to a uniform width so labels stay column-aligned.
+ * Display width of a string in terminal columns (used by the diff viewer).
  */
-function menuItem(iconName, label, t = "text", value) {
-  const glyph = icons[iconName] || icons.dot;
+function strWidth(str) {
+  let w = 0;
+  for (const ch of String(str)) {
+    const cp = ch.codePointAt(0);
+    if (cp === 0 || cp < 32 || (cp >= 0x7f && cp < 0xa0)) continue;
+    w += eaw.characterLength(ch);
+  }
+  return w;
+}
+
+/**
+ * A styled inquirer menu choice: "  <label>".
+ * Plain text only — color tone carries the hierarchy. This keeps every
+ * menu column aligned regardless of the terminal's font/glyph widths.
+ * `t` is one of the TONES above. `value` defaults to the plain label.
+ */
+function menuItem(label, t = "text", value) {
   return {
-    name: tone(t)(`  ${padGlyph(glyph)} ${label}`),
+    name: tone(t)("  " + label),
     value: value === undefined ? label : value,
   };
 }
@@ -125,14 +99,17 @@ function menuItem(iconName, label, t = "text", value) {
  * Standard back choice for menus.
  */
 function backItem(label = "Back") {
-  return { name: s.muted(`  ${padGlyph(icons.back)} ${label}`), value: "back" };
+  return { name: s.muted("  " + label), value: "back" };
 }
 
 /**
  * Consistent separator for inquirer menus.
  */
 function sep() {
-  return { type: "separator", line: s.dim("  " + "─".repeat(Math.min(cols() - 8, 52))) };
+  return {
+    type: "separator",
+    line: s.dim("  " + "-".repeat(Math.min(cols() - 8, 52))),
+  };
 }
 
 /**
@@ -177,11 +154,8 @@ module.exports = {
   done,
   fail,
   tone,
-  icon,
-  padGlyph,
   strWidth,
   s,
-  icons,
   clear,
   header,
 };

@@ -24,8 +24,8 @@ async function doSubmodule() {
       name: "action",
       message: s.muted("Select action:"),
       choices: [
-        menuItem("pull", "Update all submodules", "primary", "update"),
-        menuItem("refresh", "Initialize submodules", "text", "init"),
+        menuItem("Update all submodules", "primary", "update"),
+        menuItem("Initialize submodules", "text", "init"),
         sep(),
         backItem(),
       ],

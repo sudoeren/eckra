@@ -39,6 +39,7 @@
     "cli-table3": "^0.6.3",
     "commander": "15.0.0",
     "diff": "^7.0.0",
+    "eastasianwidth": "^0.3.0",
     "inquirer": "^8.2.6",
     "inquirer-autocomplete-prompt": "^2.0.1",
     "ora": "^9.4.1",

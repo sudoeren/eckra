@@ -1,5 +1,5 @@
 const { getGitStatus } = require("../../helpers/git");
-const { s, icons, pause } = require("../common");
+const { s, pause } = require("../common");
 const { open, emptyState } = require("../screen");
 
 async function getStatusInfo() {
@@ -32,26 +32,22 @@ async function getStatusInfo() {
 function statusLine(info) {
   if (!info) return s.error("  ✗ not a git repository\n");
 
-  const lines = [`${s.primary(icons.branch)} ${s.text(info.branch)}`];
+  const parts = [s.primary(info.branch)];
 
   if (info.conflicts > 0) {
-    lines.push(s.error(`  ${icons.conflict} ${info.conflicts} conflicts`));
+    parts.push(s.error(`${info.conflicts} conflicts`));
   } else if (info.clean) {
-    lines.push(s.success(`  ${icons.check} clean`));
+    parts.push(s.success("clean"));
   } else {
-    const counts = [];
-    if (info.staged > 0)
-      counts.push(s.success(`${icons.staged} ${info.staged} staged`));
+    if (info.staged > 0) parts.push(s.success(`${info.staged} staged`));
     if (info.modified > 0)
-      counts.push(s.warning(`${icons.modified} ${info.modified} modified`));
-    if (info.deleted > 0)
-      counts.push(s.error(`${icons.deleted} ${info.deleted} deleted`));
+      parts.push(s.warning(`${info.modified} modified`));
+    if (info.deleted > 0) parts.push(s.error(`${info.deleted} deleted`));
     if (info.untracked > 0)
-      counts.push(s.muted(`${icons.untracked} ${info.untracked} untracked`));
-    lines.push("  " + counts.join(s.dim("   ")));
+      parts.push(s.muted(`${info.untracked} untracked`));
   }
 
-  return lines.join("\n") + "\n";
+  return "  " + parts.join(s.dim(" | ")) + "\n";
 }
 
 async function doStatus() {
@@ -60,34 +56,34 @@ async function doStatus() {
   const status = await getGitStatus();
   const branch = status.current;
 
-  console.log(s.bold(`  ${icons.branch} ${branch}\n`));
+  console.log(s.bold(`  Branch: ${branch}\n`));
 
   if (status.staged.length > 0) {
-    console.log(s.success(`  ${icons.staged} Staged:`));
+    console.log(s.success("  Staged:"));
     status.staged.forEach((f) => console.log(s.success(`    + ${f}`)));
     console.log();
   }
 
   if (status.modified.length > 0) {
-    console.log(s.warning(`  ${icons.modified} Modified:`));
+    console.log(s.warning("  Modified:"));
     status.modified.forEach((f) => console.log(s.warning(`    ~ ${f}`)));
     console.log();
   }
 
   if (status.deleted.length > 0) {
-    console.log(s.error(`  ${icons.deleted} Deleted:`));
+    console.log(s.error("  Deleted:"));
     status.deleted.forEach((f) => console.log(s.error(`    - ${f}`)));
     console.log();
   }
 
   if (status.not_added.length > 0) {
-    console.log(s.muted(`  ${icons.untracked} Untracked:`));
+    console.log(s.muted("  Untracked:"));
     status.not_added.forEach((f) => console.log(s.muted(`    ? ${f}`)));
     console.log();
   }
 
   if (status.conflicted.length > 0) {
-    console.log(s.error(`  ${icons.conflict} Conflicts:`));
+    console.log(s.error("  Conflicts:"));
     status.conflicted.forEach((f) => console.log(s.error(`    ! ${f}`)));
     console.log();
   }

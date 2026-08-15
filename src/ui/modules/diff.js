@@ -28,9 +28,8 @@ async function doDiff() {
       name: "type",
       message: s.muted("Which changes to show?"),
       choices: [
-        menuItem("staged", `Staged (${status.staged.length})`, "success", "staged"),
+        menuItem(`Staged (${status.staged.length})`, "success", "staged"),
         menuItem(
-          "modified",
           `Unstaged (${status.modified.length + status.deleted.length})`,
           "warning",
           "unstaged",
@@ -48,8 +47,8 @@ async function doDiff() {
       name: "view",
       message: s.muted("View mode:"),
       choices: [
-        menuItem("diff", "Unified", "text", "unified"),
-        menuItem("diff", "Side-by-side", "primary", "side"),
+        menuItem("Unified", "text", "unified"),
+        menuItem("Side-by-side", "primary", "side"),
         backItem(),
       ],
     },

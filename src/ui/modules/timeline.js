@@ -1,7 +1,7 @@
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
 const { s, pause, cols } = require("../common");
-const { open, rule, menuItem, backItem, prompt, spinner, done, fail, icon, tone, padGlyph } = require("../screen");
+const { open, rule, menuItem, backItem, prompt, spinner, done, fail, tone } = require("../screen");
 
 function parseSections(text) {
   const sections = [];
@@ -24,8 +24,8 @@ function parseSections(text) {
   return sections;
 }
 
-function renderSection(title, content, iconName, t) {
-  console.log(tone(t)(`  ${padGlyph(icon(iconName))} ${title}`));
+function renderSection(title, content, t) {
+  console.log(tone(t)(`  ${title}`));
   console.log(rule());
   const lines = content.split("\n");
   for (const line of lines) {
@@ -75,17 +75,17 @@ function renderStory(story, commitCount, commits) {
   const sections = parseSections(story);
 
   const styleMap = {
-    "timeline": { icon: "story", tone: "primary" },
-    "key milestones": { icon: "star", tone: "success" },
-    "contributors": { icon: "about", tone: "ai" },
-    "patterns & insights": { icon: "info", tone: "warning" },
-    "patterns and insights": { icon: "info", tone: "warning" },
+    "timeline": "primary",
+    "key milestones": "success",
+    "contributors": "ai",
+    "patterns & insights": "warning",
+    "patterns and insights": "warning",
   };
 
   for (const sec of sections) {
     const key = sec.title.toLowerCase();
-    const style = styleMap[key] || { icon: "dot", tone: "primary" };
-    renderSection(sec.title, sec.content, style.icon, style.tone);
+    const t = styleMap[key] || "primary";
+    renderSection(sec.title, sec.content, t);
   }
 }
 
@@ -98,11 +98,11 @@ async function doTimeline() {
       name: "count",
       message: s.muted("How many commits should be analyzed?"),
       choices: [
-        menuItem("story", "Last 10 commits (quick)", "text", 10),
-        menuItem("story", "Last 25 commits", "text", 25),
-        menuItem("story", "Last 50 commits", "text", 50),
-        menuItem("story", "Last 100 commits", "text", 100),
-        menuItem("story", "Last 200 commits (comprehensive)", "text", 200),
+        menuItem("Last 10 commits (quick)", "text", 10),
+        menuItem("Last 25 commits", "text", 25),
+        menuItem("Last 50 commits", "text", 50),
+        menuItem("Last 100 commits", "text", 100),
+        menuItem("Last 200 commits (comprehensive)", "text", 200),
         backItem(),
       ],
       pageSize: 10,

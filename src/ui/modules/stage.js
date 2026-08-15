@@ -47,9 +47,9 @@ async function doStage(info) {
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        menuItem("check", "Stage All", "success", "all"),
-        menuItem("select", "Select Files", "text", "select"),
-        menuItem("diff", "Partial Stage", "warning", "partial"),
+        menuItem("Stage All", "success", "all"),
+        menuItem("Select Files", "text", "select"),
+        menuItem("Partial Stage", "warning", "partial"),
         backItem(),
       ],
       loop: true,

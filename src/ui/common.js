@@ -156,60 +156,6 @@ const s = new Proxy({}, {
   },
 });
 
-// Single source of truth for all UI glyphs.
-// IMPORTANT: keep every glyph single-width (halfwidth) so menu columns align.
-const icons = {
-  staged: "●",
-  modified: "◐",
-  untracked: "○",
-  deleted: "✕",
-  conflict: "⚠",
-  branch: "⎇",
-  commit: "◆",
-  push: "↑",
-  pull: "↓",
-  stage: "+",
-  select: "◉",
-  stash: "⊞",
-  tag: "♯",
-  log: "◷",
-  status: "◎",
-  more: "⋯",
-  search: "⌕",
-  blame: "▤",
-  worktree: "⌂",
-  submodule: "◈",
-  diff: "≋",
-  undo: "↩",
-  amend: "✎",
-  rebase: "⚡",
-  stats: "≡",
-  remote: "↗",
-  settings: "⚙",
-  about: "⊙",
-  story: "✦",
-  ai: "✦",
-  edit: "✎",
-  refresh: "↻",
-  new: "+",
-  remove: "✕",
-  check: "✓",
-  cross: "✗",
-  arrow: "→",
-  back: "←",
-  dot: "·",
-  star: "★",
-  info: "ℹ",
-};
-
-/**
- * Return the glyph for a named icon, ready to be colored by the caller.
- */
-function icon(name, tone) {
-  const glyph = icons[name] || icons.dot;
-  return tone ? s[tone](glyph) : glyph;
-}
-
 // ═══════════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════════
@@ -268,8 +214,6 @@ async function pause() {
 
 module.exports = {
   s,
-  icons,
-  icon,
   clear,
   sleep,
   cols,

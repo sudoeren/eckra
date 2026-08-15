@@ -23,6 +23,5 @@ describe('Status UI module', () => {
     expect(info.deleted).toBe(1);
     expect(info.clean).toBe(false);
     expect(statusLine(info)).toContain('1 deleted');
-    expect(statusLine(info)).toContain('✕');
   });
 });

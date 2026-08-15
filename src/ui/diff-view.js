@@ -2,6 +2,7 @@ const chalk = require("chalk");
 const { diffWordsWithSpace } = require("diff");
 const { parseDiff } = require("../helpers/patch");
 const { s, cols } = require("./common");
+const { strWidth } = require("./screen");
 
 // ═══════════════════════════════════════════════════════════════
 // DIFF VIEWER
@@ -100,7 +101,7 @@ function padNum(num, w) {
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 function vlen(str) {
-  return str.replace(ANSI_RE, "").length;
+  return strWidth(str.replace(ANSI_RE, ""));
 }
 
 function renderHunkBody(hunk, numW) {

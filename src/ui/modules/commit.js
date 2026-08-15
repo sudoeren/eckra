@@ -87,10 +87,10 @@ async function doCommit(info) {
 
     const choices = [];
     if (ai.connected) {
-      choices.push(menuItem("ai", "Suggest message with AI", "ai", "ai"));
+      choices.push(menuItem("Suggest message with AI", "ai", "ai"));
     }
-    choices.push(menuItem("edit", "Write my own", "text", "custom"));
-    choices.push(menuItem("diff", "Review Diff", "success", "diff"));
+    choices.push(menuItem("Write my own", "text", "custom"));
+    choices.push(menuItem("Review Diff", "success", "diff"));
     choices.push(sep());
     choices.push(backItem());
 
@@ -159,9 +159,9 @@ async function doCommit(info) {
             name: "aiAction",
             message: s.muted("Action:"),
           choices: [
-            menuItem("check", "Use as is", "success", "use"),
-            menuItem("edit", "Edit subject line", "text", "edit"),
-            menuItem("refresh", "Regenerate", "primary", "regenerate"),
+            menuItem("Use as is", "success", "use"),
+            menuItem("Edit subject line", "text", "edit"),
+            menuItem("Regenerate", "primary", "regenerate"),
             backItem("Back"),
           ],
             loop: true,

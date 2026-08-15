@@ -71,7 +71,7 @@ async function showSearchResults(commits, query) {
       name: "action",
       message: s.muted("Action:"),
       choices: [
-        menuItem("select", "Cherry-pick this commit", "success", "cherry"),
+        menuItem("Cherry-pick this commit", "success", "cherry"),
         backItem("Back to Results"),
       ],
     },

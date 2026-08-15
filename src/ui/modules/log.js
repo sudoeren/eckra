@@ -11,8 +11,8 @@ async function doLog() {
       name: "viewMode",
       message: s.muted("Select view mode:"),
       choices: [
-        menuItem("log", "Standard View (Interactive)", "text", "standard"),
-        menuItem("log", "Graph View (Tree)", "text", "graph"),
+        menuItem("Standard View (Interactive)", "text", "standard"),
+        menuItem("Graph View (Tree)", "text", "graph"),
         backItem(),
       ],
       loop: true,
@@ -80,7 +80,7 @@ async function showStandardLog() {
       name: "action",
       message: s.muted("Action:"),
       choices: [
-        menuItem("select", "Cherry-pick this commit", "success", "cherry"),
+        menuItem("Cherry-pick this commit", "success", "cherry"),
         backItem("Back to Log"),
       ],
     },

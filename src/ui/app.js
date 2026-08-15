@@ -58,7 +58,7 @@ async function startApp() {
 
     // Conflict priority
     if (info.conflicts > 0) {
-      choices.push(menuItem("conflict", "Resolve Conflict", "danger", "conflict"));
+      choices.push(menuItem("Resolve Conflict", "danger", "conflict"));
       choices.push(sep());
     }
 
@@ -66,7 +66,6 @@ async function startApp() {
     if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
       choices.push(
         menuItem(
-          "stage",
           "Stage" + s.muted(` (${info.modified + info.untracked + info.deleted} files)`),
           "success",
           "stage",
@@ -82,7 +81,6 @@ async function startApp() {
     ) {
       choices.push(
         menuItem(
-          "commit",
           "Commit" + (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
           "primary",
           "commit",
@@ -90,18 +88,18 @@ async function startApp() {
       );
     }
 
-    choices.push(menuItem("push", "Push", "primary", "push"));
-    choices.push(menuItem("pull", "Pull", "primary", "pull"));
+    choices.push(menuItem("Push", "primary", "push"));
+    choices.push(menuItem("Pull", "primary", "pull"));
 
     choices.push(sep());
 
-    choices.push(menuItem("status", "Status", "text", "status"));
-    choices.push(menuItem("branch", "Branch", "text", "branch"));
-    choices.push(menuItem("log", "Log", "text", "log"));
-    choices.push(menuItem("more", "More", "text", "more"));
+    choices.push(menuItem("Status", "text", "status"));
+    choices.push(menuItem("Branch", "text", "branch"));
+    choices.push(menuItem("Log", "text", "log"));
+    choices.push(menuItem("More", "text", "more"));
 
     choices.push(sep());
-    choices.push(menuItem("cross", "Exit", "muted", "exit"));
+    choices.push(menuItem("Exit", "muted", "exit"));
 
     const { action } = await prompt([
       {
@@ -219,11 +217,11 @@ async function easyWorkflow() {
           name: "choice",
           message: s.muted("Action:"),
           choices: [
-            menuItem("check", "Looks good (Commit & Push)", "success", "commit-push"),
-            menuItem("check", "Looks good (Commit Only)", "primary", "commit-only"),
-            menuItem("refresh", "Regenerate", "primary", "retry"),
-            menuItem("edit", "Edit subject line", "text", "edit"),
-            menuItem("cross", "Cancel", "muted", "cancel"),
+            menuItem("Looks good (Commit & Push)", "success", "commit-push"),
+            menuItem("Looks good (Commit Only)", "primary", "commit-only"),
+            menuItem("Regenerate", "primary", "retry"),
+            menuItem("Edit subject line", "text", "edit"),
+            menuItem("Cancel", "muted", "cancel"),
           ],
           loop: true,
         },
