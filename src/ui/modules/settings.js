@@ -1,7 +1,13 @@
 const inquirer = require("inquirer");
 const autocomplete = require("inquirer-autocomplete-prompt");
 const { execSync } = require("child_process");
-const { getConfig, saveConfig, resetConfig, getConfigPath } = require("../../helpers/config");
+const {
+  getConfig,
+  saveConfig,
+  resetConfig,
+  getConfigPath,
+  DEFAULT_CONFIG,
+} = require("../../helpers/config");
 const {
   checkAIConnection,
   testProviderConnection,
@@ -139,33 +145,33 @@ async function promptModelSearch(provider, answers, config) {
   switch (provider) {
     case "openai":
       configKey = "openaiModel";
-      currentModel = config.openaiModel || "gpt-4o";
+      currentModel = config.openaiModel || DEFAULT_CONFIG.openaiModel;
       fetchLabel = "Fetching models from OpenAI...";
       break;
     case "anthropic":
       configKey = "anthropicModel";
-      currentModel = config.anthropicModel || "claude-3-5-sonnet-20240620";
+      currentModel = config.anthropicModel || DEFAULT_CONFIG.anthropicModel;
       fetchLabel = "Loading Anthropic models...";
       break;
     case "gemini":
       configKey = "geminiModel";
-      currentModel = config.geminiModel || "gemini-2.0-flash";
+      currentModel = config.geminiModel || DEFAULT_CONFIG.geminiModel;
       fetchLabel = "Fetching models from Gemini...";
       break;
     case "ollama":
       configKey = "ollamaModel";
-      currentModel = config.ollamaModel || "llama3";
+      currentModel = config.ollamaModel || DEFAULT_CONFIG.ollamaModel;
       fetchLabel = "Fetching models from Ollama...";
       break;
     case "openrouter":
       configKey = "openrouterModel";
-      currentModel = config.openrouterModel || "openai/gpt-4o";
+      currentModel = config.openrouterModel || DEFAULT_CONFIG.openrouterModel;
       fetchLabel = "Fetching models from OpenRouter...";
       break;
     case "lmstudio":
     default:
       configKey = "model";
-      currentModel = config.model || "";
+      currentModel = config.model || DEFAULT_CONFIG.model;
       fetchLabel = "Fetching models from LM Studio...";
       break;
   }

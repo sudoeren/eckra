@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { getConfig } = require("./config");
+const { getConfig, DEFAULT_CONFIG } = require("./config");
 
 const MAX_DIFF_CHARS = 3000;
 
@@ -30,7 +30,7 @@ async function callProvider(
         Authorization: `Bearer ${config.openaiApiKey}`,
       };
       body = {
-        model: config.openaiModel || "gpt-5-mini",
+        model: config.openaiModel || DEFAULT_CONFIG.openaiModel,
         messages,
         temperature,
         max_tokens,
@@ -48,7 +48,7 @@ async function callProvider(
       const systemMessage = messages.find((m) => m.role === "system")?.content;
       const userMessages = messages.filter((m) => m.role !== "system");
       body = {
-        model: config.anthropicModel || "claude-sonnet-4-6",
+        model: config.anthropicModel || DEFAULT_CONFIG.anthropicModel,
         system: systemMessage,
         messages: userMessages,
         max_tokens,
@@ -76,7 +76,7 @@ async function callProvider(
         "X-Title": "Eckra",
       };
       body = {
-        model: config.openrouterModel || "openai/gpt-oss-120b",
+        model: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
         messages,
         temperature,
         max_tokens,
@@ -84,7 +84,7 @@ async function callProvider(
       break;
 
     case "gemini":
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || "gemini-3.1-flash-lite"}:generateContent`;
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel || DEFAULT_CONFIG.geminiModel}:generateContent`;
       headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": config.geminiApiKey,
@@ -139,7 +139,7 @@ async function callProvider(
       if (!response.data.choices || response.data.choices.length === 0) {
         const modelLabels = {
           openai: config.openaiModel,
-          openrouter: config.openrouterModel || "openai/gpt-4o",
+          openrouter: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
         };
         throw new Error(
           `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`,
@@ -380,7 +380,7 @@ async function testProviderConnection(provider, providerConfig) {
       const res = await axios.post(
         "https://api.anthropic.com/v1/messages",
         {
-          model: providerConfig.anthropicModel || "claude-3-5-sonnet-20240620",
+          model: providerConfig.anthropicModel || DEFAULT_CONFIG.anthropicModel,
           max_tokens: 1,
           messages: [{ role: "user", content: "hi" }],
         },
