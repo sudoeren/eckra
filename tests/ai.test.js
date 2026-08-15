@@ -3,6 +3,7 @@ const {
   generateCommitMessage,
   formatDiffForPrompt,
   checkAIConnection,
+  resetAIConnectionCache,
 } = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
 
@@ -15,6 +16,7 @@ describe("AI Helper", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    resetAIConnectionCache();
   });
 
   test("should mark truncated diffs in prompts", () => {

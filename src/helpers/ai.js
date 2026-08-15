@@ -427,64 +427,111 @@ async function testProviderConnection(provider, providerConfig) {
   }
 }
 
+let _aiConnectionCache = new Map();
+
+function aiConnectionCacheKey(config) {
+  const provider = config.aiProvider || "lmstudio";
+  const fields = {
+    lmstudio: config.lmStudioUrl,
+    ollama: config.ollamaUrl,
+    openai: config.openaiApiKey,
+    anthropic: config.anthropicApiKey,
+    openrouter: config.openrouterApiKey,
+    gemini: config.geminiApiKey,
+  };
+  return `${provider}|${fields[provider] || ""}`;
+}
+
 /**
- * Check if the configured AI provider is available
+ * Check if the configured AI provider is available.
+ * Results are cached for the session and keyed by provider + credentials,
+ * so repeated opens (e.g. Settings) don't hit the network every time.
  */
 async function checkAIConnection() {
   const config = getConfig();
+  const key = aiConnectionCacheKey(config);
+  if (_aiConnectionCache.has(key)) return _aiConnectionCache.get(key);
+
   const provider = config.aiProvider || "lmstudio";
+  let result;
 
   try {
     if (provider === "lmstudio") {
       const response = await axios.get(`${config.lmStudioUrl}/v1/models`, {
         timeout: 5000,
       });
-      return { connected: true, models: response.data?.data || [] };
+      result = { connected: true, models: response.data?.data || [] };
     } else if (provider === "ollama") {
       const response = await axios.get(`${config.ollamaUrl}/api/tags`, {
         timeout: 5000,
       });
-      return { connected: true, models: response.data?.models || [] };
+      result = { connected: true, models: response.data?.models || [] };
     } else if (provider === "openai") {
-      if (!config.openaiApiKey)
-        return { connected: false, error: "OpenAI API Key is missing" };
-      // Simple check by listing models
-      const response = await axios.get("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${config.openaiApiKey}` },
-        timeout: 5000,
-      });
-      return { connected: true, models: response.data?.data || [] };
-    } else if (provider === "anthropic") {
-      const result = await testProviderConnection("anthropic", config);
-      if (!result.connected) return result;
-      return {
-        connected: true,
-        note: "Anthropic connection verified with a minimal request",
-      };
-    } else if (provider === "openrouter") {
-      if (!config.openrouterApiKey)
-        return { connected: false, error: "OpenRouter API Key is missing" };
-      const response = await axios.get("https://openrouter.ai/api/v1/models", {
-        headers: { Authorization: `Bearer ${config.openrouterApiKey}` },
-        timeout: 5000,
-      });
-      return { connected: true, models: response.data?.data || [] };
-    } else if (provider === "gemini") {
-      if (!config.geminiApiKey)
-        return { connected: false, error: "Google Gemini API Key is missing" };
-      const response = await axios.get(
-        `https://generativelanguage.googleapis.com/v1beta/models`,
-        {
-          headers: { "x-goog-api-key": config.geminiApiKey },
+      if (!config.openaiApiKey) {
+        result = { connected: false, error: "OpenAI API Key is missing" };
+      } else {
+        // Simple check by listing models
+        const response = await axios.get("https://api.openai.com/v1/models", {
+          headers: { Authorization: `Bearer ${config.openaiApiKey}` },
           timeout: 5000,
-        }
-      );
-      return { connected: true, models: response.data?.models || [] };
+        });
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "anthropic") {
+      const check = await testProviderConnection("anthropic", config);
+      if (!check.connected) {
+        result = check;
+      } else {
+        result = {
+          connected: true,
+          note: "Anthropic connection verified with a minimal request",
+        };
+      }
+    } else if (provider === "openrouter") {
+      if (!config.openrouterApiKey) {
+        result = { connected: false, error: "OpenRouter API Key is missing" };
+      } else {
+        const response = await axios.get(
+          "https://openrouter.ai/api/v1/models",
+          {
+            headers: { Authorization: `Bearer ${config.openrouterApiKey}` },
+            timeout: 5000,
+          }
+        );
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "gemini") {
+      if (!config.geminiApiKey) {
+        result = {
+          connected: false,
+          error: "Google Gemini API Key is missing",
+        };
+      } else {
+        const response = await axios.get(
+          `https://generativelanguage.googleapis.com/v1beta/models`,
+          {
+            headers: { "x-goog-api-key": config.geminiApiKey },
+            timeout: 5000,
+          }
+        );
+        result = { connected: true, models: response.data?.models || [] };
+      }
+    } else {
+      result = { connected: true };
     }
-    return { connected: true };
   } catch (error) {
-    return { connected: false, error: error.message };
+    result = { connected: false, error: error.message };
   }
+
+  _aiConnectionCache.set(key, result);
+  return result;
+}
+
+/**
+ * Clear the in-session connection cache (used when credentials change or in tests)
+ */
+function resetAIConnectionCache() {
+  _aiConnectionCache.clear();
 }
 
 /**
@@ -667,6 +714,7 @@ module.exports = {
   generateCommitSuggestions,
   generateTimeline,
   checkAIConnection,
+  resetAIConnectionCache,
   testProviderConnection,
   fetchOpenRouterModels,
   fetchOpenAIModels,

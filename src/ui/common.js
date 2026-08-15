@@ -1,5 +1,8 @@
 const chalk = require("chalk");
 const inquirer = require("inquirer");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
 const { getConfig } = require("../helpers/config");
 
 // ═══════════════════════════════════════════════════════════════
@@ -37,9 +40,35 @@ const themes = {
 
 let _isDark = null;
 
-function isDarkMode() {
-  if (_isDark !== null) return _isDark;
+const THEME_CACHE_PATH = path.join(os.homedir(), ".eckra", "theme-cache.json");
+const THEME_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+function readThemeCache() {
+  try {
+    if (!fs.existsSync(THEME_CACHE_PATH)) return null;
+    const parsed = JSON.parse(fs.readFileSync(THEME_CACHE_PATH, "utf8"));
+    if (
+      parsed &&
+      typeof parsed.isDark === "boolean" &&
+      Date.now() - parsed.ts < THEME_CACHE_TTL
+    ) {
+      return parsed.isDark;
+    }
+  } catch {}
+  return null;
+}
+
+function writeThemeCache(isDark) {
+  try {
+    fs.mkdirSync(path.dirname(THEME_CACHE_PATH), { recursive: true });
+    fs.writeFileSync(
+      THEME_CACHE_PATH,
+      JSON.stringify({ isDark, ts: Date.now() })
+    );
+  } catch {}
+}
+
+function detectDarkMode() {
   const { execSync } = require("child_process");
   const env = process.env;
 
@@ -50,16 +79,14 @@ function isDarkMode() {
       const output = execSync(command, {
         stdio: ["pipe", "pipe", "ignore"],
       }).toString();
-      _isDark = output.includes("0x0");
-      return _isDark;
+      return output.includes("0x0");
     }
 
     if (process.platform === "darwin") {
       const output = execSync("defaults read -g AppleInterfaceStyle", {
         stdio: ["pipe", "pipe", "ignore"],
       }).toString();
-      _isDark = output.trim() === "Dark";
-      return _isDark;
+      return output.trim() === "Dark";
     }
 
     // ---- Linux detection ----
@@ -76,11 +103,9 @@ function isDarkMode() {
         .toString()
         .trim();
       if (out === "'prefer-dark'") {
-        _isDark = true;
         return true;
       }
       if (out === "'default'" || out === "'prefer-light'") {
-        _isDark = false;
         return false;
       }
     } catch {}
@@ -95,31 +120,25 @@ function isDarkMode() {
         .trim()
         .toLowerCase();
       if (out.includes("dark")) {
-        _isDark = true;
         return true;
       }
       if (out.length > 0) {
-        _isDark = false;
         return false;
       }
     } catch {}
 
     // 3. KDE via kdeglobals
     try {
-      const fs = require("fs");
-      const p = require("path");
-      const kdegl = p.join(require("os").homedir(), ".config", "kdeglobals");
+      const kdegl = path.join(os.homedir(), ".config", "kdeglobals");
       if (fs.existsSync(kdegl)) {
         const c = fs.readFileSync(kdegl, "utf8");
         if (
           c.includes("ColorScheme=KDE Breeze Dark") ||
           c.includes("ColorScheme=BreezeDark")
         ) {
-          _isDark = true;
           return true;
         }
         if (/ColorScheme=/.test(c)) {
-          _isDark = false;
           return false;
         }
       }
@@ -127,10 +146,8 @@ function isDarkMode() {
 
     // 4. GTK settings.ini
     try {
-      const fs = require("fs");
-      const p = require("path");
-      const gtkIni = p.join(
-        require("os").homedir(),
+      const gtkIni = path.join(
+        os.homedir(),
         ".config",
         "gtk-3.0",
         "settings.ini"
@@ -138,7 +155,6 @@ function isDarkMode() {
       if (fs.existsSync(gtkIni)) {
         const c = fs.readFileSync(gtkIni, "utf8");
         if (/gtk-application-prefer-dark-theme\s*=\s*1/.test(c)) {
-          _isDark = true;
           return true;
         }
       }
@@ -151,15 +167,13 @@ function isDarkMode() {
       if (bg) {
         const val = parseInt(bg, 10);
         if (!isNaN(val)) {
-          _isDark = val < 8;
-          return _isDark;
+          return val < 8;
         }
       }
     }
 
     // 6. GTK_THEME env
     if (env.GTK_THEME && env.GTK_THEME.endsWith("-dark")) {
-      _isDark = true;
       return true;
     }
   } catch {
@@ -169,17 +183,32 @@ function isDarkMode() {
   // Fallback: check terminal emulator env hints
   const term = (env.COLORTERM || env.TERM || "").toLowerCase();
   if (term.includes("dark") || term.includes("black")) {
-    _isDark = true;
     return true;
   }
 
-  _isDark = false; // Default to light (safer for most terminals)
+  return false; // Default to light (safer for most terminals)
+}
+
+function isDarkMode() {
+  if (_isDark !== null) return _isDark;
+
+  // Reuse detection across sessions so gsettings/kreadconfig5 aren't
+  // spawned on every startup
+  const cached = readThemeCache();
+  if (cached !== null) {
+    _isDark = cached;
+    return _isDark;
+  }
+
+  _isDark = detectDarkMode();
+  writeThemeCache(_isDark);
   return _isDark;
 }
 
 let _cachedTheme = null;
 function resetThemeCache() {
   _cachedTheme = null;
+  _isDark = null;
 }
 function getTheme() {
   if (_cachedTheme) return _cachedTheme;

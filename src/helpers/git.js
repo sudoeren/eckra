@@ -323,29 +323,42 @@ async function removeRemote(name) {
  * Get repository stats
  */
 async function getRepoStats() {
-  const log = await getGit().log(["--all"]);
   const branches = await getGit().branch(["-a"]);
   const tags = await getGit().tags();
 
-  // Count commits by author
-  const authorStats = {};
-  log.all.forEach((commit) => {
-    const author = commit.author_name;
-    authorStats[author] = (authorStats[author] || 0) + 1;
-  });
+  // Count all commits across refs (fast, doesn't load full history)
+  const totalCommits =
+    parseInt(
+      (await getGit().raw(["rev-list", "--all", "--count"])).trim(),
+      10
+    ) || 0;
 
-  // Get first and last commit dates
-  const firstCommit = log.all.length > 0 ? log.all[log.all.length - 1] : null;
-  const lastCommit = log.all.length > 0 ? log.all[0] : null;
+  // Author -> commit count via shortlog (cheaper than walking every commit)
+  const shortlog = (await getGit().raw(["shortlog", "-sn", "--all"])).trim();
+  const authorStats = {};
+  if (shortlog) {
+    for (const line of shortlog.split("\n")) {
+      const m = line.match(/^\s*(\d+)\s+(.+)$/);
+      if (m) authorStats[m[2]] = parseInt(m[1], 10);
+    }
+  }
+
+  // First (oldest) and last (newest) commit dates without loading full history
+  const lastDate = (
+    await getGit().raw(["log", "--all", "-1", "--format=%aI"])
+  ).trim();
+  const firstDate = (
+    await getGit().raw(["log", "--all", "--reverse", "-1", "--format=%aI"])
+  ).trim();
 
   return {
-    totalCommits: log.all.length,
+    totalCommits,
     branches: branches.all.filter((b) => !b.startsWith("remotes/")).length,
     remoteBranches: branches.all.filter((b) => b.startsWith("remotes/")).length,
     tags: tags.all.length,
     authors: authorStats,
-    firstCommit,
-    lastCommit,
+    firstCommit: firstDate ? { date: firstDate } : null,
+    lastCommit: lastDate ? { date: lastDate } : null,
   };
 }
 
