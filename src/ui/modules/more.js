@@ -1,3 +1,4 @@
+const { s } = require("../common");
 const { open, menuItem, backItem, sep, prompt } = require("../screen");
 const { doUndo } = require("./undo");
 const { doAmend } = require("./amend");
@@ -22,7 +23,7 @@ async function doMore() {
     {
       type: "list",
       name: "action",
-      message: "What would you like to do?",
+      message: s.muted("What would you like to do?"),
       choices: [
         menuItem("Undo (Revert last commit)", "warning", "undo"),
         menuItem("Amend (Fix commit message)", "primary", "amend"),
