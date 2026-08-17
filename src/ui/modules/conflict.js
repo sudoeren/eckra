@@ -110,7 +110,7 @@ async function resolveFile(file) {
         child.on("error", reject);
       });
     } catch (err) {
-      console.log(s.danger(`  Could not launch ${editor}: ${err.message}`));
+      console.log(s.error(`  Could not launch ${editor}: ${err.message}`));
       console.log(
         s.muted(
           `  Resolve the conflicts in ${file} manually, then run: git add ${file}`
