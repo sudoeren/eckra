@@ -144,16 +144,18 @@ function getConfig() {
 }
 
 /**
- * Save configuration
+ * Save configuration. The given `config` is treated as a delta and merged
+ * over the raw global config file, so defaults and local `.eckrarc`
+ * overrides are never spilled into the global file.
  */
 function saveConfig(config) {
   ensureConfigDir();
 
-  const currentConfig = getConfig();
-  const newConfig = { ...currentConfig, ...config };
+  const currentGlobal = getRawConfig({ local: false });
+  const newConfig = { ...currentGlobal, ...config };
 
   writeConfigFile(JSON.stringify(newConfig, null, 2));
-  _cachedConfig = newConfig; // Update cache
+  _cachedConfig = null; // Invalidate cache; getConfig() re-applies local overrides
   return newConfig;
 }
 

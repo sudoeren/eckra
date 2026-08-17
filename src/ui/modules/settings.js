@@ -34,7 +34,7 @@ inquirer.registerPrompt("autocomplete", autocomplete);
 /**
  * Test provider connection with a spinner, then save or let user decide
  */
-async function testAndSaveProvider(provider, fullConfig, _answers) {
+async function testAndSaveProvider(provider, fullConfig, answers) {
   const spin = spinner("Testing connection...");
   spin.start();
   const result = await testProviderConnection(provider, fullConfig);
@@ -42,7 +42,7 @@ async function testAndSaveProvider(provider, fullConfig, _answers) {
 
   if (result.connected) {
     console.log(s.success("  ✓ Connection successful!"));
-    saveConfig({ ...fullConfig, aiProvider: provider });
+    saveConfig({ ...answers, aiProvider: provider });
     console.log(s.success("  ✓ Provider configured: " + provider));
   } else {
     console.log(
@@ -57,7 +57,7 @@ async function testAndSaveProvider(provider, fullConfig, _answers) {
       },
     ]);
     if (saveAnyway) {
-      saveConfig({ ...fullConfig, aiProvider: provider });
+      saveConfig({ ...answers, aiProvider: provider });
       console.log(s.success("  ✓ Settings saved (connection pending)"));
     } else {
       console.log(s.muted("  Settings not saved."));
@@ -519,7 +519,7 @@ async function doSettings() {
         default: config.aiInstruction,
       },
     ]);
-    saveConfig({ ...config, aiInstruction: instruction });
+    saveConfig({ aiInstruction: instruction });
     console.log(s.success("\n  ✓ Saved!"));
     await sleep(600);
   }
@@ -540,7 +540,7 @@ async function doSettings() {
         pageSize: 15,
       },
     ]);
-    saveConfig({ ...config, theme });
+    saveConfig({ theme });
     const { resetThemeCache } = require("../common");
     resetThemeCache();
     console.log(s.success("\n  ✓ Theme changed to " + theme));
