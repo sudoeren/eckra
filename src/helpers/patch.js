@@ -32,13 +32,21 @@ function parseDiff(diffOutput) {
 
     if (!currentFile) continue;
 
-    // Header lines (index, ---, +++)
+    // Header / metadata lines (index, mode, rename/copy, ---, +++)
     if (
       line.startsWith("index") ||
-      line.startsWith("---") ||
-      line.startsWith("+++") ||
+      line.startsWith("old mode") ||
+      line.startsWith("new mode") ||
+      line.startsWith("similarity index") ||
+      line.startsWith("dissimilarity index") ||
+      line.startsWith("rename from") ||
+      line.startsWith("rename to") ||
+      line.startsWith("copy from") ||
+      line.startsWith("copy to") ||
       line.startsWith("new file") ||
-      line.startsWith("deleted file")
+      line.startsWith("deleted file") ||
+      line.startsWith("---") ||
+      line.startsWith("+++")
     ) {
       currentFile.header.push(line);
       continue;

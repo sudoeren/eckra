@@ -41,4 +41,31 @@ index 1234567..89abcdef 100644
     const files = parseDiff("");
     expect(files).toHaveLength(0);
   });
+
+  test("should keep rename and mode metadata in the header", () => {
+    const diff = `diff --git a/old.js b/new.js
+similarity index 78%
+rename from old.js
+rename to new.js
+index 1111111..2222222 100644
+old mode 100644
+new mode 100755
+--- a/old.js
++++ b/new.js
+@@ -1 +1 @@
+-old line
++new line`;
+    const files = parseDiff(diff);
+
+    expect(files).toHaveLength(1);
+    expect(files[0].name).toBe("new.js");
+    const header = files[0].header.join("\n");
+    expect(header).toContain("similarity index 78%");
+    expect(header).toContain("rename from old.js");
+    expect(header).toContain("rename to new.js");
+    expect(header).toContain("old mode 100644");
+    expect(header).toContain("new mode 100755");
+    expect(header).toContain("--- a/old.js");
+    expect(header).toContain("+++ b/new.js");
+  });
 });
