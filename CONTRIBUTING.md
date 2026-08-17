@@ -26,15 +26,16 @@ Thank you for your interest in contributing to eckra! This guide will help you g
    npm start
    ```
 
-## Testing
+## Testing & Linting
 
-We use **Jest** for testing. To run the tests:
+We use **Jest** for testing and **ESLint + Prettier** for code style. Before committing:
 
 ```bash
+npm run lint
 npm test
 ```
 
-Please ensure that all tests pass before submitting a pull request. Adding new tests for new features is highly encouraged.
+Please ensure both pass before submitting a pull request. Adding new tests for new features is highly encouraged.
 
 ## Architecture
 
@@ -49,7 +50,8 @@ Handles CLI command definitions using `commander`. It routes commands to the app
 Responsible for all user interactions.
 
 - **`app.js`**: The main application loop and dashboard menu.
-- **`common.js`**: Shared styles, icons, and UI utility functions (like `clear`, `header`, `box`).
+- **`common.js`**: Shared theme-aware styles (`s.primary`, `s.success`, ...) and UI utilities (`clear`, `header`, `pause`).
+- **`screen.js`**: Inquirer prompt wrappers and `spinner` / `done` / `fail` feedback helpers.
 - **`modules/`**: Contains individual feature modules. Each module (e.g., `commit.js`, `status.js`) handles a specific git flow.
 
 #### UI Module Pattern
@@ -57,16 +59,24 @@ Responsible for all user interactions.
 Most UI modules follow this pattern:
 
 ```javascript
-async function doFeature(info) {
-  // 1. Clear screen and show header
-  clear();
-  header();
+const { open, menuItem, backItem, prompt } = require("../screen");
 
-  // 2. Perform logic or ask questions via inquirer
-  const { choice } = await inquirer.prompt([...]);
+async function doFeature(info) {
+  // 1. Clear the screen and show the feature header
+  open("Feature");
+
+  // 2. Ask questions via the themed prompt helper
+  const { choice } = await prompt([
+    {
+      type: "list",
+      name: "choice",
+      message: "Action:",
+      choices: [menuItem("Option A", "primary", "a"), backItem()],
+    },
+  ]);
 
   // 3. Execute git/helper operations
-  // 4. Show results/feedback
+  // 4. Show results/feedback with spinner/done/fail
 }
 ```
 
@@ -76,13 +86,16 @@ Core business logic separated from the UI.
 
 - **`git.js`**: Wraps `simple-git` for all Git operations.
 - **`ai.js`**: Handles communication with AI providers (LM Studio, OpenAI, Anthropic, Ollama, OpenRouter, Google Gemini) for commit message suggestions.
-- **`config.js`**: Manages user configuration.
+- **`config.js`**: Manages user configuration (global `~/.eckra/config.json` + repo-local `.eckrarc`).
 - **`patch.js`**: Utilities for handling git patches and diffs.
+- **`lazygit.js`**: Manages the lazygit custom-command integration (configurable key).
+- **`suggest.js`**: Non-interactive AI commit message generation (`eckra suggest`).
+- **`doctor.js`**: Health checks for git, config, and the AI provider.
 
 ## Style Guide
 
 - Use the styles defined in `src/ui/common.js` (e.g., `s.primary`, `s.success`) to maintain visual consistency.
-- Prefer `inquirer` for interactive prompts.
+- Use the themed `prompt` helper from `src/ui/screen.js` for interactive prompts (not raw `inquirer`).
 - Keep UI logic in `src/ui/modules` and Git/AI logic in `src/helpers`.
 
 ## Pull Request Process
