@@ -130,7 +130,7 @@ async function doTimeline() {
     },
   ]);
 
-  if (count === 0) return;
+  if (count === "back" || count === 0) return;
 
   const spin = spinner("Fetching commit history...");
   spin.start();
