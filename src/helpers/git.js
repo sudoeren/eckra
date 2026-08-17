@@ -33,21 +33,6 @@ async function stageAll() {
 }
 
 /**
- * Unstage specific files
- */
-async function unstageFiles(files) {
-  if (files.length === 0) return;
-  await getGit().reset(["HEAD", ...files]);
-}
-
-/**
- * Unstage all files
- */
-async function unstageAll() {
-  await getGit().reset(["HEAD"]);
-}
-
-/**
  * Create a commit with message
  */
 async function createCommit(message) {
@@ -160,22 +145,6 @@ async function getRemotes() {
 }
 
 /**
- * Check if there are conflicts
- */
-async function hasConflicts() {
-  const status = await getGit().status();
-  return status.conflicted.length > 0;
-}
-
-/**
- * Get conflicted files
- */
-async function getConflictedFiles() {
-  const status = await getGit().status();
-  return status.conflicted;
-}
-
-/**
  * Stash changes
  */
 async function stashChanges(message = null) {
@@ -211,13 +180,6 @@ async function dropStash(index = 0) {
  */
 async function listStashes() {
   return await getGit().stashList();
-}
-
-/**
- * Discard changes in file
- */
-async function discardChanges(file) {
-  return await getGit().checkout(["--", file]);
 }
 
 /**
@@ -288,28 +250,10 @@ async function searchCommits(query, count = 20) {
 }
 
 /**
- * Search commits by author
- */
-async function searchCommitsByAuthor(author, count = 20) {
-  return await getGit().log(["--author", author, "-n", count.toString()]);
-}
-
-/**
  * Cherry-pick a commit
  */
 async function cherryPick(commitHash) {
   return await getGit().raw(["cherry-pick", commitHash]);
-}
-
-/**
- * Get commits from other branches (not in current)
- */
-async function getOtherBranchCommits(branch, count = 20) {
-  const current = await getCurrentBranch();
-  if (/[;&|`$(){}]/.test(branch) || branch.includes("..")) {
-    throw new Error("Invalid branch name");
-  }
-  return await getGit().log([`${current}..${branch}`, "-n", count.toString()]);
 }
 
 /**
@@ -646,8 +590,6 @@ module.exports = {
   getGitStatus,
   stageFiles,
   stageAll,
-  unstageFiles,
-  unstageAll,
   createCommit,
   getStagedDiff,
   getUnstagedDiff,
@@ -663,14 +605,11 @@ module.exports = {
   getCommitLog,
   getCommitHistory,
   getRemotes,
-  hasConflicts,
-  getConflictedFiles,
   stashChanges,
   popStash,
   applyStash,
   dropStash,
   listStashes,
-  discardChanges,
   addRemote,
   undoLastCommit,
   getLastCommit,
@@ -680,9 +619,7 @@ module.exports = {
   deleteTag,
   pushTags,
   searchCommits,
-  searchCommitsByAuthor,
   cherryPick,
-  getOtherBranchCommits,
   removeRemote,
   getRepoStats,
   squashCommits,
