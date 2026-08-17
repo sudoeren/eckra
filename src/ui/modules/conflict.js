@@ -8,7 +8,7 @@ const {
   abortMerge,
   stageFiles,
 } = require("../../helpers/git");
-const { s, pause, sleep, clear, header } = require("../common");
+const { s, pause, sleep } = require("../common");
 const { open, menuItem, backItem, sep, prompt } = require("../screen");
 const { renderDiff } = require("../diff-view");
 
@@ -71,9 +71,7 @@ async function doConflict() {
 }
 
 async function resolveFile(file) {
-  clear();
-  header();
-  console.log(s.bold(`  Resolving: ${file}\n`));
+  open(`Resolving: ${file}`);
 
   const { choice } = await prompt([
     {
