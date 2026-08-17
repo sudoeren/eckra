@@ -71,13 +71,11 @@ Use eckra's AI commit flow inside [lazygit](https://github.com/jesseduffield/laz
 eckra lazygit install
 ```
 
-Restart lazygit, stage your files, and open the **files view**. The integration adds a single custom command:
+1. Restart lazygit and stage your files
+2. Open the **files view** and press `C`
+3. Review the generated commit message and confirm
 
-| Key          | Action                                         |
-| :----------- | :--------------------------------------------- |
-| <kbd>C</kbd> | Open eckra's full-screen AI commit flow        |
-
-eckra generates a commit message, shows it for your approval, and commits once you confirm.
+eckra opens full-screen, writes the message, and commits once you approve.
 
 Manage the integration:
 
