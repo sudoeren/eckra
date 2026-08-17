@@ -13,22 +13,19 @@
 
 ---
 
-## Overview
+## What is eckra?
 
-**eckra** is an interactive Git management tool designed for developers who value both speed and clarity. It integrates with multiple AI providers to analyze your staged changes and suggest context-aware commit messages, ensuring your project history remains professional and descriptive without the manual overhead.
+eckra is an interactive Git management tool. It analyzes your changes and suggests context-aware commit messages — no config required to get started.
 
-## Key Features
+## Features
 
-- **AI-Powered Suggestions**: Automatically generates commit messages based on actual code diffs. Supports **LM Studio**, **OpenAI**, **Anthropic**, **Ollama**, **OpenRouter**, and **Google Gemini**.
-- **Select & Edit**: Pick an AI suggestion and refine it instantly to match your specific needs.
-- **Staged Diff Review**: Inspect your changes in a beautiful, syntax-highlighted format directly before committing.
-- **Project Story**: AI analyzes your commit history and generates a human-readable timeline — understand any repo's evolution at a glance.
-- **Interactive Dashboard**: A comprehensive menu system for staging files, managing branches, stashing changes, and syncing with remotes.
-- **Built for Speed**: Zero-config required for standard Git operations. Fast, responsive, and intuitive.
+- **AI commit messages** based on your actual diff (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio)
+- **Select & edit** any suggestion before committing
+- **Staged diff review** with syntax highlighting
+- **Project story** — AI timeline of your commit history
+- **Interactive dashboard** for staging, branches, stashes, and remotes
 
 ## Installation
-
-Install eckra globally using npm:
 
 ```bash
 npm install -g eckra
@@ -36,36 +33,50 @@ npm install -g eckra
 
 ## Usage
 
-Just type `eckra` in any Git repository to launch the interactive dashboard:
+Run `eckra` in any Git repository to open the dashboard:
 
 ```bash
 eckra
 ```
 
-### Quick Commands
+Or jump straight into action:
 
-Skip the menu and jump straight into action:
+| Command          | Alias | Action                          |
+| :--------------- | :---- | :------------------------------ |
+| `eckra commit`   | `c`   | AI-assisted commit flow         |
+| `eckra status`   | `st`  | Status and staged files         |
+| `eckra push`     | `p`   | Push to remote                  |
+| `eckra easy`     | `e`   | Stage all, AI commit, push      |
+| `eckra story`    | `t`   | AI project timeline             |
+| `eckra start`    | `s`   | Interactive dashboard           |
+| `eckra lazygit`  | `lg`  | Lazygit AI-commit integration   |
+| `eckra config`   | `cfg` | View or edit config             |
+| `eckra doctor`   | `dr`  | Health check                    |
+| `eckra suggest`  | `sg`  | Print an AI commit message      |
 
-| Command          | Alias | Action                                        |
-| :--------------- | :---- | :-------------------------------------------- |
-| `eckra commit`   | `c`   | Start the AI-assisted commit flow             |
-| `eckra status`   | `st`  | Check repository status and staged files      |
-| `eckra push`     | `p`   | Sync local commits with the remote repository |
-| `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
-| `eckra story`    | `t`   | AI-generated project timeline from commit history |
-| `eckra start`    | `s`   | Start the interactive dashboard               |
-| `eckra config`   | `cfg` | View or edit configuration (non-interactive)  |
-| `eckra doctor`   | `dr`  | Health check: git, config, AI provider        |
-| `eckra suggest`  | `sg`  | Print an AI commit message (non-interactive)  |
-| `eckra lazygit`  | `lg`  | Manage the lazygit AI-commit integration      |
+> **Tip:** `eckra e` stages everything, commits with AI, and pushes in one go.
 
-> **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
+## Lazygit Integration
+
+Use eckra's AI commit flow inside [lazygit](https://github.com/jesseduffield/lazygit):
+
+```bash
+eckra lazygit install
+```
+
+Restart lazygit, stage files, then press `C` in the files view. eckra opens full-screen, generates a commit message, and commits once you confirm.
+
+Manage the integration:
+
+```bash
+eckra lazygit            # Status + YAML snippet
+eckra lazygit install    # Add the custom command
+eckra lazygit remove     # Remove it
+```
 
 ## AI Configuration
 
-eckra supports multiple AI providers. You can switch between them using the built-in settings menu (`Settings > Change Provider`).
-
-### Supported Providers
+eckra works out of the box with **LM Studio** (`http://localhost:1234`). Other providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`:
 
 | Provider          | Type            | Default Model                |
 | :---------------- | :-------------- | :--------------------------- |
@@ -76,152 +87,43 @@ eckra supports multiple AI providers. You can switch between them using the buil
 | **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`        |
 | **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`       |
 
-### Default Setup (LM Studio)
+Per-repository overrides go in `.eckrarc` (gitignored — it can hold API keys).
 
-By default, eckra connects to **LM Studio**'s local server:
-
-- **URL**: `http://localhost:1234`
-- **Requirement**: Ensure LM Studio is running and the "Local Server" is started with a loaded model.
-
-### Configuration
-
-You can configure your provider in two ways:
-
-1. **Interactive**: Run `eckra`, go to `More > Settings`, and select your provider and enter your credentials.
-2. **Config file**: Edit `~/.eckra/config.json` directly:
-
-```json
-{
-  "aiProvider": "openrouter",
-  "openrouterApiKey": "sk-or-...",
-  "openrouterModel": "anthropic/claude-3.5-sonnet"
-}
-```
-
-You can also create a `.eckrarc` file in your project root to override global settings per-repository. `.eckrarc` is ignored by default because it may contain API keys; avoid committing provider secrets to your repository.
-
-### CLI Config Commands
-
-View, edit, and manage configuration without the interactive menu. These work from any directory (no Git repo required). API keys are masked by default — pass `--show-secrets` to reveal them.
+### Config CLI
 
 ```bash
-eckra config                    # Show effective config (JSON, secrets masked)
-eckra config get aiProvider     # Print a single value
-eckra config set theme dark     # Set a value (writes to ~/.eckra/config.json)
+eckra config                    # Show config (secrets masked)
+eckra config get aiProvider     # Print a value
+eckra config set theme dark     # Set a value
 eckra config unset aiInstruction# Remove a key
 eckra config reset              # Restore defaults
-eckra config path               # Print the config file path
+eckra config path               # Config file path
 ```
 
-Use `--local` to operate on the project's `.eckrarc` instead of the global config:
+Add `--local` to target the project's `.eckrarc` instead.
+
+### Health check
+
+`eckra doctor` checks Git, config, and the AI provider connection. Use `--no-provider` for an offline check or `--json` for CI. It exits with code `1` when any check fails.
+
+### Scripts & CI
+
+`eckra suggest` prints a commit message to stdout without any prompts:
 
 ```bash
-eckra config set aiProvider gemini --local
-eckra config unset ollamaUrl --local
-eckra config path --local
+eckra suggest                    # Message for staged changes
+eckra suggest --all              # Stage everything first
+eckra suggest --instruction "focus on the why"
 ```
-
-### Health Check
-
-`eckra doctor` runs a series of health checks across three areas — Git, configuration, and the AI provider connection — and prints a pass/warn/fail report with an overall summary. It works from any directory.
-
-```bash
-eckra doctor             # Run all checks (live provider test)
-eckra doctor --no-provider  # Skip the network check (offline)
-eckra doctor --json      # Machine-readable JSON report (for scripts/CI)
-```
-
-It exits with code `1` when any check fails, making it usable in CI pipelines.
-
-### Lazygit Integration
-
-Use eckra's AI commit flow directly inside [lazygit](https://github.com/jesseduffield/lazygit). Install the integration with:
-
-```bash
-eckra lazygit install
-```
-
-If you don't have a lazygit config file yet (lazygit ships without one), `install` creates `~/.config/lazygit/config.yml` (and the folder) for you. It adds one custom command:
-
-| Key | Action                                    |
-| :-- | :---------------------------------------- |
-| `C` | Open eckra's aicommits-style AI commit flow for the staged files |
-
-Restart lazygit, stage files, then press `C` in the files view. eckra opens full-screen: it generates an AI commit message, shows it, asks for your confirmation, and commits once you approve.
-
-Manage the integration:
-
-```bash
-eckra lazygit            # Show status + the YAML snippet
-eckra lazygit install    # Add the custom command to lazygit's config
-eckra lazygit remove     # Remove it
-```
-
-### aicommits-style Commits
-
-`eckra commit` works like [aicommits](https://github.com/Nutlope/aicommits): generate a message, review it, confirm, and it commits:
-
-```bash
-git add <files...>
-eckra commit
-```
-
-Options:
-
-```bash
-eckra commit -a                 # Stage all changes first
-eckra commit -y                 # Skip the confirmation prompt
-eckra commit -g 3               # Generate 3 messages to pick from
-eckra commit -m "feat: manual"  # Commit with your own message
-eckra commit --instruction "focus on tests"  # Steer the AI
-eckra commit --no-commit        # Only show the message, don't commit
-```
-
-If you decline the AI message, eckra lets you write your own (or cancel). If the AI fails, it falls back to a manual message.
-
-### Non-Interactive Commit Messages
-
-For scripts and CI, `eckra suggest` prints a single AI commit message to stdout without any prompts:
-
-```bash
-eckra suggest                # Message for staged changes
-eckra suggest --all          # Stage everything first
-eckra suggest --instruction "focus on the why" --output .git/msg.txt
-```
-
-## Troubleshooting
-
-| Problem | Likely Cause | Solution |
-| :------ | :----------- | :------- |
-| "This folder is not a Git repository!" | Not inside a git repo | Run `git init` or `cd` into a repo |
-| "Not connected" (LM Studio / Ollama) | Local server not running | Start LM Studio server on `:1234` or Ollama on `:11434` |
-| "AI Provider Error: 401" | Wrong or missing API key | Check `~/.eckra/config.json` or re-enter key via `Settings` menu |
-| "AI returned no choices" | Invalid model name | Verify the model name in settings matches your provider |
-| "AI returned empty or too short response" | Local model not loaded | Load a model in LM Studio / Ollama before using eckra |
-| "Malformed config file" | Bad JSON in config | Fix or delete `~/.eckra/config.json` — defaults will be used |
-| Push fails: "no upstream" | First push on a new branch | eckra auto-detects this and offers to set upstream for you |
-| Rebase / cherry-pick failed | Merge conflicts | Resolve conflicts manually, then continue from the rebase menu |
-| Timeout / "ECONNABORTED" | Provider slow or unreachable | Check your network, firewall, or provider status page |
 
 ## Contributing
 
-Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Uninstall
 
-You can uninstall Eckra either from the app or manually:
-
-### In-App Uninstall (Recommended)
-
-1. Run `eckra` and go to **More > Settings**
-2. Select **"Uninstall Eckra"**
-3. Confirm by typing `uninstall`
-
-This will remove all configuration files (`~/.eckra/`) and the global npm package.
-
-### Manual Uninstall
+- **In-app:** `eckra` → **More > Settings** → **Uninstall Eckra** → type `uninstall`
+- **Manual:**
 
 ```bash
 npm uninstall -g eckra
@@ -231,5 +133,3 @@ rm -rf ~/.eckra
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
-
-
