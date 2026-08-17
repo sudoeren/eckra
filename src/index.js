@@ -118,6 +118,13 @@ program
     }
   });
 
+program
+  .command("setup")
+  .description("Run the setup/onboarding wizard")
+  .action(async () => {
+    await require("./ui/modules/onboarding").doOnboarding();
+  });
+
 // ─── eckra config ───────────────────────────────────────────────
 // Non-interactive config view/edit. Works outside git repos.
 

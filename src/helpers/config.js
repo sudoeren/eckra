@@ -22,6 +22,7 @@ const DEFAULT_CONFIG = {
   model: "git-commit-message/unsloth.Q4_K_M.gguf",
   theme: "auto",
   lazygitKey: "C",
+  onboarded: false,
   aiInstruction:
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };
@@ -264,10 +265,20 @@ function unsetConfigValue(key, { local = false } = {}) {
 }
 
 /**
- * Check if the application is configured (global config file or local .eckrarc)
+ * Check whether onboarding has been completed.
+ *
+ * Onboarding only counts as done once its completion flag is set (written
+ * after every onboarding step finishes). An explicit `onboarded: false` also
+ * means "not done". Existing users who have a global config without the flag
+ * are migrated as done so they are not re-onboarded.
  */
 function isConfigured() {
-  return fs.existsSync(CONFIG_FILE) || findLocalConfig() !== null;
+  if (getConfig().onboarded === true) return true;
+  const raw = getRawConfig({ local: false });
+  if (Object.prototype.hasOwnProperty.call(raw, "onboarded")) {
+    return raw.onboarded === true;
+  }
+  return fs.existsSync(CONFIG_FILE);
 }
 
 function resetConfigCache() {

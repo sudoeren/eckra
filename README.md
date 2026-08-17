@@ -67,6 +67,7 @@ Or jump straight into action:
 | `eckra config`  | `cfg` | View or edit config           |
 | `eckra doctor`  | `dr`  | Health check                  |
 | `eckra suggest` | `sg`  | Print an AI commit message    |
+| `eckra setup`   |       | Run the setup/onboarding wizard |
 
 > [!TIP]
 > `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.

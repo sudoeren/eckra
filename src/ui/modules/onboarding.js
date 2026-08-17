@@ -120,7 +120,7 @@ async function doOnboarding() {
     answers,
     DEFAULT_CONFIG
   );
-  configData = { ...configData, ...modelAnswers };
+  configData = { ...configData, ...modelAnswers, onboarded: true };
 
   // Save the config
   saveConfig(configData);
