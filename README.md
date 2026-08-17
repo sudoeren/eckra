@@ -2,13 +2,16 @@
   <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/screenshot.png" alt="eckra terminal preview" width="800">
 </p>
 
-# Eckra
-
-**AI-powered Git management: commits, stories, and the whole repo in one place**
+<h1 align="center">Eckra</h1>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?label=total%20downloads" alt="npm total downloads"></a>
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra" alt="npm version"></a>
+  <strong>AI-powered Git management: commits, stories, and the whole repo in one place</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra?style=flat-square&color=4a9eff" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?style=flat-square&color=4a9eff" alt="total downloads"></a>
+  <a href="https://github.com/sudoeren/eckra/actions"><img src="https://img.shields.io/github/actions/workflow/status/sudoeren/eckra/ci.yml?style=flat-square&color=4a9eff" alt="CI status"></a>
 </p>
 
 ---
@@ -28,6 +31,8 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 
 ## Installation
 
+Install eckra globally:
+
 ```bash
 npm install -g eckra
 ```
@@ -42,20 +47,21 @@ eckra
 
 Or jump straight into action:
 
-| Command          | Alias | Action                          |
-| :--------------- | :---- | :------------------------------ |
-| `eckra commit`   | `c`   | AI-assisted commit flow         |
-| `eckra status`   | `st`  | Status and staged files         |
-| `eckra push`     | `p`   | Push to remote                  |
-| `eckra easy`     | `e`   | Stage all, AI commit, push      |
-| `eckra story`    | `t`   | AI project timeline             |
-| `eckra start`    | `s`   | Interactive dashboard           |
-| `eckra lazygit`  | `lg`  | Lazygit AI-commit integration   |
-| `eckra config`   | `cfg` | View or edit config             |
-| `eckra doctor`   | `dr`  | Health check                    |
-| `eckra suggest`  | `sg`  | Print an AI commit message      |
+| Command         | Alias | Action                        |
+| :-------------- | :---- | :---------------------------- |
+| `eckra commit`  | `c`   | AI-assisted commit flow       |
+| `eckra status`  | `st`  | Status and staged files       |
+| `eckra push`    | `p`   | Push to remote                |
+| `eckra easy`    | `e`   | Stage all, AI commit, push    |
+| `eckra story`   | `t`   | AI project timeline           |
+| `eckra start`   | `s`   | Interactive dashboard         |
+| `eckra lazygit` | `lg`  | Lazygit AI-commit integration |
+| `eckra config`  | `cfg` | View or edit config           |
+| `eckra doctor`  | `dr`  | Health check                  |
+| `eckra suggest` | `sg`  | Print an AI commit message    |
 
-> **Tip:** `eckra e` stages everything, commits with AI, and pushes in one go.
+> [!TIP]
+> `eckra e` stages everything, commits with AI, and pushes in one go.
 
 ## Lazygit Integration
 
@@ -65,7 +71,7 @@ Use eckra's AI commit flow inside [lazygit](https://github.com/jesseduffield/laz
 eckra lazygit install
 ```
 
-Restart lazygit, stage files, then press `C` in the files view. eckra opens full-screen, generates a commit message, and commits once you confirm.
+Restart lazygit, stage files, then press <kbd>C</kbd> in the files view. eckra opens full-screen, generates a commit message, and commits once you confirm.
 
 Manage the integration:
 
@@ -79,16 +85,17 @@ eckra lazygit remove     # Remove it
 
 eckra works out of the box with **LM Studio** (`http://localhost:1234`). Other providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`:
 
-| Provider          | Type            | Default Model                |
-| :---------------- | :-------------- | :--------------------------- |
-| **LM Studio**     | Local           | (user-configured)            |
-| **Ollama**        | Local           | (user-configured)            |
-| **OpenAI**        | Cloud (API Key) | `gpt-5-mini`                 |
-| **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`          |
-| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`        |
-| **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`       |
+| Provider          | Type            | Default Model          |
+| :---------------- | :-------------- | :--------------------- |
+| **LM Studio**     | Local           | (user-configured)      |
+| **Ollama**        | Local           | (user-configured)      |
+| **OpenAI**        | Cloud (API Key) | `gpt-5-mini`           |
+| **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`    |
+| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`  |
+| **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`|
 
-Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
+> [!NOTE]
+> Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
 
 ### Config CLI
 
@@ -101,7 +108,8 @@ eckra config reset              # Restore defaults
 eckra config path               # Config file path
 ```
 
-Add `--local` to target the project's `.eckrarc` instead.
+> [!NOTE]
+> Add `--local` to target the project's `.eckrarc` instead.
 
 ### Health check
 
