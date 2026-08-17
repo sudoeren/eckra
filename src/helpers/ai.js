@@ -248,8 +248,8 @@ Write only the commit message, no explanations.`;
 
   const lines = message.split("\n").map((line) => line.trimEnd());
 
-  if (lines.length > 0 && lines[0].length > 72) {
-    lines[0] = lines[0].substring(0, 72);
+  if (lines.length > 0 && lines[0].length > 50) {
+    lines[0] = lines[0].substring(0, 50);
   }
 
   return lines.join("\n");
@@ -348,8 +348,8 @@ Write exactly ${count} suggestions following this format. Separate each with "--
         .map((block) => {
           const lines = block.split("\n").map((line) => line.trimEnd());
 
-          if (lines.length > 0 && lines[0].length > 72) {
-            lines[0] = lines[0].substring(0, 72);
+          if (lines.length > 0 && lines[0].length > 50) {
+            lines[0] = lines[0].substring(0, 50);
           }
 
           return lines.join("\n");
