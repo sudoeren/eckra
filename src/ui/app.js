@@ -193,68 +193,44 @@ async function easyWorkflow() {
     return;
   }
 
-  let finalMessage = null;
-  let shouldPush = true;
+  // 2. Generate the AI message
+  let message;
+  const spinAi = spinner("🤖 Generating AI commit message...");
+  spinAi.start();
 
-  while (!finalMessage) {
-    const spinAi = spinner("🤖 Generating AI commit message...");
-    spinAi.start();
-    let aiMessage;
+  try {
+    const diff = await getStagedDiff();
+    const status = await getGitStatus();
+    message = await generateCommitMessage(diff, status.staged);
+    spinAi.stop();
 
-    try {
-      const diff = await getStagedDiff();
-      const status = await getGitStatus();
-      aiMessage = await generateCommitMessage(diff, status.staged);
-      spinAi.stop();
+    console.log(`\n  ${s.ai("🤖 AI Suggestion:")}\n`);
+    message.split("\n").forEach((line) => console.log(s.text("    " + line)));
+    console.log();
+  } catch (err) {
+    fail(spinAi, `AI Error: ${err.message}`);
+    const { manual } = await prompt([
+      {
+        type: "input",
+        name: "manual",
+        message: s.muted("Enter commit message manually:"),
+        validate: (v) => v.length > 0 || "Message cannot be empty",
+      },
+    ]);
+    message = manual;
+  }
 
-      console.log(`\n  ${s.ai("🤖 AI Suggestion:")}\n`);
-      aiMessage
-        .split("\n")
-        .forEach((line) => console.log(s.text("    " + line)));
-      console.log();
-
-      const { choice } = await prompt([
-        {
-          type: "list",
-          name: "choice",
-          message: s.muted("Action:"),
-          choices: [
-            menuItem("Looks good (Commit & Push)", "success", "commit-push"),
-            menuItem("Looks good (Commit Only)", "primary", "commit-only"),
-            menuItem("Regenerate", "primary", "retry"),
-            menuItem("Edit subject line", "text", "edit"),
-            menuItem("Cancel", "muted", "cancel"),
-          ],
-          loop: true,
-        },
-      ]);
-
-      if (choice === "commit-push" || choice === "commit-only") {
-        finalMessage = aiMessage;
-        shouldPush = choice === "commit-push";
-      } else if (choice === "edit") {
-        const subject = aiMessage.split("\n")[0];
-        const body = aiMessage.split("\n").slice(1).join("\n");
-
-        const { editedSubject } = await prompt([
-          {
-            type: "input",
-            name: "editedSubject",
-            message: s.muted("Edit subject line:"),
-            default: subject,
-            validate: (v) => v.length > 0 || "Subject cannot be empty",
-          },
-        ]);
-        finalMessage = body
-          ? `${editedSubject}\n\n${body.trim()}`
-          : editedSubject;
-        shouldPush = false;
-      } else if (choice === "cancel") {
-        return;
-      }
-      // If retry, loop continues to generate a new message
-    } catch (err) {
-      fail(spinAi, `AI Error: ${err.message}`);
+  // 3. Confirm the message
+  if (message) {
+    const { confirmCommit } = await prompt([
+      {
+        type: "confirm",
+        name: "confirmCommit",
+        message: s.muted("Commit with this message?"),
+        default: true,
+      },
+    ]);
+    if (!confirmCommit) {
       const { manual } = await prompt([
         {
           type: "input",
@@ -263,26 +239,36 @@ async function easyWorkflow() {
           validate: (v) => v.length > 0 || "Message cannot be empty",
         },
       ]);
-      finalMessage = manual;
-      shouldPush = false;
+      message = manual;
     }
   }
 
-  // 3. Commit
+  if (!message) return;
+
+  // 4. Commit
   try {
     const spinCommit = spinner("Creating commit...");
     spinCommit.start();
-    const result = await createCommit(finalMessage);
+    const result = await createCommit(message);
     done(spinCommit, `Commit: ${result.commit.substring(0, 7)}`);
 
-    // 4. Push (optional)
-    if (shouldPush) {
+    // 5. Confirm push
+    const { pushNow } = await prompt([
+      {
+        type: "confirm",
+        name: "pushNow",
+        message: s.muted("Push to remote?"),
+        default: true,
+      },
+    ]);
+
+    if (pushNow) {
       await sync().doPush(true);
     }
 
     console.log(
       s.success(
-        `\n  ✨ Workflow complete!${shouldPush ? "" : " (push skipped)"}\n`
+        `\n  ✨ Workflow complete!${pushNow ? "" : " (push skipped)"}\n`
       )
     );
   } catch (err) {

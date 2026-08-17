@@ -52,7 +52,7 @@ Or jump straight into action:
 | `eckra commit`  | `c`   | AI-assisted commit flow       |
 | `eckra status`  | `st`  | Status and staged files       |
 | `eckra push`    | `p`   | Push to remote                |
-| `eckra easy`    | `e`   | Stage all, AI commit, push    |
+| `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
 | `eckra story`   | `t`   | AI project timeline           |
 | `eckra start`   | `s`   | Interactive dashboard         |
 | `eckra lazygit` | `lg`  | Lazygit AI-commit integration |
@@ -61,7 +61,7 @@ Or jump straight into action:
 | `eckra suggest` | `sg`  | Print an AI commit message    |
 
 > [!TIP]
-> `eckra e` stages everything, commits with AI, and pushes in one go.
+> `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
 
 ## Lazygit Integration
 
@@ -72,10 +72,21 @@ eckra lazygit install
 ```
 
 1. Restart lazygit and stage your files
-2. Open the **files view** and press `C`
+2. Open the **files view** and press **`C`** (uppercase)
 3. Review the generated commit message and confirm
 
 eckra opens full-screen, writes the message, and commits once you approve.
+
+### Change the shortcut key
+
+The key defaults to `C` (uppercase). If it collides with a lazygit shortcut you already use, pick another letter:
+
+```bash
+eckra config set lazygitKey g
+eckra lazygit install    # re-applies the new key to lazygit's config
+```
+
+eckra warns you when the chosen letter is bound by a default lazygit shortcut, but lets you keep it anyway.
 
 Manage the integration:
 

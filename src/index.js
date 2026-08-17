@@ -115,7 +115,7 @@ program
 // ─── eckra config ───────────────────────────────────────────────
 // Non-interactive config view/edit. Works outside git repos.
 
-const SECRET_KEY_RE = /key|token|secret/i;
+const SECRET_KEY_RE = /api[_-]?key|token|secret/i;
 
 function maskForDisplay(key, value, showSecrets) {
   if (value == null || value === "") return "(not set)";
@@ -341,11 +341,14 @@ function runLazygitCommand(action) {
   const {
     getLazygitConfigPath,
     getLazygitBlock,
+    getLazygitKey,
+    getLazygitKeyConflictWarning,
     ensureLazygitCommand,
     removeLazygitCommand,
   } = require("./helpers/lazygit");
 
   const file = getLazygitConfigPath();
+  const key = getLazygitKey();
 
   if (!action || action === "status") {
     const fs = require("fs");
@@ -366,11 +369,16 @@ function runLazygitCommand(action) {
         (fileExists ? "" : s.warning("  (does not exist yet)"))
     );
     console.log(
+      s.muted("  Key: ") + s.text(`${key} (uppercase, in files view)`)
+    );
+    console.log(
       s.muted("  Status: ") +
         (installed
-          ? s.success("installed (C in files view)")
+          ? s.success(`installed (${key} in files view)`)
           : s.warning("not installed"))
     );
+    const conflict = getLazygitKeyConflictWarning(key);
+    if (conflict) console.log(s.warning(`  ⚠️  ${conflict}`));
     console.log();
     console.log(s.bold("  Snippet (manual install):"));
     console.log(s.text("customCommands:"));
@@ -386,8 +394,12 @@ function runLazygitCommand(action) {
           s.success(`  ✓ Lazygit integration installed: ${result.path}`)
         );
         console.log(
-          s.muted("  Restart lazygit. Then press C in the files view.")
+          s.muted(
+            `  Restart lazygit. Then press ${key} (uppercase) in the files view.`
+          )
         );
+        const conflict = getLazygitKeyConflictWarning(key);
+        if (conflict) console.log(s.warning(`  ⚠️  ${conflict}`));
       } else {
         console.log(s.muted(`  ℹ Already installed: ${result.path}`));
       }
@@ -423,7 +435,9 @@ function runLazygitCommand(action) {
 program
   .command("lazygit")
   .alias("lg")
-  .description("Manage the lazygit integration (AI commit via C)")
+  .description(
+    "Manage the lazygit integration (AI commit via configurable key)"
+  )
   .argument("[action]", "status, install, remove")
   .action(runLazygitCommand);
 

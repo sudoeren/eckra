@@ -21,6 +21,7 @@ const DEFAULT_CONFIG = {
   geminiModel: "gemini-3.1-flash-lite",
   model: "git-commit-message/unsloth.Q4_K_M.gguf",
   theme: "auto",
+  lazygitKey: "C",
   aiInstruction:
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };

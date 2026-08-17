@@ -4,11 +4,16 @@ const path = require("path");
 const {
   getLazygitConfigPath,
   getLazygitBlock,
+  getLazygitKey,
+  getLazygitKeyConflictWarning,
+  normalizeLazygitKey,
   ensureLazygitCommand,
   removeLazygitCommand,
 } = require("../src/helpers/lazygit");
+const configHelper = require("../src/helpers/config");
 
 jest.mock("fs");
+jest.mock("../src/helpers/config");
 
 describe("Lazygit Helper", () => {
   const originalPlatform = process.platform;
@@ -24,6 +29,7 @@ describe("Lazygit Helper", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(os, "homedir").mockReturnValue("/home/test");
+    configHelper.getConfig.mockReturnValue({ lazygitKey: "C" });
     delete process.env.LAZYGIT_CONFIG;
     delete process.env.XDG_CONFIG_HOME;
     delete process.env.APPDATA;
@@ -91,6 +97,50 @@ describe("Lazygit Helper", () => {
     expect(block).not.toContain("<c-g>");
     expect(block).not.toContain("<c-h>");
     expect(block).not.toMatch(/',$/m);
+  });
+
+  test("getLazygitKey defaults to uppercase C from config", () => {
+    expect(getLazygitKey()).toBe("C");
+  });
+
+  test("getLazygitKey falls back to C when config key is invalid", () => {
+    configHelper.getConfig.mockReturnValue({ lazygitKey: "bad key" });
+    expect(getLazygitKey()).toBe("C");
+  });
+
+  test("block uses the configured lazygit key", () => {
+    configHelper.getConfig.mockReturnValue({ lazygitKey: "j" });
+    const block = getLazygitBlock();
+    expect(block).toContain("- key: 'J'");
+    expect(block).not.toContain("- key: 'C'");
+  });
+
+  test("block accepts an explicit key and uppercases it", () => {
+    const block = getLazygitBlock("j");
+    expect(block).toContain("- key: 'J'");
+  });
+
+  test("normalizeLazygitKey uppercases a single letter", () => {
+    expect(normalizeLazygitKey("j")).toBe("J");
+    expect(normalizeLazygitKey(" C ")).toBe("C");
+  });
+
+  test("normalizeLazygitKey rejects invalid values", () => {
+    expect(normalizeLazygitKey("ab")).toBeNull();
+    expect(normalizeLazygitKey("1")).toBeNull();
+    expect(normalizeLazygitKey("")).toBeNull();
+    expect(normalizeLazygitKey(null)).toBeNull();
+    expect(normalizeLazygitKey(undefined)).toBeNull();
+  });
+
+  test("conflict warning flags lazygit default keys but allows them", () => {
+    expect(getLazygitKeyConflictWarning("c")).not.toBeNull();
+    expect(getLazygitKeyConflictWarning("a")).not.toBeNull();
+    expect(getLazygitKeyConflictWarning("p")).not.toBeNull();
+  });
+
+  test("no conflict warning for a free key", () => {
+    expect(getLazygitKeyConflictWarning("g")).toBeNull();
   });
 
   test("install is idempotent when markers exist", () => {

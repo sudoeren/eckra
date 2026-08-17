@@ -1,24 +1,157 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { getConfig } = require("./config");
 
 const BEGIN_MARKER = "# --- begin eckra (managed by eckra) ---";
 const END_MARKER = "# --- end eckra ---";
 
 /**
- * The customCommands YAML block injected into the lazygit config.
- * Capital C launches the interactive aicommits-style commit flow.
+ * Lazygit default keys bound in the "files" context (and universal keys that
+ * apply in every panel) that would clash with an eckra custom-command key.
+ * Used to warn (not block) on collisions. Based on lazygit's default config.
  */
-function getLazygitBlock() {
+const CONFLICTING_KEYS = new Set([
+  // files context
+  "a",
+  "A",
+  "c",
+  "C",
+  "D",
+  "f",
+  "i",
+  "M",
+  "r",
+  "s",
+  "S",
+  "w",
+  "x",
+  "y",
+  // universal
+  "d",
+  "e",
+  "H",
+  "h",
+  "J",
+  "j",
+  "K",
+  "k",
+  "L",
+  "l",
+  "m",
+  "n",
+  "N",
+  "o",
+  "p",
+  "P",
+  "q",
+  "Q",
+  "R",
+  "v",
+  "W",
+  "z",
+  "Z",
+  // non-letter keys a user might type
+  "?",
+  "/",
+  "`",
+  "[",
+  "]",
+  "-",
+  "=",
+  "+",
+  "_",
+  "|",
+  "\\",
+  "@",
+  ":",
+  ",",
+  ".",
+  "<",
+  ">",
+  "'",
+  "space",
+  "enter",
+  "tab",
+  "esc",
+  // common ctrl combos
+  "<c-a>",
+  "<c-b>",
+  "<c-c>",
+  "<c-d>",
+  "<c-e>",
+  "<c-f>",
+  "<c-g>",
+  "<c-h>",
+  "<c-i>",
+  "<c-j>",
+  "<c-k>",
+  "<c-l>",
+  "<c-m>",
+  "<c-n>",
+  "<c-o>",
+  "<c-p>",
+  "<c-q>",
+  "<c-r>",
+  "<c-s>",
+  "<c-t>",
+  "<c-u>",
+  "<c-v>",
+  "<c-w>",
+  "<c-x>",
+  "<c-y>",
+  "<c-z>",
+]);
+
+/**
+ * The customCommands YAML block injected into the lazygit config.
+ * Defaults to the configured `lazygitKey` (uppercase C unless changed).
+ */
+function getLazygitBlock(key) {
+  const k = normalizeLazygitKey(key || getLazygitKey());
   return [
     `  ${BEGIN_MARKER}`,
-    "  - key: 'C'",
+    `  - key: '${k}'`,
     "    context: 'files'",
     "    description: 'AI commit with eckra'",
     "    command: 'eckra commit'",
     "    subprocess: true",
     `  ${END_MARKER}`,
   ].join("\n");
+}
+
+/**
+ * Resolve the configured lazygit custom-command key.
+ */
+function getLazygitKey() {
+  try {
+    return normalizeLazygitKey(getConfig().lazygitKey) || "C";
+  } catch {
+    return "C";
+  }
+}
+
+/**
+ * Normalize a user-supplied lazygit key to a single uppercase letter.
+ * Returns null when the value is not usable.
+ */
+function normalizeLazygitKey(key) {
+  if (typeof key !== "string") return null;
+  const trimmed = key.trim();
+  if (/^[a-zA-Z]$/.test(trimmed)) return trimmed.toUpperCase();
+  return null;
+}
+
+/**
+ * Return a conflict warning string for a key, or null when it is safe.
+ */
+function getLazygitKeyConflictWarning(key) {
+  const k = normalizeLazygitKey(key);
+  if (!k) return null;
+  if (CONFLICTING_KEYS.has(k)) {
+    return `Key "${k}" is bound by a default lazygit shortcut in the files view; it may not trigger eckra. Pick another letter if it does not work.`;
+  }
+  return null;
 }
 
 /**
@@ -111,9 +244,13 @@ function removeLazygitCommand() {
 
 module.exports = {
   getLazygitBlock,
+  getLazygitKey,
   getLazygitConfigPath,
+  getLazygitKeyConflictWarning,
+  normalizeLazygitKey,
   ensureLazygitCommand,
   removeLazygitCommand,
+  CONFLICTING_KEYS,
   BEGIN_MARKER,
   END_MARKER,
 };
