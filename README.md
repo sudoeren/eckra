@@ -56,6 +56,8 @@ Skip the menu and jump straight into action:
 | `eckra start`    | `s`   | Start the interactive dashboard               |
 | `eckra config`   | `cfg` | View or edit configuration (non-interactive)  |
 | `eckra doctor`   | `dr`  | Health check: git, config, AI provider        |
+| `eckra suggest`  | `sg`  | Print an AI commit message (non-interactive)  |
+| `eckra lazygit`  | `lg`  | Manage the lazygit AI-commit integration      |
 
 > **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
 
@@ -130,6 +132,62 @@ eckra doctor --json      # Machine-readable JSON report (for scripts/CI)
 ```
 
 It exits with code `1` when any check fails, making it usable in CI pipelines.
+
+### Lazygit Integration
+
+Use eckra's AI commit flow directly inside [lazygit](https://github.com/jesseduffield/lazygit). Install the integration with:
+
+```bash
+eckra lazygit install
+```
+
+If you don't have a lazygit config file yet (lazygit ships without one), `install` creates `~/.config/lazygit/config.yml` (and the folder) for you. It adds one custom command:
+
+| Key   | Action                                    |
+| :---- | :---------------------------------------- |
+| `Ctrl+g` | Open eckra's aicommits-style AI commit flow for the staged files |
+
+Restart lazygit, stage files, then press `Ctrl+g` in the files view. eckra opens full-screen: it generates an AI commit message, shows it, asks for your confirmation, and commits once you approve.
+
+Manage the integration:
+
+```bash
+eckra lazygit            # Show status + the YAML snippet
+eckra lazygit install    # Add the custom command to lazygit's config
+eckra lazygit remove     # Remove it
+```
+
+### aicommits-style Commits
+
+`eckra commit` works like [aicommits](https://github.com/Nutlope/aicommits): generate a message, review it, confirm, and it commits:
+
+```bash
+git add <files...>
+eckra commit
+```
+
+Options:
+
+```bash
+eckra commit -a                 # Stage all changes first
+eckra commit -y                 # Skip the confirmation prompt
+eckra commit -g 3               # Generate 3 messages to pick from
+eckra commit -m "feat: manual"  # Commit with your own message
+eckra commit --instruction "focus on tests"  # Steer the AI
+eckra commit --no-commit        # Only show the message, don't commit
+```
+
+If you decline the AI message, eckra lets you write your own (or cancel). If the AI fails, it falls back to a manual message.
+
+### Non-Interactive Commit Messages
+
+For scripts and CI, `eckra suggest` prints a single AI commit message to stdout without any prompts:
+
+```bash
+eckra suggest                # Message for staged changes
+eckra suggest --all          # Stage everything first
+eckra suggest --instruction "focus on the why" --output .git/msg.txt
+```
 
 ## Troubleshooting
 

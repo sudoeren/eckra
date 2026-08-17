@@ -69,11 +69,25 @@ program
 program
   .command("commit")
   .alias("c")
-  .description("AI-powered commit")
-  .option("-m, --message <message>", "Manual commit message")
+  .description("Generate an AI commit message and commit (aicommits-style)")
+  .option("-m, --message <message>", "Commit with this message (skips AI)")
+  .option("-a, --all", "Stage all changes before generating")
+  .option("-y, --yes", "Skip the confirmation prompt")
+  .option(
+    "-g, --generate <count>",
+    "Generate N messages to pick from (default 1)"
+  )
+  .option("--instruction <text>", "Optional instruction for the AI")
+  .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
     if (await checkGitRepo()) {
-      await app().quickCommit(options.message);
+      await app().quickCommit(options.message, {
+        all: options.all,
+        yes: options.yes,
+        generate: options.generate,
+        instruction: options.instruction,
+        noCommit: options.commit === false,
+      });
     }
   });
 
@@ -285,6 +299,133 @@ program
   .option("--json", "Output the report as JSON")
   .option("--no-provider", "Skip the live AI provider connection check")
   .action(runDoctorCommand);
+
+// ─── eckra suggest ─────────────────────────────────────────────
+// Non-interactive commit message generation (used by lazygit, scripts).
+
+async function runSuggestCommand(options) {
+  const { generateSuggestedCommit } = require("./helpers/suggest");
+
+  try {
+    const message = await generateSuggestedCommit({
+      all: options.all,
+      instruction: options.instruction,
+    });
+
+    if (options.output) {
+      require("fs").writeFileSync(options.output, message + "\n", "utf8");
+    } else {
+      process.stdout.write(message + "\n");
+    }
+  } catch (err) {
+    process.stderr.write(s.error(`  ✗ ${err.message}\n`));
+    process.exitCode = 1;
+  }
+}
+
+program
+  .command("suggest")
+  .alias("sg")
+  .description(
+    "Generate an AI commit message from staged changes (non-interactive)"
+  )
+  .option("--all", "Stage all changes before generating")
+  .option("--instruction <text>", "Optional instruction for the AI")
+  .option("--output <file>", "Write the message to a file instead of stdout")
+  .action(runSuggestCommand);
+
+// ─── eckra lazygit ─────────────────────────────────────────────
+// Lazygit custom-command integration management.
+
+function runLazygitCommand(action) {
+  const {
+    getLazygitConfigPath,
+    getLazygitBlock,
+    ensureLazygitCommand,
+    removeLazygitCommand,
+  } = require("./helpers/lazygit");
+
+  const file = getLazygitConfigPath();
+
+  if (!action || action === "status") {
+    const fs = require("fs");
+    const fileExists = fs.existsSync(file);
+    let installed;
+    try {
+      installed =
+        fileExists &&
+        fs.readFileSync(file, "utf8").includes("# --- begin eckra");
+    } catch {
+      installed = false;
+    }
+
+    console.log(s.bold("  Lazygit integration"));
+    console.log(
+      s.muted("  Config file: ") +
+        s.text(file) +
+        (fileExists ? "" : s.warning("  (does not exist yet)"))
+    );
+    console.log(
+      s.muted("  Status: ") +
+        (installed
+          ? s.success("installed (Ctrl+g in files view)")
+          : s.warning("not installed"))
+    );
+    console.log();
+    console.log(s.bold("  Snippet (manual install):"));
+    console.log(s.text("customCommands:"));
+    console.log(s.text(getLazygitBlock()));
+    return;
+  }
+
+  if (action === "install") {
+    try {
+      const result = ensureLazygitCommand();
+      if (result.changed) {
+        console.log(
+          s.success(`  ✓ Lazygit integration installed: ${result.path}`)
+        );
+        console.log(
+          s.muted("  Restart lazygit. Then press Ctrl+g in the files view.")
+        );
+      } else {
+        console.log(s.muted(`  ℹ Already installed: ${result.path}`));
+      }
+    } catch (err) {
+      console.log(s.error(`  ✗ ${err.message}`));
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (action === "remove") {
+    try {
+      const result = removeLazygitCommand();
+      if (result.changed) {
+        console.log(
+          s.success(`  ✓ Lazygit integration removed: ${result.path}`)
+        );
+      } else {
+        console.log(s.muted(`  ℹ Not installed: ${result.path}`));
+      }
+    } catch (err) {
+      console.log(s.error(`  ✗ ${err.message}`));
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  console.log(s.error(`  ✗ Unknown lazygit action: "${action}"`));
+  console.log(s.muted("  Usage: eckra lazygit [status|install|remove]"));
+  process.exitCode = 1;
+}
+
+program
+  .command("lazygit")
+  .alias("lg")
+  .description("Manage the lazygit integration (AI commit via Ctrl+g)")
+  .argument("[action]", "status, install, remove")
+  .action(runLazygitCommand);
 
 // Default - start interactive
 program.action(async () => {

@@ -160,14 +160,14 @@ async function quickStatus() {
   await status().doStatus();
 }
 
-async function quickCommit(message) {
+async function quickCommit(message, opts = {}) {
   if (message) {
     const statusResult = await getGitStatus();
     if (statusResult.staged.length === 0) await stageAll();
     await createCommit(message);
     console.log(s.success("\n  ✓ Commit done!\n"));
   } else {
-    await commit().doCommit();
+    await commit().doCommit(null, opts);
   }
 }
 
