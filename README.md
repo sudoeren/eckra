@@ -54,6 +54,7 @@ Skip the menu and jump straight into action:
 | `eckra easy`     | `e`   | Full workflow: Stage all, AI commit, and push |
 | `eckra story`    | `t`   | AI-generated project timeline from commit history |
 | `eckra start`    | `s`   | Start the interactive dashboard               |
+| `eckra config`   | `cfg` | View or edit configuration (non-interactive)  |
 
 > **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
 
@@ -95,6 +96,27 @@ You can configure your provider in two ways:
 ```
 
 You can also create a `.eckrarc` file in your project root to override global settings per-repository. `.eckrarc` is ignored by default because it may contain API keys; avoid committing provider secrets to your repository.
+
+### CLI Config Commands
+
+View, edit, and manage configuration without the interactive menu. These work from any directory (no Git repo required). API keys are masked by default — pass `--show-secrets` to reveal them.
+
+```bash
+eckra config                    # Show effective config (JSON, secrets masked)
+eckra config get aiProvider     # Print a single value
+eckra config set theme dark     # Set a value (writes to ~/.eckra/config.json)
+eckra config unset aiInstruction# Remove a key
+eckra config reset              # Restore defaults
+eckra config path               # Print the config file path
+```
+
+Use `--local` to operate on the project's `.eckrarc` instead of the global config:
+
+```bash
+eckra config set aiProvider gemini --local
+eckra config unset ollamaUrl --local
+eckra config path --local
+```
 
 ## Troubleshooting
 

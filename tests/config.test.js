@@ -6,6 +6,13 @@ const {
   saveConfig,
   DEFAULT_CONFIG,
   resetConfigCache,
+  getConfigPath,
+  getRawConfig,
+  isValidConfigKey,
+  maskSecret,
+  setConfigValue,
+  unsetConfigValue,
+  resetConfig,
 } = require("../src/helpers/config");
 
 // Mock fs to avoid touching real files
@@ -197,5 +204,121 @@ describe("Config Helper", () => {
       expect.stringContaining("config.json"),
       0o600
     );
+  });
+
+  describe("non-interactive config helpers", () => {
+    const globalPath = getConfigPath();
+    const localPath = path.join(MOCK_CWD, ".eckrarc");
+
+    test("isValidConfigKey accepts known keys and rejects unknown", () => {
+      expect(isValidConfigKey("openaiModel")).toBe(true);
+      expect(isValidConfigKey("theme")).toBe(true);
+      expect(isValidConfigKey("bogusKey")).toBe(false);
+      expect(isValidConfigKey("")).toBe(false);
+    });
+
+    test("maskSecret masks values and handles empty input", () => {
+      expect(maskSecret("sk-abcdefgh1234")).toBe("****1234");
+      expect(maskSecret("abcd")).toBe("****");
+      expect(maskSecret("")).toBe("(not set)");
+      expect(maskSecret(null)).toBe("(not set)");
+    });
+
+    test("getConfigPath supports the local variant", () => {
+      expect(getConfigPath()).toBe(globalPath);
+      expect(getConfigPath({ local: true })).toBe(localPath);
+    });
+
+    test("getRawConfig returns empty object when file is missing", () => {
+      fs.existsSync.mockReturnValue(false);
+      expect(getRawConfig()).toEqual({});
+      expect(getRawConfig({ local: true })).toEqual({});
+    });
+
+    test("setConfigValue writes only the delta to the global file", () => {
+      const fileContents = {
+        [globalPath]: JSON.stringify({ aiProvider: "openai" }),
+      };
+      fs.existsSync.mockImplementation((p) => p in fileContents);
+      fs.readFileSync.mockImplementation((p) => fileContents[p] || "");
+      fs.writeFileSync.mockImplementation((p, data) => {
+        fileContents[p] = data;
+      });
+
+      setConfigValue("openaiModel", "gpt-test", {});
+
+      const writeCall = fs.writeFileSync.mock.calls.find(
+        (c) => c[0] === globalPath
+      );
+      expect(writeCall).toBeDefined();
+      expect(JSON.parse(writeCall[1])).toEqual({
+        aiProvider: "openai",
+        openaiModel: "gpt-test",
+      });
+      expect(writeCall[2]).toEqual(expect.objectContaining({ mode: 0o600 }));
+
+      expect(getConfig().openaiModel).toBe("gpt-test");
+    });
+
+    test("setConfigValue with local writes to the cwd .eckrarc", () => {
+      fs.existsSync.mockImplementation((p) => p === localPath);
+      fs.readFileSync.mockImplementation((p) =>
+        p === localPath ? JSON.stringify({}) : ""
+      );
+
+      setConfigValue("aiProvider", "gemini", { local: true });
+
+      const writeCall = fs.writeFileSync.mock.calls.find(
+        (c) => c[0] === localPath
+      );
+      expect(writeCall).toBeDefined();
+      expect(JSON.parse(writeCall[1])).toEqual({ aiProvider: "gemini" });
+      expect(writeCall[2]).toEqual(expect.objectContaining({ mode: 0o600 }));
+    });
+
+    test("setConfigValue throws on unknown keys", () => {
+      expect(() => setConfigValue("bogusKey", "x")).toThrow(
+        "Unknown config key"
+      );
+    });
+
+    test("unsetConfigValue removes a key from the global file", () => {
+      fs.existsSync.mockImplementation((p) => p === globalPath);
+      fs.readFileSync.mockImplementation((p) =>
+        p === globalPath
+          ? JSON.stringify({ aiProvider: "openai", openaiModel: "gpt" })
+          : ""
+      );
+
+      const removed = unsetConfigValue("openaiModel", {});
+
+      expect(removed).toBe(true);
+      const writeCall = fs.writeFileSync.mock.calls.find(
+        (c) => c[0] === globalPath
+      );
+      expect(JSON.parse(writeCall[1])).toEqual({ aiProvider: "openai" });
+    });
+
+    test("unsetConfigValue returns false when the key is absent", () => {
+      fs.existsSync.mockImplementation((p) => p === globalPath);
+      fs.readFileSync.mockImplementation((p) =>
+        p === globalPath ? JSON.stringify({ aiProvider: "openai" }) : ""
+      );
+
+      const removed = unsetConfigValue("ollamaModel", {});
+
+      expect(removed).toBe(false);
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
+    });
+
+    test("resetConfig with local removes the .eckrarc file", () => {
+      fs.existsSync.mockImplementation((p) => p === localPath);
+
+      resetConfig({ local: true });
+
+      expect(fs.rmSync).toHaveBeenCalledWith(localPath, {
+        force: true,
+      });
+    });
   });
 });

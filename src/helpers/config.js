@@ -44,15 +44,22 @@ function secureConfigFile() {
 }
 
 /**
- * Write the global config file with 0600 permissions.
+ * Write a config file with 0600 permissions (API keys may be stored in it).
  * writeFileSync only applies mode on creation, so chmod enforces it for
  * existing files too.
  */
-function writeConfigFile(data) {
-  fs.writeFileSync(CONFIG_FILE, data, { mode: 0o600 });
+function writeFile0600(file, data) {
+  fs.writeFileSync(file, data, { mode: 0o600 });
   try {
-    fs.chmodSync(CONFIG_FILE, 0o600);
+    fs.chmodSync(file, 0o600);
   } catch {}
+}
+
+/**
+ * Write the global config file with 0600 permissions.
+ */
+function writeConfigFile(data) {
+  writeFile0600(CONFIG_FILE, data);
 }
 
 /**
@@ -150,9 +157,17 @@ function saveConfig(config) {
 }
 
 /**
- * Reset configuration to defaults
+ * Reset configuration to defaults. With `{ local: true }` the local
+ * `.eckrarc` override file is removed instead.
  */
-function resetConfig() {
+function resetConfig({ local = false } = {}) {
+  if (local) {
+    const file = getConfigPath({ local });
+    if (fs.existsSync(file)) fs.rmSync(file, { force: true });
+    _cachedConfig = null;
+    return {};
+  }
+
   ensureConfigDir();
   writeConfigFile(JSON.stringify(DEFAULT_CONFIG, null, 2));
   _cachedConfig = { ...DEFAULT_CONFIG }; // Update cache
@@ -160,10 +175,89 @@ function resetConfig() {
 }
 
 /**
- * Get config file path
+ * Get config file path. With `{ local: true }` returns the `.eckrarc`
+ * path in the current working directory.
  */
-function getConfigPath() {
+function getConfigPath({ local = false } = {}) {
+  if (local) return path.join(process.cwd(), LOCAL_CONFIG_FILENAME);
   return CONFIG_FILE;
+}
+
+/**
+ * Read a config file's raw contents (no defaults/local merging).
+ * Returns an empty object if the file is missing or malformed.
+ */
+function getRawConfig({ local = false } = {}) {
+  const file = getConfigPath({ local });
+  if (!fs.existsSync(file)) return {};
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Whether `key` is a known config key (typo protection for set/unset)
+ */
+function isValidConfigKey(key) {
+  return (
+    typeof key === "string" &&
+    Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, key)
+  );
+}
+
+/**
+ * Mask a secret value for display: `****` + last 4 chars, or "(not set)".
+ */
+function maskSecret(value) {
+  if (!value) return "(not set)";
+  const str = String(value);
+  if (str.length <= 4) return "****";
+  return "****" + str.slice(-4);
+}
+
+/**
+ * Set a single config key on the raw target file (global or local).
+ * Only the delta is written — defaults/local overrides are never spilled
+ * into the target file. Invalidates the in-memory config cache.
+ */
+function setConfigValue(key, value, { local = false } = {}) {
+  if (!isValidConfigKey(key)) {
+    throw new Error(
+      `Unknown config key: "${key}". Valid keys: ${Object.keys(DEFAULT_CONFIG).join(", ")}`
+    );
+  }
+
+  const file = getConfigPath({ local });
+  ensureConfigDir();
+
+  const raw = getRawConfig({ local });
+  raw[key] = value;
+  writeFile0600(file, JSON.stringify(raw, null, 2));
+
+  _cachedConfig = null;
+  return raw[key];
+}
+
+/**
+ * Remove a config key from the raw target file. Returns true if the key
+ * was present and removed, false otherwise. Any existing key can be
+ * removed (including legacy keys not in DEFAULT_CONFIG).
+ */
+function unsetConfigValue(key, { local = false } = {}) {
+  const file = getConfigPath({ local });
+  if (!fs.existsSync(file)) return false;
+
+  const raw = getRawConfig({ local });
+  if (!(key in raw)) return false;
+
+  delete raw[key];
+  writeFile0600(file, JSON.stringify(raw, null, 2));
+
+  _cachedConfig = null;
+  return true;
 }
 
 /**
@@ -184,6 +278,11 @@ module.exports = {
   resetConfigCache, // Exported for testing
   getConfigPath,
   isConfigured,
+  getRawConfig,
+  isValidConfigKey,
+  maskSecret,
+  setConfigValue,
+  unsetConfigValue,
   DEFAULT_CONFIG,
   normalizeUrl,
 };
