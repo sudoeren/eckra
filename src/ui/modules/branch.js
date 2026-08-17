@@ -127,10 +127,10 @@ async function doBranch() {
           console.log(s.bold(`\n  Comparison: ${current} vs ${target}`));
           console.log(rule("branch comparison"));
           console.log(
-            `  Ahead:  ${s.success(stats.ahead)} commits (commits in ${target} not in ${current})`
+            `  Ahead:  ${s.success(stats.behind)} commits (commits in ${current} not in ${target})`
           );
           console.log(
-            `  Behind: ${s.warning(stats.behind)} commits (commits in ${current} not in ${target})`
+            `  Behind: ${s.warning(stats.ahead)} commits (commits in ${target} not in ${current})`
           );
           console.log(
             `  Diff:   ${s.text(stats.diffStat || "No file changes")}`
