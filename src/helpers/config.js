@@ -114,7 +114,7 @@ function getConfig() {
       }
     } catch {
       console.warn(
-        `\n  ⚠️  Warning: Malformed global config file at ${CONFIG_FILE}. Using defaults.\n`
+        `\n  Warning: Malformed global config file at ${CONFIG_FILE}. Using defaults.\n`
       );
     }
   }
@@ -130,7 +130,7 @@ function getConfig() {
       }
     } catch {
       console.warn(
-        `\n  ⚠️  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`
+        `\n  Warning: Malformed local config file at ${localConfigPath}. Ignoring local overrides.\n`
       );
     }
   }

@@ -25,7 +25,7 @@ async function checkGitRepo() {
     await getGitStatus();
     return true;
   } catch {
-    console.log(s.error("\n  ⚠️  This folder is not a Git repository!\n"));
+    console.log(s.error("\n  This folder is not a Git repository!\n"));
     console.log(s.muted("  Solution: Run git init command\n"));
     return false;
   }
@@ -195,7 +195,7 @@ async function runConfigCommand(command, key, value, options) {
         const { getLazygitKeyConflictWarning } = require("./helpers/lazygit");
         const conflict = getLazygitKeyConflictWarning(value);
         if (conflict) {
-          console.log(s.warning(`  ⚠️  ${conflict}`));
+          console.log(s.warning(`  ${conflict}`));
           console.log(
             s.muted(
               "  Run 'eckra lazygit install' to re-apply the key to lazygit's config."
@@ -390,7 +390,7 @@ function runLazygitCommand(action) {
           : s.warning("not installed"))
     );
     const conflict = getLazygitKeyConflictWarning(key);
-    if (conflict) console.log(s.warning(`  ⚠️  ${conflict}`));
+    if (conflict) console.log(s.warning(`  ${conflict}`));
     console.log();
     console.log(s.bold("  Snippet (manual install):"));
     console.log(s.text("customCommands:"));
@@ -411,7 +411,7 @@ function runLazygitCommand(action) {
           )
         );
         const conflict = getLazygitKeyConflictWarning(key);
-        if (conflict) console.log(s.warning(`  ⚠️  ${conflict}`));
+        if (conflict) console.log(s.warning(`  ${conflict}`));
       } else {
         console.log(s.muted(`  ℹ Already installed: ${result.path}`));
       }

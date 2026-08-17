@@ -194,7 +194,7 @@ async function easyWorkflow() {
     await stageAll();
     done(spin, "All files staged!");
   } else if (info.staged.length === 0) {
-    console.log(s.warning("\n  ⚠️  No changes to commit."));
+    console.log(s.warning("\n  No changes to commit."));
     return;
   }
 
