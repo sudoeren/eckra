@@ -155,6 +155,21 @@ describe("Lazygit Helper", () => {
     expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 
+  test("install rewrites the block when the key changed", () => {
+    configHelper.getConfig.mockReturnValue({ lazygitKey: "g" });
+    const content =
+      "customCommands:\n  # --- begin eckra (managed by eckra) ---\n  - key: 'C'\n  # --- end eckra ---\n";
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(content);
+
+    const result = ensureLazygitCommand();
+
+    expect(result.changed).toBe(true);
+    const [, written] = fs.writeFileSync.mock.calls[0];
+    expect(written).toContain("- key: 'G'");
+    expect(written).not.toContain("- key: 'C'");
+  });
+
   test("install inserts after an existing customCommands key", () => {
     const content =
       "# my config\ngui:\n  theme: dark\ncustomCommands:\n  - key: 'z'\n    command: 'echo hi'\n";

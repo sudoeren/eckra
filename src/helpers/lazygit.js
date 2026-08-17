@@ -182,7 +182,8 @@ function getLazygitConfigPath() {
 
 /**
  * Ensure the eckra custom commands are present in the lazygit config.
- * Returns { path, changed } where changed is false when already installed.
+ * Replaces the existing block when the configured key differs.
+ * Returns { path, changed } where changed is false when nothing was written.
  */
 function ensureLazygitCommand() {
   const file = getLazygitConfigPath();
@@ -195,8 +196,22 @@ function ensureLazygitCommand() {
   }
 
   const content = fs.readFileSync(file, "utf8");
-  if (content.includes(BEGIN_MARKER)) {
-    return { path: file, changed: false };
+  const start = content.indexOf(BEGIN_MARKER);
+
+  if (start !== -1) {
+    const endLineStart = content.indexOf(END_MARKER, start);
+    if (endLineStart !== -1) {
+      const end = content.indexOf("\n", endLineStart);
+      const endPos = end === -1 ? content.length : end + 1;
+      const existing = content.slice(start, endPos);
+      if (existing.includes(`- key: '${getLazygitKey()}'`)) {
+        return { path: file, changed: false };
+      }
+      const updated =
+        content.slice(0, start) + block + "\n" + content.slice(endPos);
+      fs.writeFileSync(file, updated, "utf8");
+      return { path: file, changed: true };
+    }
   }
 
   const insertion = `\n${block}`;
