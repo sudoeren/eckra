@@ -37,6 +37,14 @@ Install eckra globally:
 npm install -g eckra
 ```
 
+eckra can bind directly to [lazygit](https://github.com/jesseduffield/lazygit) right after installing:
+
+```bash
+eckra lazygit install
+```
+
+Then press `C` in lazygit's files view for an AI commit.
+
 ## Usage
 
 Run `eckra` in any Git repository to open the dashboard:
@@ -63,7 +71,7 @@ Or jump straight into action:
 > [!TIP]
 > `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
 
-## Lazygit Integration
+### Lazygit Integration
 
 Use eckra's AI commit flow inside [lazygit](https://github.com/jesseduffield/lazygit):
 
@@ -77,7 +85,7 @@ eckra lazygit install
 
 eckra opens full-screen, writes the message, and commits once you approve.
 
-### Change the shortcut key
+#### Change the shortcut key
 
 The key defaults to `C` (uppercase). If it collides with a lazygit shortcut you already use, pick another letter:
 
