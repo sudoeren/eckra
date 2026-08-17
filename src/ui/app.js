@@ -26,11 +26,21 @@ const onboarding = () => require("./modules/onboarding");
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * Ensure the user has completed onboarding before using eckra.
+ * Runs the onboarding flow when no config exists yet and only returns
+ * true once a config file has been written. Returns false (blocking the
+ * caller) if onboarding was not completed.
+ */
+async function ensureOnboarding() {
+  if (configHelper.isConfigured()) return true;
+  await onboarding().doOnboarding();
+  return configHelper.isConfigured();
+}
+
 async function startApp() {
   // Onboarding check
-  if (!configHelper.isConfigured()) {
-    await onboarding().doOnboarding();
-  }
+  if (!(await ensureOnboarding())) return;
 
   let running = true;
 
@@ -323,6 +333,7 @@ async function quickTimeline(count) {
 }
 
 module.exports = {
+  ensureOnboarding,
   startApp,
   quickStatus,
   quickCommit,

@@ -41,6 +41,7 @@ program
   .alias("e")
   .description("Full workflow: Stage all, AI commit, and Push")
   .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().easyWorkflow();
     }
@@ -51,6 +52,7 @@ program
   .alias("s")
   .description("Start interactive interface")
   .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().startApp();
     }
@@ -61,6 +63,7 @@ program
   .alias("st")
   .description("Show Git status")
   .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().quickStatus();
     }
@@ -80,6 +83,7 @@ program
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().quickCommit(options.message, {
         all: options.all,
@@ -96,6 +100,7 @@ program
   .alias("p")
   .description("Push operation")
   .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().quickPush();
     }
@@ -107,6 +112,7 @@ program
   .description("AI-generated project story from commit history")
   .option("-n, --count <number>", "Number of commits to analyze (default: 50)")
   .action(async (options) => {
+    if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().quickTimeline(options.count);
     }
@@ -349,7 +355,8 @@ program
 // ─── eckra lazygit ─────────────────────────────────────────────
 // Lazygit custom-command integration management.
 
-function runLazygitCommand(action) {
+async function runLazygitCommand(action) {
+  if (!(await app().ensureOnboarding())) return;
   const {
     getLazygitConfigPath,
     getLazygitBlock,
