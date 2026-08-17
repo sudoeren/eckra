@@ -9,6 +9,7 @@ const {
   cherryPick,
   listSubmodules,
   abortRebase,
+  getConflictedDiff,
   resetGitCache,
 } = require("../src/helpers/git");
 
@@ -102,5 +103,26 @@ describe("Git Helper", () => {
   test("abortRebase should call git.rebase with --abort", async () => {
     await abortRebase();
     expect(mockGit.rebase).toHaveBeenCalledWith(["--abort"]);
+  });
+
+  test("getConflictedDiff should diff only conflicted files", async () => {
+    mockGit.status.mockResolvedValue({
+      conflicted: ["a.txt", "b.txt"],
+    });
+    mockGit.diff.mockResolvedValue("diff --git a/a.txt b/a.txt");
+
+    const diff = await getConflictedDiff();
+
+    expect(mockGit.diff).toHaveBeenCalledWith(["a.txt", "b.txt"]);
+    expect(diff).toBe("diff --git a/a.txt b/a.txt");
+  });
+
+  test("getConflictedDiff returns empty string when no conflicts", async () => {
+    mockGit.status.mockResolvedValue({ conflicted: [] });
+
+    const diff = await getConflictedDiff();
+
+    expect(diff).toBe("");
+    expect(mockGit.diff).not.toHaveBeenCalled();
   });
 });

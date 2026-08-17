@@ -379,6 +379,15 @@ async function getConflictDetails() {
 }
 
 /**
+ * Get the working-tree diff of all conflicted files (shows conflict markers)
+ */
+async function getConflictedDiff() {
+  const status = await getGit().status();
+  if (status.conflicted.length === 0) return "";
+  return await getGit().diff(status.conflicted);
+}
+
+/**
  * Accept ours version for a file
  */
 async function acceptOurs(file) {
@@ -678,6 +687,7 @@ module.exports = {
   getRepoStats,
   squashCommits,
   getConflictDetails,
+  getConflictedDiff,
   acceptOurs,
   acceptTheirs,
   acceptBoth,

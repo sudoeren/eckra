@@ -1,6 +1,7 @@
 const { execFile } = require("child_process");
 const {
   getConflictDetails,
+  getConflictedDiff,
   acceptOurs,
   acceptTheirs,
   acceptBoth,
@@ -9,6 +10,7 @@ const {
 } = require("../../helpers/git");
 const { s, pause, sleep, clear, header } = require("../common");
 const { open, menuItem, backItem, sep, prompt } = require("../screen");
+const { renderDiff } = require("../diff-view");
 
 async function doConflict() {
   open("Conflict Resolver");
@@ -19,6 +21,15 @@ async function doConflict() {
     console.log(s.success(`  ${s.text("✓")} No conflicts!\n`));
     await pause();
     return;
+  }
+
+  const diff = await getConflictedDiff();
+  const lines = renderDiff(diff);
+  if (lines.length > 0) {
+    console.log(s.bold(`  ${conflicts.length} conflicted file(s) — diff:\n`));
+    for (const line of lines) console.log(line);
+    console.log();
+    await pause();
   }
 
   const { action } = await prompt([
