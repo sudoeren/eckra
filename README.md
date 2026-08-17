@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra?style=flat-square&color=4a9eff" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?style=flat-square&color=4a9eff" alt="total downloads"></a>
-  <a href="https://github.com/sudoeren/eckra/actions"><img src="https://img.shields.io/github/actions/workflow/status/sudoeren/eckra/ci.yml?style=flat-square&color=4a9eff" alt="CI status"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/v/eckra?style=flat-square&color=1f6feb" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?style=flat-square&color=1f6feb" alt="total downloads"></a>
+  <a href="https://github.com/sudoeren/eckra/actions"><img src="https://img.shields.io/github/actions/workflow/status/sudoeren/eckra/ci.yml?style=flat-square&color=1f6feb" alt="CI status"></a>
 </p>
 
 ---
