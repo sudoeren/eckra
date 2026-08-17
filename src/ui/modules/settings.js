@@ -328,7 +328,7 @@ async function doSettings() {
     console.log(s.muted("  Model: ") + s.text(config.model));
   }
 
-  console.log(s.muted("  Theme: ") + s.text(config.theme || "dark"));
+  console.log(s.muted("  Theme: ") + s.text(config.theme || "auto"));
   console.log(
     s.muted("  AI Status: ") +
       (aiStatus.connected
