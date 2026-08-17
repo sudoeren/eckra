@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/screenshot.png" alt="eckra terminal preview" width="800">
+  <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/eckra.png" alt="eckra terminal preview" width="800">
 </p>
 
 <h1 align="center">Eckra</h1>
