@@ -132,11 +132,35 @@ async function callProvider(
 
     let content = "";
     if (provider === "anthropic") {
-      content = response.data.content[0].text;
+      const blocks = response.data.content;
+      content = Array.isArray(blocks) && blocks[0] ? blocks[0].text || "" : "";
+      if (!content) {
+        throw new Error(
+          "AI Provider (anthropic) returned no text. This might be due to a tool-use response, invalid model name, or safety filters."
+        );
+      }
     } else if (provider === "ollama") {
-      content = response.data.message.content;
+      content = response.data.message
+        ? response.data.message.content || ""
+        : "";
+      if (!content) {
+        throw new Error(
+          "AI Provider (ollama) returned no response. Check that the model is loaded and the model name is valid."
+        );
+      }
     } else if (provider === "gemini") {
-      content = response.data.candidates[0].content.parts[0].text;
+      const candidates = response.data.candidates;
+      const parts =
+        candidates &&
+        candidates[0] &&
+        candidates[0].content &&
+        candidates[0].content.parts;
+      content = parts && parts[0] ? parts[0].text || "" : "";
+      if (!content) {
+        throw new Error(
+          `AI Provider (gemini) returned no candidates. This might be due to an invalid model name (${config.geminiModel || DEFAULT_CONFIG.geminiModel}), insufficient credits, or safety filters.`
+        );
+      }
     } else {
       if (!response.data.choices || response.data.choices.length === 0) {
         const modelLabels = {

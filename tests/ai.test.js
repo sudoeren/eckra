@@ -217,6 +217,20 @@ describe("AI Helper", () => {
     );
   });
 
+  test("should throw a meaningful error when gemini returns no candidates", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "gemini",
+      geminiApiKey: "AIza-test",
+      geminiModel: "gemini-2.0-flash",
+    });
+
+    axios.post.mockResolvedValue({ data: { candidates: [] } });
+
+    await expect(generateCommitMessage(mockDiff, mockFiles)).rejects.toThrow(
+      /returned no candidates/
+    );
+  });
+
   describe("model fetch caching", () => {
     test("model fetch results are cached per api key", async () => {
       axios.get.mockResolvedValue({
