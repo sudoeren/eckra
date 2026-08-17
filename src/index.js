@@ -368,7 +368,7 @@ function runLazygitCommand(action) {
     console.log(
       s.muted("  Status: ") +
         (installed
-          ? s.success("installed (Ctrl+g in files view)")
+          ? s.success("installed (C in files view)")
           : s.warning("not installed"))
     );
     console.log();
@@ -386,7 +386,7 @@ function runLazygitCommand(action) {
           s.success(`  ✓ Lazygit integration installed: ${result.path}`)
         );
         console.log(
-          s.muted("  Restart lazygit. Then press Ctrl+g in the files view.")
+          s.muted("  Restart lazygit. Then press C in the files view.")
         );
       } else {
         console.log(s.muted(`  ℹ Already installed: ${result.path}`));
@@ -423,7 +423,7 @@ function runLazygitCommand(action) {
 program
   .command("lazygit")
   .alias("lg")
-  .description("Manage the lazygit integration (AI commit via Ctrl+g)")
+  .description("Manage the lazygit integration (AI commit via C)")
   .argument("[action]", "status, install, remove")
   .action(runLazygitCommand);
 

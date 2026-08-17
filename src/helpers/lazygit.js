@@ -7,12 +7,12 @@ const END_MARKER = "# --- end eckra ---";
 
 /**
  * The customCommands YAML block injected into the lazygit config.
- * Ctrl+g launches the interactive aicommits-style commit flow.
+ * Capital C launches the interactive aicommits-style commit flow.
  */
 function getLazygitBlock() {
   return [
     `  ${BEGIN_MARKER}`,
-    "  - key: '<c-g>'",
+    "  - key: 'C'",
     "    context: 'files'",
     "    description: 'AI commit with eckra'",
     "    command: 'eckra commit'",

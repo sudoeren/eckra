@@ -143,11 +143,11 @@ eckra lazygit install
 
 If you don't have a lazygit config file yet (lazygit ships without one), `install` creates `~/.config/lazygit/config.yml` (and the folder) for you. It adds one custom command:
 
-| Key   | Action                                    |
-| :---- | :---------------------------------------- |
-| `Ctrl+g` | Open eckra's aicommits-style AI commit flow for the staged files |
+| Key | Action                                    |
+| :-- | :---------------------------------------- |
+| `C` | Open eckra's aicommits-style AI commit flow for the staged files |
 
-Restart lazygit, stage files, then press `Ctrl+g` in the files view. eckra opens full-screen: it generates an AI commit message, shows it, asks for your confirmation, and commits once you approve.
+Restart lazygit, stage files, then press `C` in the files view. eckra opens full-screen: it generates an AI commit message, shows it, asks for your confirmation, and commits once you approve.
 
 Manage the integration:
 
