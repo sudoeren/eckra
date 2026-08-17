@@ -154,10 +154,11 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Uninstall
 
-- **In-app:** `eckra` → **More > Settings** → **Uninstall Eckra** → type `uninstall`
+- **In-app:** `eckra` → **More > Settings** → **Uninstall Eckra** → type `uninstall`. This also removes the lazygit integration.
 - **Manual:**
 
 ```bash
+eckra lazygit remove   # remove the lazygit integration first (if you have it)
 npm uninstall -g eckra
 rm -rf ~/.eckra
 ```

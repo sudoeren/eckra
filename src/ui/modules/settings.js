@@ -425,6 +425,22 @@ async function doSettings() {
       fail(spinner1, "Failed to remove config files");
     }
 
+    // Remove lazygit integration
+    const spinnerLg = spinner("Removing lazygit integration...");
+    spinnerLg.start();
+    try {
+      const { removeLazygitCommand } = require("../../helpers/lazygit");
+      const result = removeLazygitCommand();
+      done(
+        spinnerLg,
+        result.changed
+          ? "Lazygit integration removed"
+          : "No lazygit integration found"
+      );
+    } catch {
+      fail(spinnerLg, "Failed to remove lazygit integration");
+    }
+
     // Uninstall global package
     const spinner2 = spinner("Uninstalling global package...");
     spinner2.start();
