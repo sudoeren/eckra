@@ -534,10 +534,50 @@ function resetAIConnectionCache() {
   _aiConnectionCache.clear();
 }
 
+const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
+let _modelCache = new Map();
+
+/**
+ * Build a cache key for a provider model list (credential = api key or base URL)
+ */
+function modelCacheKey(provider, credential = "") {
+  return `${provider}|${credential || ""}`;
+}
+
+function getCachedModels(key) {
+  const entry = _modelCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > MODEL_CACHE_TTL_MS) {
+    _modelCache.delete(key);
+    return null;
+  }
+  return entry.models;
+}
+
+/**
+ * Only successful (non-empty) model lists are cached so transient failures retry
+ * on the next config open.
+ */
+function setCachedModels(key, models) {
+  if (Array.isArray(models) && models.length > 0) {
+    _modelCache.set(key, { timestamp: Date.now(), models });
+  }
+}
+
+/**
+ * Clear the model-list cache (used when providers/models change or in tests)
+ */
+function resetModelCache() {
+  _modelCache.clear();
+}
+
 /**
  * Fetch available models from OpenRouter API
  */
 async function fetchOpenRouterModels(apiKey) {
+  const key = modelCacheKey("openrouter", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
   try {
     const headers = {};
     if (apiKey) {
@@ -548,11 +588,13 @@ async function fetchOpenRouterModels(apiKey) {
       timeout: 10000,
     });
     const models = response.data?.data || [];
-    return models.map((m) => ({
+    const result = models.map((m) => ({
       id: m.id,
       name: m.name || m.id,
       pricing: m.pricing,
     }));
+    setCachedModels(key, result);
+    return result;
   } catch {
     return [];
   }
@@ -562,15 +604,20 @@ async function fetchOpenRouterModels(apiKey) {
  * Fetch available models from OpenAI API
  */
 async function fetchOpenAIModels(apiKey) {
+  const key = modelCacheKey("openai", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
   try {
     const response = await axios.get("https://api.openai.com/v1/models", {
       headers: { Authorization: `Bearer ${apiKey}` },
       timeout: 10000,
     });
     const models = response.data?.data || [];
-    return models
+    const result = models
       .map((m) => ({ id: m.id, name: m.id }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
   } catch {
     return [];
   }
@@ -580,7 +627,10 @@ async function fetchOpenAIModels(apiKey) {
  * Fetch available models from Anthropic (hardcoded list, no public API)
  */
 async function fetchAnthropicModels() {
-  return [
+  const key = modelCacheKey("anthropic");
+  const cached = getCachedModels(key);
+  if (cached) return cached;
+  const models = [
     { id: "claude-opus-4-8", name: "Claude Opus 4.8" },
     { id: "claude-opus-4-7", name: "Claude Opus 4.7" },
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
@@ -588,12 +638,17 @@ async function fetchAnthropicModels() {
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
     { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
   ];
+  setCachedModels(key, models);
+  return models;
 }
 
 /**
  * Fetch available models from Google Gemini API
  */
 async function fetchGeminiModels(apiKey) {
+  const key = modelCacheKey("gemini", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
   try {
     const response = await axios.get(
       "https://generativelanguage.googleapis.com/v1beta/models",
@@ -603,13 +658,15 @@ async function fetchGeminiModels(apiKey) {
       }
     );
     const models = response.data?.models || [];
-    return models
+    const result = models
       .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
       .map((m) => {
         const id = m.name.replace("models/", "");
         return { id, name: m.displayName || id };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
   } catch {
     return [];
   }
@@ -619,17 +676,18 @@ async function fetchGeminiModels(apiKey) {
  * Fetch available models from Ollama
  */
 async function fetchOllamaModels(url) {
+  const baseUrl = normalizeUrl(url) || "http://localhost:11434";
+  const key = modelCacheKey("ollama", baseUrl);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
   try {
-    const response = await axios.get(
-      `${normalizeUrl(url) || "http://localhost:11434"}/api/tags`,
-      {
-        timeout: 10000,
-      }
-    );
+    const response = await axios.get(`${baseUrl}/api/tags`, { timeout: 10000 });
     const models = response.data?.models || [];
-    return models
+    const result = models
       .map((m) => ({ id: m.name, name: m.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
   } catch {
     return [];
   }
@@ -639,17 +697,20 @@ async function fetchOllamaModels(url) {
  * Fetch available models from LM Studio
  */
 async function fetchLMStudioModels(url) {
+  const baseUrl = normalizeUrl(url) || "http://localhost:1234";
+  const key = modelCacheKey("lmstudio", baseUrl);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
   try {
-    const response = await axios.get(
-      `${normalizeUrl(url) || "http://localhost:1234"}/v1/models`,
-      {
-        timeout: 10000,
-      }
-    );
+    const response = await axios.get(`${baseUrl}/v1/models`, {
+      timeout: 10000,
+    });
     const models = response.data?.data || [];
-    return models
+    const result = models
       .map((m) => ({ id: m.id, name: m.id }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
   } catch {
     return [];
   }
@@ -715,6 +776,7 @@ module.exports = {
   generateTimeline,
   checkAIConnection,
   resetAIConnectionCache,
+  resetModelCache,
   testProviderConnection,
   fetchOpenRouterModels,
   fetchOpenAIModels,

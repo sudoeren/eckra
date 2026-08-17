@@ -4,6 +4,9 @@ const {
   formatDiffForPrompt,
   checkAIConnection,
   resetAIConnectionCache,
+  resetModelCache,
+  fetchOpenAIModels,
+  fetchOllamaModels,
 } = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
 
@@ -17,6 +20,7 @@ describe("AI Helper", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resetAIConnectionCache();
+    resetModelCache();
   });
 
   test("should mark truncated diffs in prompts", () => {
@@ -211,5 +215,80 @@ describe("AI Helper", () => {
       }),
       expect.any(Object)
     );
+  });
+
+  describe("model fetch caching", () => {
+    test("model fetch results are cached per api key", async () => {
+      axios.get.mockResolvedValue({
+        data: { data: [{ id: "gpt-4o" }, { id: "gpt-5-mini" }] },
+      });
+
+      const first = await fetchOpenAIModels("sk-test");
+      const second = await fetchOpenAIModels("sk-test");
+
+      expect(first).toEqual([
+        { id: "gpt-4o", name: "gpt-4o" },
+        { id: "gpt-5-mini", name: "gpt-5-mini" },
+      ]);
+      expect(second).toEqual(first);
+      expect(axios.get).toHaveBeenCalledTimes(1);
+    });
+
+    test("changing the api key refetches models", async () => {
+      axios.get.mockResolvedValue({ data: { data: [{ id: "gpt-4o" }] } });
+
+      await fetchOpenAIModels("sk-1");
+      await fetchOpenAIModels("sk-2");
+
+      expect(axios.get).toHaveBeenCalledTimes(2);
+    });
+
+    test("empty model results are not cached", async () => {
+      axios.get.mockResolvedValue({ data: { data: [] } });
+
+      const first = await fetchOpenAIModels("sk-test");
+      const second = await fetchOpenAIModels("sk-test");
+
+      expect(first).toEqual([]);
+      expect(second).toEqual([]);
+      expect(axios.get).toHaveBeenCalledTimes(2);
+    });
+
+    test("ollama model fetch is cached per base url", async () => {
+      axios.get.mockResolvedValue({
+        data: { models: [{ name: "llama3" }] },
+      });
+
+      await fetchOllamaModels("http://localhost:11434");
+      await fetchOllamaModels("http://localhost:11434");
+
+      expect(axios.get).toHaveBeenCalledTimes(1);
+    });
+
+    test("model cache expires after TTL", async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+      axios.get.mockResolvedValue({ data: { data: [{ id: "gpt-4o" }] } });
+
+      await fetchOpenAIModels("sk-test");
+      expect(axios.get).toHaveBeenCalledTimes(1);
+
+      jest.setSystemTime(new Date("2026-01-01T00:05:01Z"));
+      await fetchOpenAIModels("sk-test");
+      expect(axios.get).toHaveBeenCalledTimes(2);
+
+      jest.useRealTimers();
+    });
+
+    test("resetModelCache clears cached results", async () => {
+      axios.get.mockResolvedValue({ data: { data: [{ id: "gpt-4o" }] } });
+
+      await fetchOpenAIModels("sk-test");
+      expect(axios.get).toHaveBeenCalledTimes(1);
+
+      resetModelCache();
+      await fetchOpenAIModels("sk-test");
+      expect(axios.get).toHaveBeenCalledTimes(2);
+    });
   });
 });
