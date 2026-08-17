@@ -106,16 +106,22 @@ eckra lazygit remove     # Remove it
 
 ## AI Configuration
 
-eckra works out of the box with **LM Studio** (`http://localhost:1234`). Other providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`:
+eckra works out of the box with **Ollama** (`http://localhost:11434`) using the lightweight [qwen3.5:2b](https://ollama.com/library/qwen3.5:2b) model:
 
-| Provider          | Type            | Default Model          |
-| :---------------- | :-------------- | :--------------------- |
-| **LM Studio**     | Local           | (user-configured)      |
-| **Ollama**        | Local           | (user-configured)      |
-| **OpenAI**        | Cloud (API Key) | `gpt-5-mini`           |
-| **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`    |
-| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`  |
-| **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`|
+```bash
+ollama pull qwen3.5:2b
+```
+
+Other providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`:
+
+| Provider          | Type            | Default Model           |
+| :---------------- | :-------------- | :---------------------- |
+| **Ollama**        | Local           | `qwen3.5:2b`            |
+| **LM Studio**     | Local           | (user-configured)       |
+| **OpenAI**        | Cloud (API Key) | `gpt-5-mini`            |
+| **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`     |
+| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`   |
+| **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite` |
 
 > [!NOTE]
 > Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).

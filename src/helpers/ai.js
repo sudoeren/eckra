@@ -454,7 +454,7 @@ async function testProviderConnection(provider, providerConfig) {
 let _aiConnectionCache = new Map();
 
 function aiConnectionCacheKey(config) {
-  const provider = config.aiProvider || "lmstudio";
+  const provider = config.aiProvider || "ollama";
   const fields = {
     lmstudio: config.lmStudioUrl,
     ollama: config.ollamaUrl,
@@ -476,7 +476,7 @@ async function checkAIConnection() {
   const key = aiConnectionCacheKey(config);
   if (_aiConnectionCache.has(key)) return _aiConnectionCache.get(key);
 
-  const provider = config.aiProvider || "lmstudio";
+  const provider = config.aiProvider || "ollama";
   let result;
 
   try {

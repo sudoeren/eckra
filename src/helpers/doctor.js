@@ -218,7 +218,7 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
     )
   );
 
-  const provider = config.aiProvider || "lmstudio";
+  const provider = config.aiProvider || "ollama";
   checks.push(checkResult("Config", "Provider configured", "info", provider));
 
   const keyField = PROVIDER_KEY_FIELDS[provider];

@@ -7,14 +7,14 @@ const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 const LOCAL_CONFIG_FILENAME = ".eckrarc";
 
 const DEFAULT_CONFIG = {
-  aiProvider: "lmstudio",
+  aiProvider: "ollama",
   lmStudioUrl: "http://localhost:1234",
   openaiApiKey: "",
   openaiModel: "gpt-5-mini",
   anthropicApiKey: "",
   anthropicModel: "claude-sonnet-4-6",
   ollamaUrl: "http://localhost:11434",
-  ollamaModel: "",
+  ollamaModel: "qwen3.5:2b",
   openrouterApiKey: "",
   openrouterModel: "openai/gpt-oss-120b",
   geminiApiKey: "",

@@ -29,11 +29,11 @@ async function doOnboarding() {
 
   // Choose provider
   const providerChoices = [
+    { name: "Ollama (Local, no API key needed)", value: "ollama" },
     { name: "LM Studio (Local, no API key needed)", value: "lmstudio" },
     { name: "OpenAI (GPT-4o, etc.)", value: "openai" },
     { name: "Anthropic (Claude)", value: "anthropic" },
     { name: "Google Gemini", value: "gemini" },
-    { name: "Ollama (Local)", value: "ollama" },
     { name: "OpenRouter", value: "openrouter" },
   ];
 

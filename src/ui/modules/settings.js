@@ -466,10 +466,10 @@ async function doSettings() {
 
   if (action === "provider") {
     const providerChoices = [
+      { name: "Ollama (Local)", value: "ollama" },
       { name: "LM Studio (Local)", value: "lmstudio" },
       { name: "OpenAI", value: "openai" },
       { name: "Anthropic (Claude)", value: "anthropic" },
-      { name: "Ollama (Local)", value: "ollama" },
       { name: "OpenRouter", value: "openrouter" },
       { name: "Google Gemini", value: "gemini" },
     ];
