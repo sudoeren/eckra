@@ -191,6 +191,18 @@ async function runConfigCommand(command, key, value, options) {
           `  ✓ ${key} = ${maskForDisplay(key, value, showSecrets)}  (${getConfigPath({ local })})`
         )
       );
+      if (key === "lazygitKey") {
+        const { getLazygitKeyConflictWarning } = require("./helpers/lazygit");
+        const conflict = getLazygitKeyConflictWarning(value);
+        if (conflict) {
+          console.log(s.warning(`  ⚠️  ${conflict}`));
+          console.log(
+            s.muted(
+              "  Run 'eckra lazygit install' to re-apply the key to lazygit's config."
+            )
+          );
+        }
+      }
     } catch (err) {
       console.log(s.error(`  ✗ ${err.message}`));
       process.exitCode = 1;
