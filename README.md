@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sudoeren/eckra/master/screenshot.png" alt="eckra terminal preview" width="800">
+  <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/screenshot.png" alt="eckra terminal preview" width="800">
 </p>
 
 # Eckra
