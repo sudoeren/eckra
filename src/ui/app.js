@@ -195,7 +195,7 @@ async function easyWorkflow() {
 
   // 2. Generate the AI message
   let message;
-  const spinAi = spinner("🤖 Generating AI commit message...");
+  const spinAi = spinner("Generating AI commit message...");
   spinAi.start();
 
   try {
@@ -204,7 +204,7 @@ async function easyWorkflow() {
     message = await generateCommitMessage(diff, status.staged);
     spinAi.stop();
 
-    console.log(`\n  ${s.ai("🤖 AI Suggestion:")}\n`);
+    console.log(`\n  ${s.ai("AI Suggestion:")}\n`);
     message.split("\n").forEach((line) => console.log(s.text("    " + line)));
     console.log();
   } catch (err) {
@@ -267,12 +267,10 @@ async function easyWorkflow() {
     }
 
     console.log(
-      s.success(
-        `\n  ✨ Workflow complete!${pushNow ? "" : " (push skipped)"}\n`
-      )
+      s.success(`\n  ✓ Workflow complete!${pushNow ? "" : " (push skipped)"}\n`)
     );
   } catch (err) {
-    console.log(s.error(`\n  ❌ Error: ${err.message}`));
+    console.log(s.error(`\n  ✗ Error: ${err.message}`));
   }
 }
 
