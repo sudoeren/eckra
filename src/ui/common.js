@@ -68,6 +68,121 @@ function writeThemeCache(isDark) {
   } catch {}
 }
 
+function hexToRgb(hex) {
+  if (typeof hex !== "string") return null;
+  let h = hex.trim().replace(/^0x/, "").replace(/^#/, "");
+  if (h.length === 3)
+    h = h
+      .split("")
+      .map((ch) => ch + ch)
+      .join("");
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  const n = parseInt(h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbLuminance({ r, g, b }) {
+  const chan = (v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
+}
+
+function isDarkLuminance(rgb) {
+  if (!rgb) return null;
+  return rgbLuminance(rgb) < 0.5;
+}
+
+/**
+ * Determine the KDE theme from kdeglobals. Handles Plasma 5
+ * ([General] ColorScheme=) and Plasma 6 ([KDE] LookAndFeelPackage=,
+ * plus resolved background colors) and custom color schemes.
+ * Returns true/false, or null when nothing conclusive is found.
+ */
+function detectKdeDarkFromKdeglobals(content) {
+  const laf = content.match(/^LookAndFeelPackage\s*=\s*(.+)$/m);
+  if (laf) {
+    if (/dark/i.test(laf[1])) return true;
+    if (/light/i.test(laf[1])) return false;
+  }
+  const scheme = content.match(/^ColorScheme\s*=\s*(.+)$/m);
+  if (scheme) {
+    if (/dark/i.test(scheme[1])) return true;
+    if (/light/i.test(scheme[1])) return false;
+  }
+  for (const group of ["Colors:Window", "Colors:View"]) {
+    const bg = content.match(
+      new RegExp(
+        `^\\[${group}\\]\\s*\\n(?:.*\\n)*?BackgroundNormal\\s*=\\s*([\\d,\\s]+)`,
+        "m"
+      )
+    );
+    if (bg) {
+      const parts = bg[1].split(",").map((p) => parseInt(p, 10));
+      if (parts.length === 3 && parts.every((p) => !isNaN(p))) {
+        return rgbLuminance({ r: parts[0], g: parts[1], b: parts[2] }) < 0.5;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract the terminal background from an alacritty config (TOML or YAML).
+ * Alacritty sets COLORTERM=truecolor and gives no dark/light hint in env,
+ * so the effective config is the only reliable signal.
+ */
+function detectAlacrittyDark() {
+  const dir = path.join(os.homedir(), ".config", "alacritty");
+  for (const name of ["alacritty.toml", "alacritty.yml"]) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) continue;
+    try {
+      let content = fs.readFileSync(file, "utf8");
+      const importRe = /import\s*=\s*\[([\s\S]*?)\]/g;
+      let m;
+      const extra = [];
+      while ((m = importRe.exec(content)) !== null) {
+        const paths = m[1].match(/"([^"]+)"/g) || [];
+        for (const p of paths) {
+          const clean = p.replace(/"/g, "").replace(/^~/, os.homedir());
+          if (fs.existsSync(clean)) extra.push(fs.readFileSync(clean, "utf8"));
+        }
+      }
+      content = content + "\n" + extra.join("\n");
+
+      const toml = content.match(
+        /\[colors\.primary\][\s\S]*?(?=\n\[[^\]]*\]\s*\n|$)/
+      );
+      if (toml) {
+        const bg = toml[0].match(
+          /background\s*=\s*["']?(0x[0-9a-fA-F]{6}|#[0-9a-fA-F]{6}|[0-9a-fA-F]{6})["']?/
+        );
+        const dark = isDarkLuminance(hexToRgb(bg && bg[1]));
+        if (dark !== null) return dark;
+      }
+
+      let inPrimary = false;
+      for (const line of content.split("\n")) {
+        if (/^\s*primary:\s*$/.test(line)) {
+          inPrimary = true;
+          continue;
+        }
+        if (inPrimary) {
+          const bg = line.match(
+            /^\s*background\s*:\s*["']?(0x[0-9a-fA-F]{6}|#[0-9a-fA-F]{6})["']?\s*$/
+          );
+          const dark = isDarkLuminance(hexToRgb(bg && bg[1]));
+          if (dark !== null) return dark;
+          if (/^\S/.test(line)) inPrimary = false;
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
 function detectDarkMode() {
   const { execSync } = require("child_process");
   const env = process.env;
@@ -105,42 +220,39 @@ function detectDarkMode() {
       if (out === "'prefer-dark'") {
         return true;
       }
-      if (out === "'default'" || out === "'prefer-light'") {
+      if (out === "'prefer-light'") {
         return false;
       }
+      // "'default'" (no preference) falls through to other detectors
     } catch {}
 
-    // 2. KDE via kreadconfig5
-    try {
-      const out = execSync("kreadconfig5 --group General --key ColorScheme", {
-        stdio: ["pipe", "pipe", "ignore"],
-        timeout: 2000,
-      })
-        .toString()
-        .trim()
-        .toLowerCase();
-      if (out.includes("dark")) {
-        return true;
-      }
-      if (out.length > 0) {
-        return false;
-      }
-    } catch {}
+    // 2. KDE via kreadconfig (Plasma 6 → kreadconfig6, Plasma 5 → kreadconfig5)
+    for (const tool of ["kreadconfig6", "kreadconfig5"]) {
+      try {
+        const out = execSync(`${tool} --group General --key ColorScheme`, {
+          stdio: ["pipe", "pipe", "ignore"],
+          timeout: 2000,
+        })
+          .toString()
+          .trim()
+          .toLowerCase();
+        if (out.includes("dark")) {
+          return true;
+        }
+        if (out.length > 0) {
+          return false;
+        }
+      } catch {}
+    }
 
-    // 3. KDE via kdeglobals
+    // 3. KDE via kdeglobals (Plasma 5 + Plasma 6, incl. custom schemes)
     try {
       const kdegl = path.join(os.homedir(), ".config", "kdeglobals");
       if (fs.existsSync(kdegl)) {
-        const c = fs.readFileSync(kdegl, "utf8");
-        if (
-          c.includes("ColorScheme=KDE Breeze Dark") ||
-          c.includes("ColorScheme=BreezeDark")
-        ) {
-          return true;
-        }
-        if (/ColorScheme=/.test(c)) {
-          return false;
-        }
+        const dark = detectKdeDarkFromKdeglobals(
+          fs.readFileSync(kdegl, "utf8")
+        );
+        if (dark !== null) return dark;
       }
     } catch {}
 
@@ -160,7 +272,11 @@ function detectDarkMode() {
       }
     } catch {}
 
-    // 5. COLORFGBG env
+    // 5. Alacritty terminal config (background color → luminance)
+    const alacrittyDark = detectAlacrittyDark();
+    if (alacrittyDark !== null) return alacrittyDark;
+
+    // 6. COLORFGBG env
     if (env.COLORFGBG) {
       const parts = env.COLORFGBG.split(";");
       const bg = parts[parts.length - 1];
@@ -172,7 +288,7 @@ function detectDarkMode() {
       }
     }
 
-    // 6. GTK_THEME env
+    // 7. GTK_THEME env
     if (env.GTK_THEME && env.GTK_THEME.endsWith("-dark")) {
       return true;
     }
