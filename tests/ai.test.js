@@ -138,6 +138,11 @@ describe("AI Helper", () => {
       expect.objectContaining({
         model: "llama3",
         stream: false,
+        keep_alive: "30m",
+        options: expect.objectContaining({
+          num_predict: expect.any(Number),
+          num_ctx: 4096,
+        }),
       }),
       expect.any(Object)
     );

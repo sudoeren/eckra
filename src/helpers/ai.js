@@ -1,7 +1,7 @@
 const axios = require("axios");
 const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
 
-const MAX_DIFF_CHARS = 3000;
+const MAX_DIFF_CHARS = 2000;
 
 function formatDiffForPrompt(diff, maxChars = MAX_DIFF_CHARS) {
   if (!diff || diff.length <= maxChars) return diff || "";
@@ -65,6 +65,15 @@ async function callProvider(
         messages,
         temperature,
         stream: false,
+        // Keep the model loaded between calls so repeated commit
+        // generation doesn't pay a cold-start reload each time.
+        keep_alive: "30m",
+        options: {
+          // Bound generation so the model doesn't ramble, and give the
+          // context enough room so a large diff is not silently truncated.
+          num_predict: max_tokens,
+          num_ctx: 4096,
+        },
       };
       break;
 
