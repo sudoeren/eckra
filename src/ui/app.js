@@ -162,10 +162,15 @@ async function quickStatus() {
 
 async function quickCommit(message, opts = {}) {
   if (message) {
-    const statusResult = await getGitStatus();
-    if (statusResult.staged.length === 0) await stageAll();
-    await createCommit(message);
-    console.log(s.success("\n  ✓ Commit done!\n"));
+    try {
+      const statusResult = await getGitStatus();
+      if (statusResult.staged.length === 0) await stageAll();
+      await createCommit(message);
+      console.log(s.success("\n  ✓ Commit done!\n"));
+    } catch (err) {
+      console.log(s.error(`\n  ✗ ${err.message}`));
+      process.exitCode = 1;
+    }
   } else {
     await commit().doCommit(null, opts);
   }
