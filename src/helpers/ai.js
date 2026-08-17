@@ -68,6 +68,10 @@ async function callProvider(
         // Keep the model loaded between calls so repeated commit
         // generation doesn't pay a cold-start reload each time.
         keep_alive: "30m",
+        // Reasoning models (e.g. Qwen 3.5) spend all their token budget on
+        // a huge "thinking" block and return empty content, taking ~50s per
+        // call. Disabling thinking makes them answer directly and fast.
+        think: false,
         options: {
           // Bound generation so the model doesn't ramble, and give the
           // context enough room so a large diff is not silently truncated.
