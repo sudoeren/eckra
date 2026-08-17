@@ -16,9 +16,8 @@ async function doPush(silent = false) {
     done(spin, "Push successful!");
     if (!silent) await sleep(800);
   } catch (err) {
-    fail(spin, "Push error");
-
     if (err.message.includes("no upstream")) {
+      spin.stop();
       const branch = await getCurrentBranch();
       let setUpstream = true;
 
@@ -27,7 +26,9 @@ async function doPush(silent = false) {
           {
             type: "confirm",
             name: "setUpstream",
-            message: s.warning(`Set upstream? (-u origin ${branch})`),
+            message: s.warning(
+              `No upstream branch. Set it? (-u origin ${branch})`
+            ),
             default: true,
           },
         ]);
@@ -40,18 +41,18 @@ async function doPush(silent = false) {
         try {
           await getGit().push(["-u", "origin", branch]);
           done(spin2, "Push successful!");
+          if (!silent) await sleep(800);
         } catch (e) {
-          fail(spin2, e.message);
+          fail(spin2, `Push error: ${e.message}`);
+          if (!silent) await pause();
         }
+      } else if (!silent) {
+        await pause();
       }
     } else {
-      console.log(
-        s.error(`
-  ${err.message}
-`)
-      );
+      fail(spin, `Push error: ${err.message}`);
+      if (!silent) await pause();
     }
-    if (!silent) await pause();
   }
 }
 
