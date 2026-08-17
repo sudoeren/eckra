@@ -53,6 +53,9 @@ Run `eckra` in any Git repository to open the dashboard:
 eckra
 ```
 
+> [!NOTE]
+> On first run, eckra walks you through a quick setup wizard. You can re-run the setup anytime with `eckra setup`.
+
 Or jump straight into action:
 
 | Command         | Alias | Action                        |
