@@ -4,7 +4,7 @@
 
 # Eckra
 
-**AI-powered Git assistant that analyzes your code changes and generates meaningful commit messages using OpenAI, Anthropic, Gemini, OpenRouter, Ollama, or LM Studio**
+**AI-powered Git management: commits, stories, and the whole repo in one place**
 
 <p align="center">
   <a href="https://www.npmjs.com/package/eckra"><img src="https://img.shields.io/npm/dt/eckra?label=total%20downloads" alt="npm total downloads"></a>
@@ -15,15 +15,16 @@
 
 ## What is eckra?
 
-eckra is an interactive Git management tool. It analyzes your changes and suggests context-aware commit messages — no config required to get started.
+eckra is an interactive, AI-powered Git management tool. It writes context-aware commit messages, turns your commit history into readable project stories, and brings staging, branches, stashes, and remotes into one dashboard. No config required to get started.
 
 ## Features
 
+- **Interactive dashboard**: manage staging, branches, stashes, and remotes from one menu
 - **AI commit messages** based on your actual diff (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio)
 - **Select & edit** any suggestion before committing
 - **Staged diff review** with syntax highlighting
-- **Project story** — AI timeline of your commit history
-- **Interactive dashboard** for staging, branches, stashes, and remotes
+- **Project story**: AI timeline of your commit history
+- **Lazygit integration**: run eckra's commit flow inside lazygit
 
 ## Installation
 
@@ -80,14 +81,14 @@ eckra works out of the box with **LM Studio** (`http://localhost:1234`). Other p
 
 | Provider          | Type            | Default Model                |
 | :---------------- | :-------------- | :--------------------------- |
-| **LM Studio**     | Local           | — (user-configured)          |
-| **Ollama**        | Local           | — (user-configured)          |
+| **LM Studio**     | Local           | (user-configured)            |
+| **Ollama**        | Local           | (user-configured)            |
 | **OpenAI**        | Cloud (API Key) | `gpt-5-mini`                 |
 | **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`          |
 | **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`        |
 | **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite`       |
 
-Per-repository overrides go in `.eckrarc` (gitignored — it can hold API keys).
+Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
 
 ### Config CLI
 
