@@ -55,6 +55,7 @@ Skip the menu and jump straight into action:
 | `eckra story`    | `t`   | AI-generated project timeline from commit history |
 | `eckra start`    | `s`   | Start the interactive dashboard               |
 | `eckra config`   | `cfg` | View or edit configuration (non-interactive)  |
+| `eckra doctor`   | `dr`  | Health check: git, config, AI provider        |
 
 > **Pro tip:** Use `eckra e` as a shortcut for the full automated workflow — it stages all changes, generates an AI commit message, and pushes in one go.
 
@@ -117,6 +118,18 @@ eckra config set aiProvider gemini --local
 eckra config unset ollamaUrl --local
 eckra config path --local
 ```
+
+### Health Check
+
+`eckra doctor` runs a series of health checks across three areas — Git, configuration, and the AI provider connection — and prints a pass/warn/fail report with an overall summary. It works from any directory.
+
+```bash
+eckra doctor             # Run all checks (live provider test)
+eckra doctor --no-provider  # Skip the network check (offline)
+eckra doctor --json      # Machine-readable JSON report (for scripts/CI)
+```
+
+It exits with code `1` when any check fails, making it usable in CI pipelines.
 
 ## Troubleshooting
 

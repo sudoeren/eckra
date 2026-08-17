@@ -225,6 +225,67 @@ program
   .option("--show-secrets", "Show full API keys when displaying config")
   .action(runConfigCommand);
 
+// ─── eckra doctor ──────────────────────────────────────────────
+// Diagnostic health check: git + config + AI provider.
+
+const DOCTOR_STATUS_ICONS = {
+  pass: "✓",
+  warn: "⚠",
+  fail: "✗",
+  skip: "○",
+  info: "•",
+};
+
+const DOCTOR_STATUS_TONE = {
+  pass: s.success,
+  warn: s.warning,
+  fail: s.error,
+  skip: s.muted,
+  info: s.muted,
+};
+
+async function runDoctorCommand(options) {
+  const { runDoctorCheck } = require("./helpers/doctor");
+  const report = await runDoctorCheck({
+    skipProvider: options.provider === false,
+  });
+
+  if (options.json) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    let lastCategory = null;
+    for (const check of report.checks) {
+      if (check.category !== lastCategory) {
+        console.log();
+        console.log(s.bold(`  ${check.category}`));
+        lastCategory = check.category;
+      }
+      const icon = DOCTOR_STATUS_ICONS[check.status] || "•";
+      const tone = DOCTOR_STATUS_TONE[check.status] || s.text;
+      console.log(
+        `  ${tone(icon)} ${s.text(check.label)} — ${s.muted(check.detail)}`
+      );
+    }
+    console.log();
+    console.log(
+      `${s.success(`  Summary: ${report.passed} passed`)}` +
+        `${report.warnings > 0 ? `, ${s.warning(`${report.warnings} warning${report.warnings === 1 ? "" : "s"}`)}` : ""}` +
+        `${report.failed > 0 ? `, ${s.error(`${report.failed} failed`)}` : ""}`
+    );
+    console.log();
+  }
+
+  if (report.failed > 0) process.exitCode = 1;
+}
+
+program
+  .command("doctor")
+  .alias("dr")
+  .description("Run health checks: git, config, and AI provider connection")
+  .option("--json", "Output the report as JSON")
+  .option("--no-provider", "Skip the live AI provider connection check")
+  .action(runDoctorCommand);
+
 // Default - start interactive
 program.action(async () => {
   if (await checkGitRepo()) {

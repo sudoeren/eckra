@@ -283,6 +283,7 @@ module.exports = {
   maskSecret,
   setConfigValue,
   unsetConfigValue,
+  findLocalConfig,
   DEFAULT_CONFIG,
   normalizeUrl,
 };
