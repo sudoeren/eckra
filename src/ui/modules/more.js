@@ -42,6 +42,7 @@ async function doMore() {
         menuItem("Project Story", "text", "timeline"),
         sep(),
         menuItem("Settings", "text", "settings"),
+        menuItem("Check for Updates", "text", "update"),
         menuItem("About", "text", "about"),
         backItem("Main Menu"),
       ],
@@ -94,6 +95,9 @@ async function doMore() {
       break;
     case "settings":
       await doSettings();
+      break;
+    case "update":
+      await require("./update").doUpdate();
       break;
     case "about":
       await doAbout();

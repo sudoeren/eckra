@@ -325,6 +325,30 @@ program
   .option("--no-provider", "Skip the live AI provider connection check")
   .action(runDoctorCommand);
 
+// ─── eckra update ──────────────────────────────────────────────
+// Check for new versions and upgrade the global package.
+// Works outside git repos, no onboarding required.
+
+async function runUpdateCommand(options) {
+  const { doUpdate } = require("./ui/modules/update");
+  const result = await doUpdate({
+    checkOnly: options.check,
+    yes: options.yes,
+    interactive: false,
+  });
+  if (options.check && result.outdated) process.exitCode = 1;
+}
+
+program
+  .command("update")
+  .alias("upgrade")
+  .description(
+    "Check for updates and upgrade eckra (npm install -g eckra@latest)"
+  )
+  .option("--check", "Only check for a new version, do not update")
+  .option("-y, --yes", "Skip the confirmation prompt")
+  .action(runUpdateCommand);
+
 // ─── eckra suggest ─────────────────────────────────────────────
 // Non-interactive commit message generation (used by lazygit, scripts).
 

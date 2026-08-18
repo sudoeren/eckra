@@ -160,6 +160,21 @@ eckra config path               # Config file path
 
 `eckra doctor` checks Git, config, and the AI provider connection. Use `--no-provider` for an offline check or `--json` for CI. It exits with code `1` when any check fails.
 
+### Updating
+
+`eckra update` checks the npm registry and upgrades the global package:
+
+```bash
+eckra update            # Check and update (asks for confirmation)
+eckra update --check    # Check only (exit code 1 if an update is available)
+eckra update --yes      # Update without confirmation
+```
+
+You can also check from the menu: **More > Check for Updates**.
+
+> [!NOTE]
+> Running eckra via `npx eckra` always uses the latest version, no update needed.
+
 ### Scripts & CI
 
 `eckra suggest` prints a commit message to stdout without any prompts:
