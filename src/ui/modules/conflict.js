@@ -1,4 +1,4 @@
-const { execFile } = require("child_process");
+const { execFile, exec } = require("child_process");
 const {
   getConflictDetails,
   getConflictedDiff,
@@ -99,9 +99,17 @@ async function resolveFile(file) {
     const editor =
       process.env.EDITOR || (process.platform === "win32" ? "notepad" : "code");
     console.log(s.muted(`  Opening ${editor}...`));
+    // EDITOR may include flags (e.g. "code --wait"); route through a shell
+    // when the value carries arguments, otherwise launch the binary directly.
+    const launch = (target) => {
+      if (/\s/.test(editor.trim())) {
+        return exec(`"${editor.trim()}" "${target}"`, { stdio: "inherit" });
+      }
+      return execFile(editor, [target], { stdio: "inherit" });
+    };
     try {
       await new Promise((resolve, reject) => {
-        const child = execFile(editor, [file], { stdio: "inherit" });
+        const child = launch(file);
         child.on("close", resolve);
         child.on("error", reject);
       });
