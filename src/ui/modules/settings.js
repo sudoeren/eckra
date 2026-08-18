@@ -16,6 +16,10 @@ const {
   fetchGeminiModels,
   fetchOllamaModels,
   fetchLMStudioModels,
+  fetchOpenCodeGoModels,
+  fetchDeepSeekModels,
+  fetchBedrockModels,
+  fetchOllamaCloudModels,
 } = require("../../helpers/ai");
 const { s, clear, sleep, pause } = require("../common");
 const {
@@ -75,6 +79,11 @@ function getRequiredKeyField(provider) {
     anthropic: "anthropicApiKey",
     openrouter: "openrouterApiKey",
     gemini: "geminiApiKey",
+    opencodego: "opencodeGoApiKey",
+    deepseek: "deepseekApiKey",
+    bedrock: "bedrockApiKey",
+    bedrockmantle: "bedrockMantleApiKey",
+    ollamacloud: "ollamaCloudApiKey",
   };
   return keyFields[provider] || null;
 }
@@ -129,6 +138,64 @@ function getProviderQuestions(provider, config) {
           default: config.geminiApiKey,
         },
       ];
+    case "opencodego":
+      return [
+        {
+          type: "input",
+          name: "opencodeGoApiKey",
+          message: "OpenCode Go API Key:",
+          default: config.opencodeGoApiKey,
+        },
+      ];
+    case "deepseek":
+      return [
+        {
+          type: "input",
+          name: "deepseekApiKey",
+          message: "DeepSeek API Key:",
+          default: config.deepseekApiKey,
+        },
+      ];
+    case "bedrock":
+      return [
+        {
+          type: "input",
+          name: "bedrockApiKey",
+          message: "Amazon Bedrock API Key:",
+          default: config.bedrockApiKey,
+        },
+        {
+          type: "input",
+          name: "bedrockRegion",
+          message: "AWS Region:",
+          default: config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion,
+        },
+      ];
+    case "bedrockmantle":
+      return [
+        {
+          type: "input",
+          name: "bedrockMantleApiKey",
+          message: "Amazon Bedrock Mantle API Key:",
+          default: config.bedrockMantleApiKey,
+        },
+        {
+          type: "input",
+          name: "bedrockMantleRegion",
+          message: "AWS Region:",
+          default:
+            config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion,
+        },
+      ];
+    case "ollamacloud":
+      return [
+        {
+          type: "input",
+          name: "ollamaCloudApiKey",
+          message: "Ollama Cloud API Key:",
+          default: config.ollamaCloudApiKey,
+        },
+      ];
     default:
       return [
         {
@@ -176,6 +243,32 @@ async function promptModelSearch(provider, answers, config) {
       currentModel = config.openrouterModel || DEFAULT_CONFIG.openrouterModel;
       fetchLabel = "Fetching models from OpenRouter...";
       break;
+    case "opencodego":
+      configKey = "opencodeGoModel";
+      currentModel = config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel;
+      fetchLabel = "Fetching models from OpenCode Go...";
+      break;
+    case "deepseek":
+      configKey = "deepseekModel";
+      currentModel = config.deepseekModel || DEFAULT_CONFIG.deepseekModel;
+      fetchLabel = "Fetching models from DeepSeek...";
+      break;
+    case "bedrock":
+      configKey = "bedrockModel";
+      currentModel = config.bedrockModel || DEFAULT_CONFIG.bedrockModel;
+      fetchLabel = "Fetching models from Amazon Bedrock...";
+      break;
+    case "bedrockmantle":
+      configKey = "bedrockMantleModel";
+      currentModel =
+        config.bedrockMantleModel || DEFAULT_CONFIG.bedrockMantleModel;
+      fetchLabel = "Fetching models from Bedrock Mantle...";
+      break;
+    case "ollamacloud":
+      configKey = "ollamaCloudModel";
+      currentModel = config.ollamaCloudModel || DEFAULT_CONFIG.ollamaCloudModel;
+      fetchLabel = "Fetching models from Ollama Cloud...";
+      break;
     case "lmstudio":
     default:
       configKey = "model";
@@ -207,6 +300,35 @@ async function promptModelSearch(provider, answers, config) {
     case "openrouter":
       models = await fetchOpenRouterModels(
         answers.openrouterApiKey || config.openrouterApiKey
+      );
+      break;
+    case "opencodego":
+      models = await fetchOpenCodeGoModels(
+        answers.opencodeGoApiKey || config.opencodeGoApiKey
+      );
+      break;
+    case "deepseek":
+      models = await fetchDeepSeekModels(
+        answers.deepseekApiKey || config.deepseekApiKey
+      );
+      break;
+    case "bedrock":
+      models = await fetchBedrockModels(
+        answers.bedrockRegion || config.bedrockRegion,
+        answers.bedrockApiKey || config.bedrockApiKey,
+        "runtime"
+      );
+      break;
+    case "bedrockmantle":
+      models = await fetchBedrockModels(
+        answers.bedrockMantleRegion || config.bedrockMantleRegion,
+        answers.bedrockMantleApiKey || config.bedrockMantleApiKey,
+        "mantle"
+      );
+      break;
+    case "ollamacloud":
+      models = await fetchOllamaCloudModels(
+        answers.ollamaCloudApiKey || config.ollamaCloudApiKey
       );
       break;
     case "lmstudio":
@@ -321,6 +443,64 @@ async function doSettings() {
       s.muted("  API Key: ") +
         s.text(
           config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None"
+        )
+    );
+  } else if (config.aiProvider === "opencodego") {
+    console.log(s.muted("  Model: ") + s.text(config.opencodeGoModel));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.opencodeGoApiKey
+            ? "****" + config.opencodeGoApiKey.slice(-4)
+            : "None"
+        )
+    );
+  } else if (config.aiProvider === "deepseek") {
+    console.log(s.muted("  Model: ") + s.text(config.deepseekModel));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.deepseekApiKey
+            ? "****" + config.deepseekApiKey.slice(-4)
+            : "None"
+        )
+    );
+  } else if (config.aiProvider === "bedrock") {
+    console.log(
+      s.muted("  Region: ") +
+        s.text(config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion)
+    );
+    console.log(s.muted("  Model: ") + s.text(config.bedrockModel));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.bedrockApiKey
+            ? "****" + config.bedrockApiKey.slice(-4)
+            : "None"
+        )
+    );
+  } else if (config.aiProvider === "bedrockmantle") {
+    console.log(
+      s.muted("  Region: ") +
+        s.text(config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion)
+    );
+    console.log(s.muted("  Model: ") + s.text(config.bedrockMantleModel));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.bedrockMantleApiKey
+            ? "****" + config.bedrockMantleApiKey.slice(-4)
+            : "None"
+        )
+    );
+  } else if (config.aiProvider === "ollamacloud") {
+    console.log(s.muted("  Model: ") + s.text(config.ollamaCloudModel));
+    console.log(
+      s.muted("  API Key: ") +
+        s.text(
+          config.ollamaCloudApiKey
+            ? "****" + config.ollamaCloudApiKey.slice(-4)
+            : "None"
         )
     );
   } else {
@@ -467,11 +647,16 @@ async function doSettings() {
   if (action === "provider") {
     const providerChoices = [
       { name: "Ollama (Local)", value: "ollama" },
+      { name: "Ollama Cloud", value: "ollamacloud" },
       { name: "LM Studio (Local)", value: "lmstudio" },
       { name: "OpenAI", value: "openai" },
       { name: "Anthropic (Claude)", value: "anthropic" },
       { name: "OpenRouter", value: "openrouter" },
       { name: "Google Gemini", value: "gemini" },
+      { name: "OpenCode Go", value: "opencodego" },
+      { name: "DeepSeek", value: "deepseek" },
+      { name: "Amazon Bedrock", value: "bedrock" },
+      { name: "Amazon Bedrock Mantle", value: "bedrockmantle" },
     ];
 
     const { provider } = await prompt([

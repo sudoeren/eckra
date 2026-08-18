@@ -116,16 +116,28 @@ eckra works out of the box with **Ollama** (`http://localhost:11434`) using the 
 ollama pull qwen3.5:2b
 ```
 
-Other providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`:
+### Local providers (no API key)
 
-| Provider          | Type            | Default Model           |
-| :---------------- | :-------------- | :---------------------- |
-| **Ollama**        | Local           | `qwen3.5:2b`            |
-| **LM Studio**     | Local           | (user-configured)       |
-| **OpenAI**        | Cloud (API Key) | `gpt-5-mini`            |
-| **Anthropic**     | Cloud (API Key) | `claude-sonnet-4-6`     |
-| **OpenRouter**    | Cloud (API Key) | `openai/gpt-oss-120b`   |
-| **Google Gemini** | Cloud (API Key) | `gemini-3.1-flash-lite` |
+| Provider      | Setup                                          | Default Model     |
+| :------------ | :--------------------------------------------- | :---------------- |
+| **Ollama**    | Local server, default `http://localhost:11434` | `qwen3.5:2b`      |
+| **LM Studio** | Local server, default `http://localhost:1234`  | (user-configured) |
+
+### Cloud providers (API key)
+
+| Provider                  | Requires                                                     | Default Model             |
+| :------------------------ | :----------------------------------------------------------- | :------------------------ |
+| **OpenAI**                | OpenAI API key                                               | `gpt-5-mini`              |
+| **Anthropic (Claude)**    | Anthropic API key                                            | `claude-sonnet-4-6`       |
+| **Google Gemini**         | Google AI Studio API key                                     | `gemini-3.1-flash-lite`   |
+| **OpenRouter**            | OpenRouter API key                                           | `openai/gpt-oss-120b`     |
+| **DeepSeek**              | DeepSeek API key                                             | `deepseek-chat`           |
+| **OpenCode Go**           | OpenCode Go API key                                          | `deepseek-v4-flash`       |
+| **Ollama Cloud**          | Ollama Cloud API key (ollama.com/settings/keys)              | `qwen3.5:2b`              |
+| **Amazon Bedrock**        | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-sonnet-4-6` |
+| **Amazon Bedrock Mantle** | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-sonnet-4-6` |
+
+Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you.
 
 > [!NOTE]
 > Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).

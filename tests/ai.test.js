@@ -7,6 +7,10 @@ const {
   resetModelCache,
   fetchOpenAIModels,
   fetchOllamaModels,
+  fetchDeepSeekModels,
+  fetchBedrockModels,
+  fetchOpenCodeGoModels,
+  fetchOllamaCloudModels,
 } = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
 
@@ -237,6 +241,206 @@ describe("AI Helper", () => {
     );
   });
 
+  test("should call OpenCode Go API correctly", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "opencodego",
+      opencodeGoApiKey: "ocg-test",
+      opencodeGoModel: "deepseek-v4-flash",
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "feat: opencode go commit" } }],
+      },
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe("feat: opencode go commit");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://opencode.ai/zen/go/v1/chat/completions",
+      expect.objectContaining({
+        model: "deepseek-v4-flash",
+        messages: expect.any(Array),
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ocg-test",
+        }),
+      })
+    );
+  });
+
+  test("should call DeepSeek API correctly", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "deepseek",
+      deepseekApiKey: "ds-test",
+      deepseekModel: "deepseek-chat",
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "feat: deepseek commit" } }],
+      },
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe("feat: deepseek commit");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://api.deepseek.com/chat/completions",
+      expect.objectContaining({
+        model: "deepseek-chat",
+        messages: expect.any(Array),
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ds-test",
+        }),
+      })
+    );
+  });
+
+  test("should call Amazon Bedrock API correctly", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "bedrock",
+      bedrockApiKey: "bk-test",
+      bedrockRegion: "us-west-2",
+      bedrockModel: "us.anthropic.claude-sonnet-4-6",
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "feat: bedrock commit" } }],
+      },
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe("feat: bedrock commit");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://bedrock-runtime.us-west-2.amazonaws.com/v1/chat/completions",
+      expect.objectContaining({
+        model: "us.anthropic.claude-sonnet-4-6",
+        messages: expect.any(Array),
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer bk-test",
+        }),
+      })
+    );
+  });
+
+  test("should call Amazon Bedrock Mantle API correctly", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "bedrockmantle",
+      bedrockMantleApiKey: "bkm-test",
+      bedrockMantleRegion: "eu-central-1",
+      bedrockMantleModel: "openai.gpt-oss-120b",
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "feat: bedrock mantle commit" } }],
+      },
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe("feat: bedrock mantle commit");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://bedrock-mantle.eu-central-1.api.aws/v1/chat/completions",
+      expect.objectContaining({
+        model: "openai.gpt-oss-120b",
+        messages: expect.any(Array),
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer bkm-test",
+        }),
+      })
+    );
+  });
+
+  test("should call Ollama Cloud API correctly", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "ollamacloud",
+      ollamaCloudApiKey: "oc-test",
+      ollamaCloudModel: "qwen3.5:2b",
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "feat: ollama cloud commit" } }],
+      },
+    });
+
+    const message = await generateCommitMessage(mockDiff, mockFiles);
+
+    expect(message).toBe("feat: ollama cloud commit");
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://ollama.com/v1/chat/completions",
+      expect.objectContaining({
+        model: "qwen3.5:2b",
+        messages: expect.any(Array),
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer oc-test",
+        }),
+      })
+    );
+  });
+
+  test("should verify OpenCode Go connection via models endpoint", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "opencodego",
+      opencodeGoApiKey: "ocg-test",
+    });
+
+    axios.get.mockResolvedValue({
+      data: { data: [{ id: "deepseek-v4-flash" }] },
+    });
+
+    const result = await checkAIConnection();
+
+    expect(result.connected).toBe(true);
+    expect(axios.get).toHaveBeenCalledWith(
+      "https://opencode.ai/zen/go/v1/models",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ocg-test",
+        }),
+      })
+    );
+  });
+
+  test("should report a missing Bedrock API key", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "bedrock",
+      bedrockApiKey: "",
+      bedrockRegion: "us-east-1",
+    });
+
+    const result = await checkAIConnection();
+
+    expect(result.connected).toBe(false);
+    expect(result.error).toContain("Bedrock API Key is missing");
+  });
+
+  test("should report a missing Ollama Cloud API key", async () => {
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "ollamacloud",
+      ollamaCloudApiKey: "",
+    });
+
+    const result = await checkAIConnection();
+
+    expect(result.connected).toBe(false);
+    expect(result.error).toContain("Ollama Cloud API Key is missing");
+  });
+
   describe("model fetch caching", () => {
     test("model fetch results are cached per api key", async () => {
       axios.get.mockResolvedValue({
@@ -309,6 +513,67 @@ describe("AI Helper", () => {
       resetModelCache();
       await fetchOpenAIModels("sk-test");
       expect(axios.get).toHaveBeenCalledTimes(2);
+    });
+
+    test("deepseek model fetch is cached per api key", async () => {
+      axios.get.mockResolvedValue({
+        data: { data: [{ id: "deepseek-chat" }] },
+      });
+
+      const first = await fetchDeepSeekModels("sk-test");
+      const second = await fetchDeepSeekModels("sk-test");
+
+      expect(first).toEqual([{ id: "deepseek-chat", name: "deepseek-chat" }]);
+      expect(second).toEqual(first);
+      expect(axios.get).toHaveBeenCalledTimes(1);
+    });
+
+    test("bedrock model fetch uses the runtime and mantle endpoints", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          data: [{ id: "us.anthropic.claude-sonnet-4-6" }],
+        },
+      });
+
+      await fetchBedrockModels("eu-central-1", "bk-test", "runtime");
+      expect(axios.get).toHaveBeenCalledWith(
+        "https://bedrock-runtime.eu-central-1.amazonaws.com/v1/models",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer bk-test",
+          }),
+        })
+      );
+
+      await fetchBedrockModels("eu-central-1", "bk-test", "mantle");
+      expect(axios.get).toHaveBeenCalledWith(
+        "https://bedrock-mantle.eu-central-1.api.aws/v1/models",
+        expect.any(Object)
+      );
+    });
+
+    test("opencode go model fetch is cached per api key", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          data: [{ id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" }],
+        },
+      });
+
+      await fetchOpenCodeGoModels("ocg-test");
+      await fetchOpenCodeGoModels("ocg-test");
+
+      expect(axios.get).toHaveBeenCalledTimes(1);
+    });
+
+    test("ollama cloud model fetch is cached per api key", async () => {
+      axios.get.mockResolvedValue({
+        data: { data: [{ id: "qwen3.5:2b" }] },
+      });
+
+      await fetchOllamaCloudModels("oc-test");
+      await fetchOllamaCloudModels("oc-test");
+
+      expect(axios.get).toHaveBeenCalledTimes(1);
     });
   });
 });

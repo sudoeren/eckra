@@ -138,6 +138,76 @@ async function callProvider(
         stream: false,
       };
       break;
+
+    case "opencodego":
+      url = "https://opencode.ai/zen/go/v1/chat/completions";
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.opencodeGoApiKey}`,
+      };
+      body = {
+        model: config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
+
+    case "deepseek":
+      url = "https://api.deepseek.com/chat/completions";
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.deepseekApiKey}`,
+      };
+      body = {
+        model: config.deepseekModel || DEFAULT_CONFIG.deepseekModel,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
+
+    case "bedrock":
+      url = `https://bedrock-runtime.${config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion}.amazonaws.com/v1/chat/completions`;
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.bedrockApiKey}`,
+      };
+      body = {
+        model: config.bedrockModel || DEFAULT_CONFIG.bedrockModel,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
+
+    case "bedrockmantle":
+      url = `https://bedrock-mantle.${config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion}.api.aws/v1/chat/completions`;
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.bedrockMantleApiKey}`,
+      };
+      body = {
+        model: config.bedrockMantleModel || DEFAULT_CONFIG.bedrockMantleModel,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
+
+    case "ollamacloud":
+      url = "https://ollama.com/v1/chat/completions";
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.ollamaCloudApiKey}`,
+      };
+      body = {
+        model: config.ollamaCloudModel || DEFAULT_CONFIG.ollamaCloudModel,
+        messages,
+        temperature,
+        max_tokens,
+      };
+      break;
   }
 
   try {
@@ -179,6 +249,13 @@ async function callProvider(
         const modelLabels = {
           openai: config.openaiModel,
           openrouter: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
+          opencodego: config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel,
+          deepseek: config.deepseekModel || DEFAULT_CONFIG.deepseekModel,
+          bedrock: config.bedrockModel || DEFAULT_CONFIG.bedrockModel,
+          bedrockmantle:
+            config.bedrockMantleModel || DEFAULT_CONFIG.bedrockMantleModel,
+          ollamacloud:
+            config.ollamaCloudModel || DEFAULT_CONFIG.ollamaCloudModel,
         };
         throw new Error(
           `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`
@@ -454,6 +531,54 @@ async function testProviderConnection(provider, providerConfig) {
         }
       );
       return { connected: true };
+    } else if (provider === "opencodego") {
+      const apiKey = providerConfig.opencodeGoApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get("https://opencode.ai/zen/go/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 8000,
+      });
+      return { connected: true };
+    } else if (provider === "deepseek") {
+      const apiKey = providerConfig.deepseekApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get("https://api.deepseek.com/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 8000,
+      });
+      return { connected: true };
+    } else if (provider === "bedrock") {
+      const apiKey = providerConfig.bedrockApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      const region =
+        providerConfig.bedrockRegion || DEFAULT_CONFIG.bedrockRegion;
+      await axios.get(
+        `https://bedrock-runtime.${region}.amazonaws.com/v1/models`,
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          timeout: 8000,
+        }
+      );
+      return { connected: true };
+    } else if (provider === "bedrockmantle") {
+      const apiKey = providerConfig.bedrockMantleApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      const region =
+        providerConfig.bedrockMantleRegion ||
+        DEFAULT_CONFIG.bedrockMantleRegion;
+      await axios.get(`https://bedrock-mantle.${region}.api.aws/v1/models`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 8000,
+      });
+      return { connected: true };
+    } else if (provider === "ollamacloud") {
+      const apiKey = providerConfig.ollamaCloudApiKey;
+      if (!apiKey) return { connected: false, error: "API Key is missing" };
+      await axios.get("https://ollama.com/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 8000,
+      });
+      return { connected: true };
     }
     return { connected: true };
   } catch (error) {
@@ -475,6 +600,11 @@ function aiConnectionCacheKey(config) {
     anthropic: config.anthropicApiKey,
     openrouter: config.openrouterApiKey,
     gemini: config.geminiApiKey,
+    opencodego: config.opencodeGoApiKey,
+    deepseek: config.deepseekApiKey,
+    bedrock: `${config.bedrockApiKey}|${config.bedrockRegion}`,
+    bedrockmantle: `${config.bedrockMantleApiKey}|${config.bedrockMantleRegion}`,
+    ollamacloud: config.ollamaCloudApiKey,
   };
   return `${provider}|${fields[provider] || ""}`;
 }
@@ -552,6 +682,74 @@ async function checkAIConnection() {
           }
         );
         result = { connected: true, models: response.data?.models || [] };
+      }
+    } else if (provider === "opencodego") {
+      if (!config.opencodeGoApiKey) {
+        result = { connected: false, error: "OpenCode Go API Key is missing" };
+      } else {
+        const response = await axios.get(
+          "https://opencode.ai/zen/go/v1/models",
+          {
+            headers: { Authorization: `Bearer ${config.opencodeGoApiKey}` },
+            timeout: 5000,
+          }
+        );
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "deepseek") {
+      if (!config.deepseekApiKey) {
+        result = { connected: false, error: "DeepSeek API Key is missing" };
+      } else {
+        const response = await axios.get("https://api.deepseek.com/models", {
+          headers: { Authorization: `Bearer ${config.deepseekApiKey}` },
+          timeout: 5000,
+        });
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "bedrock") {
+      if (!config.bedrockApiKey) {
+        result = {
+          connected: false,
+          error: "Amazon Bedrock API Key is missing",
+        };
+      } else {
+        const region = config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion;
+        const response = await axios.get(
+          `https://bedrock-runtime.${region}.amazonaws.com/v1/models`,
+          {
+            headers: { Authorization: `Bearer ${config.bedrockApiKey}` },
+            timeout: 8000,
+          }
+        );
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "bedrockmantle") {
+      if (!config.bedrockMantleApiKey) {
+        result = {
+          connected: false,
+          error: "Amazon Bedrock Mantle API Key is missing",
+        };
+      } else {
+        const region =
+          config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion;
+        const response = await axios.get(
+          `https://bedrock-mantle.${region}.api.aws/v1/models`,
+          {
+            headers: { Authorization: `Bearer ${config.bedrockMantleApiKey}` },
+            timeout: 8000,
+          }
+        );
+        result = { connected: true, models: response.data?.data || [] };
+      }
+    } else if (provider === "ollamacloud") {
+      if (!config.ollamaCloudApiKey) {
+        result = { connected: false, error: "Ollama Cloud API Key is missing" };
+      } else {
+        const response = await axios.get("https://ollama.com/v1/models", {
+          headers: { Authorization: `Bearer ${config.ollamaCloudApiKey}` },
+          timeout: 5000,
+        });
+        result = { connected: true, models: response.data?.data || [] };
       }
     } else {
       result = { connected: true };
@@ -754,6 +952,112 @@ async function fetchLMStudioModels(url) {
 }
 
 /**
+ * Fetch available models from OpenCode Go
+ */
+async function fetchOpenCodeGoModels(apiKey) {
+  const key = modelCacheKey("opencodego", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
+  try {
+    const response = await axios.get("https://opencode.ai/zen/go/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    const result = models
+      .map((m) => ({ id: m.id, name: m.name || m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from DeepSeek
+ */
+async function fetchDeepSeekModels(apiKey) {
+  const key = modelCacheKey("deepseek", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
+  try {
+    const response = await axios.get("https://api.deepseek.com/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    const result = models
+      .map((m) => ({ id: m.id, name: m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Build the OpenAI-compatible base URL for a Bedrock endpoint
+ * (`runtime` = bedrock-runtime, `mantle` = bedrock-mantle)
+ */
+function bedrockBaseUrl(region, endpoint) {
+  if (endpoint === "mantle") {
+    return `https://bedrock-mantle.${region}.api.aws/v1`;
+  }
+  return `https://bedrock-runtime.${region}.amazonaws.com/v1`;
+}
+
+/**
+ * Fetch available models from Amazon Bedrock (runtime or mantle endpoint)
+ */
+async function fetchBedrockModels(region, apiKey, endpoint = "runtime") {
+  const normalizedEndpoint = endpoint === "mantle" ? "mantle" : "runtime";
+  const regionValue = region || DEFAULT_CONFIG.bedrockRegion;
+  const baseUrl = bedrockBaseUrl(regionValue, normalizedEndpoint);
+  const key = modelCacheKey("bedrock", baseUrl);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
+  try {
+    const response = await axios.get(`${baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    const result = models
+      .map((m) => ({ id: m.id, name: m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from Ollama Cloud
+ */
+async function fetchOllamaCloudModels(apiKey) {
+  const key = modelCacheKey("ollamacloud", apiKey);
+  const cached = getCachedModels(key);
+  if (cached) return cached;
+  try {
+    const response = await axios.get("https://ollama.com/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000,
+    });
+    const models = response.data?.data || [];
+    const result = models
+      .map((m) => ({ id: m.id, name: m.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setCachedModels(key, result);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Generate a human-readable story/timeline from commit history
  */
 async function generateTimeline(commits) {
@@ -821,4 +1125,8 @@ module.exports = {
   fetchGeminiModels,
   fetchOllamaModels,
   fetchLMStudioModels,
+  fetchOpenCodeGoModels,
+  fetchDeepSeekModels,
+  fetchBedrockModels,
+  fetchOllamaCloudModels,
 };

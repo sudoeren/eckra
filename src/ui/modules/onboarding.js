@@ -30,11 +30,16 @@ async function doOnboarding() {
   // Choose provider
   const providerChoices = [
     { name: "Ollama (Local, no API key needed)", value: "ollama" },
+    { name: "Ollama Cloud", value: "ollamacloud" },
     { name: "LM Studio (Local, no API key needed)", value: "lmstudio" },
     { name: "OpenAI (GPT-4o, etc.)", value: "openai" },
     { name: "Anthropic (Claude)", value: "anthropic" },
     { name: "Google Gemini", value: "gemini" },
     { name: "OpenRouter", value: "openrouter" },
+    { name: "OpenCode Go", value: "opencodego" },
+    { name: "DeepSeek", value: "deepseek" },
+    { name: "Amazon Bedrock", value: "bedrock" },
+    { name: "Amazon Bedrock Mantle", value: "bedrockmantle" },
   ];
 
   const { provider } = await prompt([
@@ -109,6 +114,63 @@ async function doOnboarding() {
         name: "lmStudioUrl",
         message: "LM Studio URL:",
         default: "http://localhost:1234",
+      },
+    ]);
+  } else if (provider === "opencodego") {
+    answers = await prompt([
+      {
+        type: "input",
+        name: "opencodeGoApiKey",
+        message: "Enter your OpenCode Go API Key:",
+        validate: (v) => v.length > 0,
+      },
+    ]);
+  } else if (provider === "deepseek") {
+    answers = await prompt([
+      {
+        type: "input",
+        name: "deepseekApiKey",
+        message: "Enter your DeepSeek API Key:",
+        validate: (v) => v.length > 0,
+      },
+    ]);
+  } else if (provider === "bedrock") {
+    answers = await prompt([
+      {
+        type: "input",
+        name: "bedrockApiKey",
+        message: "Enter your Amazon Bedrock API Key:",
+        validate: (v) => v.length > 0,
+      },
+      {
+        type: "input",
+        name: "bedrockRegion",
+        message: "AWS Region:",
+        default: "us-east-1",
+      },
+    ]);
+  } else if (provider === "bedrockmantle") {
+    answers = await prompt([
+      {
+        type: "input",
+        name: "bedrockMantleApiKey",
+        message: "Enter your Amazon Bedrock Mantle API Key:",
+        validate: (v) => v.length > 0,
+      },
+      {
+        type: "input",
+        name: "bedrockMantleRegion",
+        message: "AWS Region:",
+        default: "us-east-1",
+      },
+    ]);
+  } else if (provider === "ollamacloud") {
+    answers = await prompt([
+      {
+        type: "input",
+        name: "ollamaCloudApiKey",
+        message: "Enter your Ollama Cloud API Key:",
+        validate: (v) => v.length > 0,
       },
     ]);
   }

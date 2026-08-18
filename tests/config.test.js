@@ -217,6 +217,24 @@ describe("Config Helper", () => {
       expect(isValidConfigKey("")).toBe(false);
     });
 
+    test("new provider keys are valid config keys", () => {
+      const newKeys = [
+        "opencodeGoApiKey",
+        "opencodeGoModel",
+        "deepseekApiKey",
+        "deepseekModel",
+        "bedrockApiKey",
+        "bedrockRegion",
+        "bedrockModel",
+        "bedrockMantleApiKey",
+        "bedrockMantleRegion",
+        "bedrockMantleModel",
+        "ollamaCloudApiKey",
+        "ollamaCloudModel",
+      ];
+      newKeys.forEach((key) => expect(isValidConfigKey(key)).toBe(true));
+    });
+
     test("maskSecret masks values and handles empty input", () => {
       expect(maskSecret("sk-abcdefgh1234")).toBe("****1234");
       expect(maskSecret("abcd")).toBe("****");

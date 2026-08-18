@@ -16,6 +16,11 @@ const PROVIDER_KEY_FIELDS = {
   anthropic: "anthropicApiKey",
   openrouter: "openrouterApiKey",
   gemini: "geminiApiKey",
+  opencodego: "opencodeGoApiKey",
+  deepseek: "deepseekApiKey",
+  bedrock: "bedrockApiKey",
+  bedrockmantle: "bedrockMantleApiKey",
+  ollamacloud: "ollamaCloudApiKey",
 };
 
 const PROVIDER_MODEL_KEYS = {
@@ -25,6 +30,11 @@ const PROVIDER_MODEL_KEYS = {
   gemini: "geminiModel",
   ollama: "ollamaModel",
   lmstudio: "model",
+  opencodego: "opencodeGoModel",
+  deepseek: "deepseekModel",
+  bedrock: "bedrockModel",
+  bedrockmantle: "bedrockMantleModel",
+  ollamacloud: "ollamaCloudModel",
 };
 
 function checkResult(category, label, status, detail) {

@@ -47,6 +47,18 @@ describe("Doctor Helper", () => {
         "openrouterModel",
         "geminiApiKey",
         "geminiModel",
+        "opencodeGoApiKey",
+        "opencodeGoModel",
+        "deepseekApiKey",
+        "deepseekModel",
+        "bedrockApiKey",
+        "bedrockRegion",
+        "bedrockModel",
+        "bedrockMantleApiKey",
+        "bedrockMantleRegion",
+        "bedrockMantleModel",
+        "ollamaCloudApiKey",
+        "ollamaCloudModel",
         "model",
         "theme",
         "aiInstruction",
@@ -131,6 +143,24 @@ describe("Doctor Helper", () => {
     );
     expect(keyCheck.status).toBe("fail");
     expect(keyCheck.detail).toContain("openaiApiKey missing");
+  });
+
+  test("fails when bedrock mantle is missing its API key", async () => {
+    configHelper.getConfig.mockReturnValue({
+      ...configHelper.getConfig(),
+      aiProvider: "bedrockmantle",
+      bedrockMantleApiKey: "",
+    });
+    git.getGitStatus.mockRejectedValue(new Error("not a repo"));
+    ai.checkAIConnection.mockResolvedValue({ connected: true });
+
+    const report = await runDoctorCheck();
+
+    const keyCheck = report.checks.find(
+      (c) => c.label === "API key configured"
+    );
+    expect(keyCheck.status).toBe("fail");
+    expect(keyCheck.detail).toContain("bedrockMantleApiKey missing");
   });
 
   test("fails on malformed config JSON", async () => {

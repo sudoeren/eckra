@@ -10,6 +10,10 @@ jest.mock("../src/helpers/ai", () => ({
   fetchOllamaModels: jest.fn(),
   fetchOpenRouterModels: jest.fn(),
   fetchLMStudioModels: jest.fn(),
+  fetchOpenCodeGoModels: jest.fn(),
+  fetchDeepSeekModels: jest.fn(),
+  fetchBedrockModels: jest.fn(),
+  fetchOllamaCloudModels: jest.fn(),
   checkAIConnection: jest.fn(),
   testProviderConnection: jest.fn(),
 }));
@@ -115,5 +119,96 @@ describe("Settings provider flow", () => {
     const question = screen.prompt.mock.calls[0][0][0];
     expect(question.name).toBe("ollamaModel");
     expect(question.default).toBe(DEFAULT_CONFIG.ollamaModel);
+  });
+
+  test("bedrock passes region, key and runtime endpoint to model fetch", async () => {
+    ai.fetchBedrockModels.mockResolvedValue([
+      {
+        id: "us.anthropic.claude-sonnet-4-6",
+        name: "us.anthropic.claude-sonnet-4-6",
+      },
+    ]);
+    screen.prompt.mockResolvedValue({
+      bedrockModel: "us.anthropic.claude-sonnet-4-6",
+    });
+
+    const result = await promptModelSearch(
+      "bedrock",
+      { bedrockApiKey: "bk", bedrockRegion: "eu-central-1" },
+      {}
+    );
+
+    expect(ai.fetchBedrockModels).toHaveBeenCalledWith(
+      "eu-central-1",
+      "bk",
+      "runtime"
+    );
+    expect(result).toEqual({ bedrockModel: "us.anthropic.claude-sonnet-4-6" });
+
+    const question = screen.prompt.mock.calls[0][0][0];
+    expect(question.name).toBe("bedrockModel");
+    expect(question.default).toBe(DEFAULT_CONFIG.bedrockModel);
+  });
+
+  test("bedrock mantle uses the mantle endpoint", async () => {
+    ai.fetchBedrockModels.mockResolvedValue([
+      { id: "openai.gpt-oss-120b", name: "openai.gpt-oss-120b" },
+    ]);
+    screen.prompt.mockResolvedValue({
+      bedrockMantleModel: "openai.gpt-oss-120b",
+    });
+
+    await promptModelSearch("bedrockmantle", {}, {});
+
+    expect(ai.fetchBedrockModels).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      "mantle"
+    );
+  });
+
+  test("deepseek uses its own model key and defaults", async () => {
+    ai.fetchDeepSeekModels.mockResolvedValue([
+      { id: "deepseek-chat", name: "deepseek-chat" },
+    ]);
+    screen.prompt.mockResolvedValue({ deepseekModel: "deepseek-chat" });
+
+    const result = await promptModelSearch("deepseek", {}, {});
+
+    expect(result).toEqual({ deepseekModel: "deepseek-chat" });
+
+    const question = screen.prompt.mock.calls[0][0][0];
+    expect(question.name).toBe("deepseekModel");
+    expect(question.default).toBe(DEFAULT_CONFIG.deepseekModel);
+  });
+
+  test("opencode go uses its own model key and defaults", async () => {
+    ai.fetchOpenCodeGoModels.mockResolvedValue([
+      { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+    ]);
+    screen.prompt.mockResolvedValue({ opencodeGoModel: "deepseek-v4-flash" });
+
+    const result = await promptModelSearch("opencodego", {}, {});
+
+    expect(result).toEqual({ opencodeGoModel: "deepseek-v4-flash" });
+
+    const question = screen.prompt.mock.calls[0][0][0];
+    expect(question.name).toBe("opencodeGoModel");
+    expect(question.default).toBe(DEFAULT_CONFIG.opencodeGoModel);
+  });
+
+  test("ollama cloud uses its own model key and defaults", async () => {
+    ai.fetchOllamaCloudModels.mockResolvedValue([
+      { id: "qwen3.5:2b", name: "qwen3.5:2b" },
+    ]);
+    screen.prompt.mockResolvedValue({ ollamaCloudModel: "qwen3.5:2b" });
+
+    const result = await promptModelSearch("ollamacloud", {}, {});
+
+    expect(result).toEqual({ ollamaCloudModel: "qwen3.5:2b" });
+
+    const question = screen.prompt.mock.calls[0][0][0];
+    expect(question.name).toBe("ollamaCloudModel");
+    expect(question.default).toBe(DEFAULT_CONFIG.ollamaCloudModel);
   });
 });
