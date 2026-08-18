@@ -275,9 +275,10 @@ function renderDiff(rawDiff, opts = {}) {
   });
 
   if (lines.length > maxLines) {
+    const total = lines.length;
     lines.splice(maxLines);
     lines.push(
-      s.warning(`\n  ... diff truncated (${lines.length} of more lines shown)`)
+      s.warning(`\n  ... diff truncated (${maxLines} of ${total} lines shown)`)
     );
   }
   return lines;
