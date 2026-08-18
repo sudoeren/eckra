@@ -15,6 +15,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -68,9 +70,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate release notes
+        id: notes
+        run: |
+          body=$(node scripts/release-notes.js)
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body: ${{ steps.notes.outputs.body }}
 
       - name: Set Deployment Status (success)
         if: success()
