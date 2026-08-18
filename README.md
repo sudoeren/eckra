@@ -125,10 +125,13 @@ eckra lazygit remove     # Remove it
 Other commands:
 
 ```bash
+eckra push -y                              # push without the confirmation prompt
 eckra suggest --all --instruction "focus on the why"   # non-interactive, stdout
 eckra suggest --output commit-msg.txt                  # write to a file (CI-friendly)
 eckra story --count 20                                 # analyze the last 20 commits
 ```
+
+Risky operations ask for confirmation before running: **push**, **pull**, **push tags**, **delete tag**, **drop stash**, **amend**, **rebase** and **squash**. Pass `-y/--yes` on `eckra push` to skip it.
 
 ## AI Configuration
 
