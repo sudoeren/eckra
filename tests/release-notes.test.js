@@ -63,6 +63,8 @@ describe("Release Notes Helper", () => {
         { subject: "test: add tests", body: "" },
         { subject: "chore: bump deps", body: "" },
         { subject: "ci: fix workflow", body: "" },
+        { subject: "style: format code", body: "" },
+        { subject: "revert: undo change", body: "" },
         { subject: "random text", body: "" },
       ]);
 
@@ -71,7 +73,12 @@ describe("Release Notes Helper", () => {
       expect(groups.performance).toEqual(["speed up"]);
       expect(groups.docs).toEqual(["update readme"]);
       expect(groups.tests).toEqual(["add tests"]);
-      expect(groups.maintenance).toEqual(["bump deps", "fix workflow"]);
+      expect(groups.maintenance).toEqual([
+        "bump deps",
+        "fix workflow",
+        "format code",
+        "undo change",
+      ]);
       expect(groups.other).toEqual(["random text"]);
       expect(groups.breaking).toEqual([]);
     });

@@ -70,6 +70,8 @@ function groupCommits(commits) {
       case "chore":
       case "build":
       case "ci":
+      case "style":
+      case "revert":
         groups.maintenance.push(parsed.description);
         break;
       default:
