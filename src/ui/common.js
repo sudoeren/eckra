@@ -396,6 +396,14 @@ async function pause() {
   ]);
 }
 
+/**
+ * Render a terminal hyperlink (OSC 8). Terminals without support show the
+ * plain text, so the display text should stay readable on its own.
+ */
+function link(url, text = url) {
+  return `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
+}
+
 module.exports = {
   s,
   clear,
@@ -406,5 +414,6 @@ module.exports = {
   timeAgo,
   header,
   pause,
+  link,
   resetThemeCache,
 };
