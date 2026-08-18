@@ -120,6 +120,17 @@ program
   });
 
 program
+  .command("graph")
+  .alias("g")
+  .description("Show the interactive commit graph across all branches")
+  .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
+    if (await checkGitRepo()) {
+      await app().quickGraph();
+    }
+  });
+
+program
   .command("setup")
   .description("Run the setup/onboarding wizard")
   .action(async () => {

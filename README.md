@@ -67,6 +67,7 @@ Or jump straight into action:
 | `eckra push`    | `p`   | Push to remote                |
 | `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
 | `eckra story`   | `t`   | AI project timeline           |
+| `eckra graph`   | `g`   | Interactive commit graph      |
 | `eckra start`   | `s`   | Interactive dashboard         |
 | `eckra lazygit` | `lg`  | Lazygit AI-commit integration |
 | `eckra config`  | `cfg` | View or edit config           |

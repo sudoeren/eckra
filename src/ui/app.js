@@ -195,6 +195,10 @@ async function quickPush(yes) {
   await sync().doPush(false, { yes });
 }
 
+async function quickGraph() {
+  await graph().doGraph();
+}
+
 async function easyWorkflow() {
   const info = await getGitStatus();
 
@@ -343,6 +347,7 @@ module.exports = {
   quickStatus,
   quickCommit,
   quickPush,
+  quickGraph,
   quickTimeline,
   easyWorkflow,
 };
