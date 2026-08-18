@@ -505,6 +505,7 @@ program
 
 // Default - start interactive
 program.action(async () => {
+  if (!(await app().ensureOnboarding())) return;
   if (await checkGitRepo()) {
     await app().startApp();
   }
