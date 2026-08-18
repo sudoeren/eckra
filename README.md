@@ -20,10 +20,13 @@
 
 eckra is an interactive, AI-powered Git management tool. It writes context-aware commit messages, turns your commit history into readable project stories, and brings staging, branches, stashes, and remotes into one dashboard. No config required to get started.
 
+> [!TIP]
+> **No API key needed to start**: eckra works out of the box with a local [Ollama](https://ollama.com) server. Cloud providers are optional.
+
 ## Features
 
 - **Interactive dashboard**: manage staging, branches, stashes, and remotes from one menu
-- **AI commit messages** based on your actual diff (OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio)
+- **AI commit messages** based on your actual diff, with 11 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Amazon Bedrock, OpenCode Go, and more; see the [provider table](#ai-configuration))
 - **Select & edit** any suggestion before committing
 - **Staged diff review** with syntax highlighting
 - **Project story**: AI timeline of your commit history
@@ -108,6 +111,27 @@ eckra lazygit install    # Add the custom command
 eckra lazygit remove     # Remove it
 ```
 
+### CLI options
+
+`eckra commit` flags:
+
+| Flag                   | Alias | Action                                 |
+| :--------------------- | :---- | :------------------------------------- |
+| `--message <text>`     | `-m`  | Commit with this message, skip AI      |
+| `--all`                | `-a`  | Stage all changes before generating    |
+| `--yes`                | `-y`  | Skip the confirmation prompt           |
+| `--generate <count>`   | `-g`  | Generate N messages to pick from       |
+| `--instruction <text>` |       | Extra instruction for the AI           |
+| `--no-commit`          |       | Only generate and show the message     |
+
+Other commands:
+
+```bash
+eckra suggest --all --instruction "focus on the why"   # non-interactive, stdout
+eckra suggest --output commit-msg.txt                  # write to a file (CI-friendly)
+eckra story --count 20                                 # analyze the last 20 commits
+```
+
 ## AI Configuration
 
 eckra works out of the box with **Ollama** (`http://localhost:11434`) using the lightweight [qwen3.5:2b](https://ollama.com/library/qwen3.5:2b) model:
@@ -184,6 +208,14 @@ eckra suggest                    # Message for staged changes
 eckra suggest --all              # Stage everything first
 eckra suggest --instruction "focus on the why"
 ```
+
+## Troubleshooting
+
+- **"AI Provider Error" / connection failed**: run `eckra doctor` to see exactly what's failing, then check the API key and model in **More > Settings**.
+- **Ollama errors**: make sure the server is running (`ollama serve`) and the model is pulled: `ollama pull qwen3.5:2b`.
+- **401 Unauthorized**: the API key is wrong or expired. Re-enter it in **More > Settings** or set it via `eckra config set <key> <value>`.
+- **AI returns a warning or empty message**: some providers flag safe content; try a different model or check the provider's dashboard for rate limits.
+- **Large diffs are truncated**: prompts are capped at 2000 characters by design. Commit in smaller chunks or stage related files only.
 
 ## Contributing
 

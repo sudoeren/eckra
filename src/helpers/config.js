@@ -98,6 +98,31 @@ function findLocalConfig(startDir = process.cwd()) {
 
 let _cachedConfig = null;
 
+const ENV_PREFIX = "ECKRA_";
+
+/**
+ * Map a config key to its environment variable name:
+ * `openaiApiKey` -> `ECKRA_OPENAI_API_KEY`, `lmStudioUrl` -> `ECKRA_LM_STUDIO_URL`
+ */
+function envVarName(key) {
+  return ENV_PREFIX + key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase();
+}
+
+/**
+ * Read config overrides from ECKRA_* environment variables.
+ * Empty values are ignored so `ECKRA_X=""` unset can't clear a file value.
+ */
+function getEnvConfig() {
+  const overrides = {};
+  for (const key of Object.keys(DEFAULT_CONFIG)) {
+    const value = process.env[envVarName(key)];
+    if (value !== undefined && value !== "") {
+      overrides[key] = value;
+    }
+  }
+  return overrides;
+}
+
 /**
  * Strip trailing slashes from a URL so path concatenation never yields "//"
  */
@@ -147,6 +172,9 @@ function getConfig() {
       );
     }
   }
+
+  // 3. Environment variables (ECKRA_*) override everything
+  config = { ...config, ...getEnvConfig() };
 
   // Normalize URL fields once so downstream path concatenation is safe
   config.lmStudioUrl = normalizeUrl(config.lmStudioUrl);
@@ -312,4 +340,6 @@ module.exports = {
   findLocalConfig,
   DEFAULT_CONFIG,
   normalizeUrl,
+  envVarName,
+  getEnvConfig,
 };

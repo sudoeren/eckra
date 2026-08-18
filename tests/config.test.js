@@ -13,6 +13,7 @@ const {
   setConfigValue,
   unsetConfigValue,
   resetConfig,
+  envVarName,
 } = require("../src/helpers/config");
 
 // Mock fs to avoid touching real files
@@ -337,6 +338,74 @@ describe("Config Helper", () => {
       expect(fs.rmSync).toHaveBeenCalledWith(localPath, {
         force: true,
       });
+    });
+  });
+
+  describe("environment variable overrides", () => {
+    const ENV_KEYS = [
+      "ECKRA_OPENAI_API_KEY",
+      "ECKRA_AI_PROVIDER",
+      "ECKRA_LM_STUDIO_URL",
+      "ECKRA_BEDROCK_REGION",
+    ];
+
+    afterEach(() => {
+      ENV_KEYS.forEach((key) => delete process.env[key]);
+    });
+
+    test("envVarName maps camelCase keys to ECKRA_ UPPER_SNAKE", () => {
+      expect(envVarName("openaiApiKey")).toBe("ECKRA_OPENAI_API_KEY");
+      expect(envVarName("lmStudioUrl")).toBe("ECKRA_LM_STUDIO_URL");
+      expect(envVarName("model")).toBe("ECKRA_MODEL");
+    });
+
+    test("environment variables override config values", () => {
+      process.env.ECKRA_OPENAI_API_KEY = "sk-env";
+
+      const config = getConfig();
+
+      expect(config.openaiApiKey).toBe("sk-env");
+    });
+
+    test("environment variables take precedence over config files", () => {
+      fs.existsSync.mockImplementation((filePath) => {
+        if (filePath.includes(".eckra") && filePath.includes("config.json"))
+          return true;
+        return false;
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes(".eckra") && filePath.includes("config.json")) {
+          return JSON.stringify({
+            openaiApiKey: "sk-file",
+            aiProvider: "openai",
+          });
+        }
+        return "";
+      });
+      process.env.ECKRA_OPENAI_API_KEY = "sk-env";
+
+      const config = getConfig();
+
+      expect(config.openaiApiKey).toBe("sk-env");
+      expect(config.aiProvider).toBe("openai");
+    });
+
+    test("empty env values and unrelated variables are ignored", () => {
+      process.env.ECKRA_OPENAI_API_KEY = "";
+      process.env.SOME_UNRELATED_VAR = "x";
+
+      const config = getConfig();
+
+      expect(config.openaiApiKey).toBe("");
+      expect(config.theme).toBe("auto");
+    });
+
+    test("URL env values are normalized", () => {
+      process.env.ECKRA_LM_STUDIO_URL = "http://localhost:1234/";
+
+      const config = getConfig();
+
+      expect(config.lmStudioUrl).toBe("http://localhost:1234");
     });
   });
 });
