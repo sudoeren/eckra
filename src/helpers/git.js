@@ -219,6 +219,35 @@ async function listTags() {
 }
 
 /**
+ * List all tags with details (name, type, commit, subject, tagger, date)
+ * via `git for-each-ref`. Lightweight tags carry no message/tagger.
+ */
+async function listTagDetails() {
+  const out = await getGit().raw([
+    "for-each-ref",
+    "refs/tags",
+    "--sort=-creatordate",
+    "--format=%(refname:short)\u001f%(objecttype)\u001f%(objectname:short)\u001f%(*objectname:short)\u001f%(contents:subject)\u001f%(taggername)\u001f%(taggerdate:iso)",
+  ]);
+  return (out.trim() ? out.trim().split("\n") : [])
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const [name, type, object, commit, subject, tagger, date] = line
+        .split("\u001f")
+        .map((v) => (v === undefined ? "" : v.trim()));
+      return {
+        name,
+        type,
+        object,
+        commit: commit || object,
+        subject,
+        tagger,
+        date,
+      };
+    });
+}
+
+/**
  * Create a new tag
  */
 async function createTag(tagName, message = null) {
@@ -634,6 +663,7 @@ module.exports = {
   getLastCommit,
   amendCommit,
   listTags,
+  listTagDetails,
   createTag,
   deleteTag,
   pushTags,

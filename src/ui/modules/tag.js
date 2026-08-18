@@ -1,5 +1,5 @@
 const {
-  listTags,
+  listTagDetails,
   createTag,
   deleteTag,
   pushTags,
@@ -7,9 +7,11 @@ const {
 const { s, pause, sleep } = require("../common");
 const {
   open,
+  rule,
   emptyState,
   menuItem,
   backItem,
+  sep,
   prompt,
   spinner,
   done,
@@ -17,95 +19,147 @@ const {
   confirmAction,
 } = require("../screen");
 
-async function doTag() {
-  open("Tag");
+function renderTagMeta(tag) {
+  console.log(s.muted("  Name:    ") + s.primary(tag.name));
+  console.log(
+    s.muted("  Commit:  ") +
+      s.primary(tag.commit) +
+      (tag.commit !== tag.object ? ` (object ${tag.object})` : "")
+  );
+  console.log(
+    s.muted("  Type:    ") +
+      s.text(tag.type === "tag" ? "Annotated" : "Lightweight")
+  );
+  if (tag.tagger) console.log(s.muted("  Tagger:  ") + s.text(tag.tagger));
+  if (tag.date)
+    console.log(
+      s.muted("  Date:    ") + s.text(new Date(tag.date).toLocaleString())
+    );
+}
 
-  const tags = await listTags();
+async function showTagDetails(tag) {
+  open("Tag Details", tag.name);
 
-  if (tags.all.length > 0) {
-    tags.all.slice(0, 10).forEach((t) => console.log(s.primary(`  ${t}`)));
-    console.log();
-  } else {
-    emptyState("No tags.", "Tag a release point to reference it later.");
+  renderTagMeta(tag);
+  if (tag.subject) {
+    console.log(rule("message"));
+    console.log(s.white(tag.subject));
   }
+  console.log();
 
   const { action } = await prompt([
     {
       type: "list",
       name: "action",
-      message: s.muted("What should I do?"),
+      message: s.muted("Action:"),
       choices: [
-        menuItem("New Tag", "success", "new"),
-        menuItem("Push Tags", "primary", "push"),
         menuItem("Delete Tag", "danger", "delete"),
-        backItem(),
+        backItem("Back to Tags"),
       ],
-      pageSize: 15,
     },
   ]);
 
-  if (action === "back") return;
-
-  if (action === "new") {
-    const { name } = await prompt([
-      {
-        type: "input",
-        name: "name",
-        message: s.muted("Tag name (e.g. v1.2.0):"),
-        validate: (v) => v.length > 0,
-      },
-    ]);
-    await createTag(name);
-    console.log(s.success(`\n  ✓ ${name} created!`));
-    await sleep(600);
-  }
-
-  if (action === "push") {
-    const ok = await confirmAction("Push all tags to origin?");
+  if (action === "delete") {
+    const ok = await confirmAction(
+      `Delete tag ${tag.name}? This cannot be undone.`,
+      { tone: "error" }
+    );
     if (!ok) {
-      console.log(s.muted("  Push cancelled."));
+      console.log(s.muted("  Delete cancelled."));
       await pause();
       return;
     }
-
-    const spin = spinner("Pushing tags...");
+    const spin = spinner("Deleting tag...");
     spin.start();
     try {
-      await pushTags();
-      done(spin, "Tags pushed!");
+      await deleteTag(tag.name);
+      done(spin, `${tag.name} deleted!`);
     } catch (err) {
       fail(spin, err.message);
     }
+    await sleep(600);
+  }
+}
+
+async function newTag() {
+  const { name } = await prompt([
+    {
+      type: "input",
+      name: "name",
+      message: s.muted("Tag name (e.g. v1.2.0):"),
+      validate: (v) => v.length > 0,
+    },
+  ]);
+  const spin = spinner("Creating tag...");
+  spin.start();
+  try {
+    await createTag(name);
+    done(spin, `${name} created!`);
+  } catch (err) {
+    fail(spin, err.message);
+  }
+  await sleep(600);
+}
+
+async function pushAllTags() {
+  const ok = await confirmAction("Push all tags to origin?");
+  if (!ok) {
+    console.log(s.muted("  Push cancelled."));
     await pause();
+    return;
   }
 
-  if (action === "delete") {
-    if (tags.all.length === 0) {
-      emptyState("No tags to delete.");
-      await pause();
-    } else {
-      const { toDelete } = await prompt([
-        {
-          type: "list",
-          name: "toDelete",
-          message: s.muted("Which tag to delete?"),
-          choices: tags.all,
-          pageSize: 15,
-        },
-      ]);
-      const ok = await confirmAction(
-        `Delete tag ${toDelete}? This cannot be undone.`,
-        { tone: "error" }
-      );
-      if (!ok) {
-        console.log(s.muted("  Delete cancelled."));
-        await pause();
-        return;
-      }
-      await deleteTag(toDelete);
-      console.log(s.success(`\n  ✓ ${toDelete} deleted!`));
-      await sleep(600);
+  const spin = spinner("Pushing tags...");
+  spin.start();
+  try {
+    await pushTags();
+    done(spin, "Tags pushed!");
+  } catch (err) {
+    fail(spin, err.message);
+  }
+  await pause();
+}
+
+async function doTag() {
+  for (;;) {
+    const tags = await listTagDetails();
+    open("Tag", tags.length > 0 ? `${tags.length} tags` : "No tags");
+
+    if (tags.length === 0) {
+      emptyState("No tags yet.", "Tag a release point to reference it later.");
     }
+
+    const choices = [];
+    for (const t of tags) {
+      choices.push(menuItem(t.name, "primary", t));
+    }
+    if (tags.length > 0) choices.push(sep());
+    choices.push(menuItem("New Tag", "success", "new"));
+    choices.push(menuItem("Push Tags", "primary", "push"));
+    choices.push(backItem());
+
+    const { action } = await prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("Select a tag or action:"),
+        choices,
+        pageSize: 15,
+        loop: true,
+      },
+    ]);
+
+    if (action === "back") return;
+    if (action === "new") {
+      await newTag();
+      continue;
+    }
+    if (action === "push") {
+      await pushAllTags();
+      continue;
+    }
+
+    await showTagDetails(action);
   }
 }
 

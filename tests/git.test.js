@@ -11,6 +11,7 @@ const {
   abortRebase,
   getConflictedDiff,
   getGraphData,
+  listTagDetails,
   resetGitCache,
 } = require("../src/helpers/git");
 
@@ -104,6 +105,36 @@ describe("Git Helper", () => {
   test("abortRebase should call git.rebase with --abort", async () => {
     await abortRebase();
     expect(mockGit.rebase).toHaveBeenCalledWith(["--abort"]);
+  });
+
+  test("listTagDetails parses for-each-ref output", async () => {
+    mockGit.raw.mockResolvedValue(
+      [
+        "v1.1.0\u001ftag\u001fabc1234\u001fdef4567\u001fRelease one\u001fEren\u001f2026-08-19 00:34:28 +0300",
+        "v1.0.0\u001fcommit\u001fdef4567\u001f\u001f\u001f\u001f\u001f",
+        "",
+      ].join("\n")
+    );
+    const tags = await listTagDetails();
+    expect(mockGit.raw).toHaveBeenCalledWith(
+      expect.arrayContaining(["for-each-ref", "refs/tags"])
+    );
+    expect(tags).toHaveLength(2);
+    expect(tags[0]).toMatchObject({
+      name: "v1.1.0",
+      type: "tag",
+      commit: "def4567",
+      subject: "Release one",
+      tagger: "Eren",
+      date: "2026-08-19 00:34:28 +0300",
+    });
+    expect(tags[1]).toMatchObject({
+      name: "v1.0.0",
+      type: "commit",
+      commit: "def4567",
+      subject: "",
+      tagger: "",
+    });
   });
 
   test("getGraphData parses structured commit data", async () => {
