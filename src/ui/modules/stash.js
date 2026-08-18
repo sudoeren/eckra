@@ -7,7 +7,14 @@ const {
   dropStash,
 } = require("../../helpers/git");
 const { s, pause, sleep } = require("../common");
-const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  prompt,
+  confirmAction,
+} = require("../screen");
 
 async function doStash() {
   open("Stash");
@@ -91,6 +98,14 @@ async function doStash() {
       await applyStash(index);
       console.log(s.success("\n  ✓ Stash applied!"));
     } else if (action === "drop") {
+      const ok = await confirmAction("Drop stash? This cannot be undone.", {
+        tone: "error",
+      });
+      if (!ok) {
+        console.log(s.muted("  Drop cancelled."));
+        await sleep(600);
+        return;
+      }
       await dropStash(index);
       console.log(s.success("\n  ✓ Stash dropped!"));
     }

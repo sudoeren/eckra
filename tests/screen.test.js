@@ -5,7 +5,11 @@ const {
   rule,
   tone,
   strWidth,
+  confirmAction,
 } = require("../src/ui/screen");
+
+jest.mock("inquirer", () => ({ prompt: jest.fn() }));
+const inquirer = require("inquirer");
 
 jest.mock("../src/ui/common", () => ({
   s: new Proxy(
@@ -58,5 +62,25 @@ describe("Screen helpers", () => {
   test("strWidth skips control characters", () => {
     expect(strWidth("line\nbreak")).toBe(9);
     expect(strWidth("a\u0000b")).toBe(2);
+  });
+
+  test("confirmAction asks a confirm prompt defaulting to no", async () => {
+    inquirer.prompt.mockResolvedValue({ confirmed: true });
+
+    const result = await confirmAction("Are you sure?");
+
+    expect(result).toBe(true);
+    const question = inquirer.prompt.mock.calls[0][0][0];
+    expect(question.type).toBe("confirm");
+    expect(question.default).toBe(false);
+    expect(question.message).toContain("Are you sure?");
+  });
+
+  test("confirmAction returns false when declined", async () => {
+    inquirer.prompt.mockResolvedValue({ confirmed: false });
+
+    const result = await confirmAction("Are you sure?");
+
+    expect(result).toBe(false);
   });
 });

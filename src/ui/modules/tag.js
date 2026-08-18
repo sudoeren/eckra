@@ -14,6 +14,7 @@ const {
   spinner,
   done,
   fail,
+  confirmAction,
 } = require("../screen");
 
 async function doTag() {
@@ -61,6 +62,13 @@ async function doTag() {
   }
 
   if (action === "push") {
+    const ok = await confirmAction("Push all tags to origin?");
+    if (!ok) {
+      console.log(s.muted("  Push cancelled."));
+      await pause();
+      return;
+    }
+
     const spin = spinner("Pushing tags...");
     spin.start();
     try {
@@ -87,6 +95,15 @@ async function doTag() {
           pageSize: 15,
         },
       ]);
+      const ok = await confirmAction(
+        `Delete tag ${toDelete}? This cannot be undone.`,
+        { tone: "error" }
+      );
+      if (!ok) {
+        console.log(s.muted("  Delete cancelled."));
+        await pause();
+        return;
+      }
       await deleteTag(toDelete);
       console.log(s.success(`\n  ✓ ${toDelete} deleted!`));
       await sleep(600);

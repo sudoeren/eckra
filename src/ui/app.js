@@ -186,8 +186,8 @@ async function quickCommit(message, opts = {}) {
   }
 }
 
-async function quickPush() {
-  await sync().doPush();
+async function quickPush(yes) {
+  await sync().doPush(false, { yes });
 }
 
 async function easyWorkflow() {

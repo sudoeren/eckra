@@ -99,10 +99,11 @@ program
   .command("push")
   .alias("p")
   .description("Push operation")
-  .action(async () => {
+  .option("-y, --yes", "Skip the confirmation prompt")
+  .action(async (options) => {
     if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
-      await app().quickPush();
+      await app().quickPush(options.yes);
     }
   });
 

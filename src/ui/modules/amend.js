@@ -1,6 +1,13 @@
 const { getLastCommit, amendCommit } = require("../../helpers/git");
 const { s, sleep, pause } = require("../common");
-const { open, emptyState, prompt, spinner, done } = require("../screen");
+const {
+  open,
+  emptyState,
+  prompt,
+  spinner,
+  done,
+  confirmAction,
+} = require("../screen");
 
 async function doAmend() {
   open("Amend", "Rewrite the most recent commit message");
@@ -27,6 +34,13 @@ async function doAmend() {
   ]);
 
   if (newMessage !== lastCommit.message) {
+    const ok = await confirmAction("Rewrite the commit message?");
+    if (!ok) {
+      console.log(s.muted("  Amend cancelled."));
+      await sleep(600);
+      return;
+    }
+
     const spin = spinner("Updating...");
     spin.start();
     await amendCommit(newMessage);

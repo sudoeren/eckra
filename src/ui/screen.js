@@ -144,6 +144,22 @@ function fail(spin, text) {
   spin.fail(s.error("  " + text));
 }
 
+/**
+ * Confirm a risky operation before it runs. Returns true only when the
+ * user explicitly confirms (default is no).
+ */
+async function confirmAction(message, { tone = "warning" } = {}) {
+  const { confirmed } = await prompt([
+    {
+      type: "confirm",
+      name: "confirmed",
+      message: s[TONES[tone] || "warning"](message),
+      default: false,
+    },
+  ]);
+  return confirmed === true;
+}
+
 module.exports = {
   open,
   rule,
@@ -156,6 +172,7 @@ module.exports = {
   spinner,
   done,
   fail,
+  confirmAction,
   tone,
   strWidth,
   s,

@@ -5,9 +5,20 @@ const {
   getCurrentBranch,
 } = require("../../helpers/git");
 const { s, pause, sleep } = require("../common");
-const { prompt, spinner, done, fail } = require("../screen");
+const { prompt, spinner, done, fail, confirmAction } = require("../screen");
 
-async function doPush(silent = false) {
+async function doPush(silent = false, { yes = false } = {}) {
+  const branch = await getCurrentBranch();
+
+  if (!silent && !yes) {
+    const ok = await confirmAction(`Push ${branch} to origin?`);
+    if (!ok) {
+      console.log(s.muted("  Push cancelled."));
+      await pause();
+      return;
+    }
+  }
+
   const spin = spinner("Pushing...");
   spin.start();
 
@@ -18,7 +29,6 @@ async function doPush(silent = false) {
   } catch (err) {
     if (err.message.includes("no upstream")) {
       spin.stop();
-      const branch = await getCurrentBranch();
       let setUpstream = true;
 
       if (!silent) {
@@ -57,6 +67,13 @@ async function doPush(silent = false) {
 }
 
 async function doPull() {
+  const ok = await confirmAction("Pull from origin?");
+  if (!ok) {
+    console.log(s.muted("  Pull cancelled."));
+    await pause();
+    return;
+  }
+
   const spin = spinner("Pulling...");
   spin.start();
 

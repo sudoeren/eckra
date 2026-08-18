@@ -17,6 +17,7 @@ const {
   spinner,
   done,
   fail,
+  confirmAction,
 } = require("../screen");
 
 async function doRebase() {
@@ -75,6 +76,13 @@ async function doRebaseOnto() {
       pageSize: 15,
     },
   ]);
+
+  const ok = await confirmAction(`Rebase ${current} onto ${target}?`);
+  if (!ok) {
+    console.log(s.muted("  Rebase cancelled."));
+    await pause();
+    return;
+  }
 
   const spin = spinner(`Rebasing onto ${target}...`);
   spin.start();
@@ -149,6 +157,15 @@ async function doSquash() {
       default: `Squashed ${count} commits`,
     },
   ]);
+
+  const ok = await confirmAction(`Squash ${count} commits?`, {
+    tone: "error",
+  });
+  if (!ok) {
+    console.log(s.muted("  Squash cancelled."));
+    await pause();
+    return;
+  }
 
   const spin = spinner("Squashing...");
   spin.start();
