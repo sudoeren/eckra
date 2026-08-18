@@ -40,7 +40,6 @@ async function doTag() {
         menuItem("Delete Tag", "danger", "delete"),
         backItem(),
       ],
-      loop: true,
       pageSize: 15,
     },
   ]);
@@ -91,7 +90,6 @@ async function doTag() {
           name: "toDelete",
           message: s.muted("Which tag to delete?"),
           choices: tags.all,
-          loop: true,
           pageSize: 15,
         },
       ]);

@@ -126,7 +126,6 @@ async function doTimeline() {
         backItem(),
       ],
       pageSize: 10,
-      loop: true,
     },
   ]);
 

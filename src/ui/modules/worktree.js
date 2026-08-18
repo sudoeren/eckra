@@ -40,7 +40,6 @@ async function doWorktree() {
           menuItem("Remove Worktree", "danger", "remove"),
           backItem(),
         ],
-        loop: true,
         pageSize: 15,
       },
     ]);
@@ -65,7 +64,6 @@ async function doWorktree() {
               menuItem("Existing Branch", "text", "existing"),
               menuItem("New Branch", "primary", "new"),
             ],
-            loop: true,
             pageSize: 15,
           },
         ]);
@@ -78,7 +76,6 @@ async function doWorktree() {
               name: "branch",
               message: s.muted("Select branch:"),
               choices: branches.all,
-              loop: true,
               pageSize: 15,
             },
           ]);
@@ -124,7 +121,6 @@ async function doWorktree() {
               name: "toRemove",
               message: s.muted("Select worktree to remove:"),
               choices: worktrees.map((wt) => wt.path),
-              loop: true,
               pageSize: 15,
             },
           ]);

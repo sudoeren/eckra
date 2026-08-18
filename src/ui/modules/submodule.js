@@ -47,7 +47,6 @@ async function doSubmodule() {
         sep(),
         backItem(),
       ],
-      loop: true,
       pageSize: 15,
     },
   ]);

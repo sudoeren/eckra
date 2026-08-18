@@ -120,6 +120,7 @@ async function prompt(questions, ...rest) {
   return inquirer.prompt(
     qs.map((q) => ({
       ...q,
+      loop: q.loop === undefined ? false : q.loop,
       prefix: q.prefix === null ? undefined : q.prefix || s.primary("?"),
     })),
     ...rest

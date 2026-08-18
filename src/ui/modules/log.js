@@ -17,7 +17,6 @@ async function doLog() {
         menuItem("Graph View (Tree)", "text", "graph"),
         backItem(),
       ],
-      loop: true,
       pageSize: 20,
     },
   ]);

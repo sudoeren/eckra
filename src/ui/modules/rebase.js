@@ -37,7 +37,6 @@ async function doRebase() {
         sep(),
         backItem(),
       ],
-      loop: true,
       pageSize: 20,
     },
   ]);
@@ -72,7 +71,6 @@ async function doRebaseOnto() {
       name: "target",
       message: `Rebase ${s.primary(current)} onto:`,
       choices: otherBranches,
-      loop: true,
       pageSize: 15,
     },
   ]);

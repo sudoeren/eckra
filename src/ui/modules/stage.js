@@ -61,7 +61,6 @@ async function doStage(info) {
         menuItem("Partial Stage", "warning", "partial"),
         backItem(),
       ],
-      loop: true,
       pageSize: 20,
     },
   ]);
@@ -111,7 +110,6 @@ async function doStage(info) {
         ...untrackedFiles,
       ],
       pageSize: 20,
-      loop: true,
     },
   ]);
 
@@ -149,7 +147,6 @@ async function doPartialStage(status) {
       name: "file",
       message: s.muted("Select file to split:"),
       choices: status.modified.map((f) => ({ name: f, value: f })),
-      loop: true,
       pageSize: 20,
     },
   ]);
@@ -182,7 +179,6 @@ async function doPartialStage(status) {
         };
       }),
       pageSize: 20,
-      loop: true,
     },
   ]);
 

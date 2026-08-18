@@ -42,7 +42,6 @@ async function doStash() {
         menuItem("Drop Stash", "danger", "drop"),
         backItem(),
       ],
-      loop: true,
       pageSize: 20,
     },
   ]);
@@ -85,7 +84,6 @@ async function doStash() {
         name: `${i}: ${st.message}`,
         value: i,
       })),
-      loop: true,
       pageSize: 15,
     },
   ]);

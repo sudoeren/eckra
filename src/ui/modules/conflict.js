@@ -45,7 +45,6 @@ async function doConflict() {
         menuItem("Abort merge", "danger", "abort"),
         backItem(),
       ],
-      loop: true,
       pageSize: 20,
     },
   ]);
@@ -89,7 +88,6 @@ async function resolveFile(file) {
         menuItem("Edit manually (Opens default editor)", "warning", "manual"),
         menuItem("Skip for now", "muted", "skip"),
       ],
-      loop: true,
       pageSize: 15,
     },
   ]);

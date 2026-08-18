@@ -535,7 +535,6 @@ async function doSettings() {
         menuItem("Uninstall Eckra", "danger", "uninstall"),
         backItem(),
       ],
-      loop: true,
       pageSize: 15,
     },
   ]);
@@ -737,7 +736,6 @@ async function doSettings() {
           menuItem("Light", "text", "light"),
         ],
         default: config.theme || "auto",
-        loop: true,
         pageSize: 15,
       },
     ]);

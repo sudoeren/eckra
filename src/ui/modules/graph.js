@@ -192,7 +192,6 @@ async function doGraph() {
         message: s.muted("Actions:"),
         choices,
         pageSize: 10,
-        loop: true,
       },
     ]);
 

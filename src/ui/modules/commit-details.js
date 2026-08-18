@@ -43,7 +43,6 @@ async function showCommitSelector({ commits, title, backLabel, onBack }) {
       message: s.muted("Select a commit for more options:"),
       choices,
       pageSize: 15,
-      loop: true,
     },
   ]);
 

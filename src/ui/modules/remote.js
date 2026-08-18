@@ -26,7 +26,6 @@ async function doRemote() {
         menuItem("Remove Remote", "danger", "remove"),
         backItem(),
       ],
-      loop: true,
       pageSize: 15,
     },
   ]);
@@ -62,7 +61,6 @@ async function doRemote() {
         name: "toRemove",
         message: s.muted("Which remote to remove?"),
         choices: remotes.map((r) => r.name),
-        loop: true,
         pageSize: 15,
       },
     ]);
