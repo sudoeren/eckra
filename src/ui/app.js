@@ -20,6 +20,7 @@ const more = () => require("./modules/more");
 const conflict = () => require("./modules/conflict");
 const branch = () => require("./modules/branch");
 const log = () => require("./modules/log");
+const graph = () => require("./modules/graph");
 const onboarding = () => require("./modules/onboarding");
 
 // ═══════════════════════════════════════════════════════════════
@@ -107,6 +108,7 @@ async function startApp() {
 
     choices.push(menuItem("Status", "text", "status"));
     choices.push(menuItem("Branch", "text", "branch"));
+    choices.push(menuItem("Git Graph", "text", "graph"));
     choices.push(menuItem("Log", "text", "log"));
     choices.push(menuItem("More", "text", "more"));
 
@@ -142,6 +144,9 @@ async function startApp() {
         break;
       case "branch":
         await branch().doBranch();
+        break;
+      case "graph":
+        await graph().doGraph();
         break;
       case "log":
         await log().doLog();

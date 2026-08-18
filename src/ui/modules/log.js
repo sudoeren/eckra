@@ -1,7 +1,8 @@
-const { getCommitLog, getGitGraph } = require("../../helpers/git");
 const { s, pause } = require("../common");
 const { open, menuItem, backItem, prompt } = require("../screen");
 const { showCommitSelector } = require("./commit-details");
+
+const { getCommitLog } = require("../../helpers/git");
 
 async function doLog() {
   open("Commit History");
@@ -24,14 +25,8 @@ async function doLog() {
   if (viewMode === "back") return;
 
   if (viewMode === "graph") {
-    open("Git Graph");
-    try {
-      const graph = await getGitGraph(30);
-      console.log(graph);
-    } catch (error) {
-      console.log(s.error("  Could not load graph view: " + error.message));
-    }
-    await pause();
+    const { doGraph } = require("./graph");
+    await doGraph();
   } else {
     await showStandardLog();
   }

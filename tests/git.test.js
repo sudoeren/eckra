@@ -10,6 +10,7 @@ const {
   listSubmodules,
   abortRebase,
   getConflictedDiff,
+  getGraphData,
   resetGitCache,
 } = require("../src/helpers/git");
 
@@ -103,6 +104,32 @@ describe("Git Helper", () => {
   test("abortRebase should call git.rebase with --abort", async () => {
     await abortRebase();
     expect(mockGit.rebase).toHaveBeenCalledWith(["--abort"]);
+  });
+
+  test("getGraphData parses structured commit data", async () => {
+    mockGit.raw.mockResolvedValue(
+      [
+        "abc1234\x1fdef4567\x1ffix: thing\x1fEren\x1feren@t.dev\x1f1700000000\x1fHEAD -> main, tag: v1.0",
+        "def4567\x1f\x1fchore: init\x1fEren\x1feren@t.dev\x1f1699999999\x1forigin/main",
+        "",
+      ].join("\x1e")
+    );
+    const commits = await getGraphData(5);
+    expect(mockGit.raw).toHaveBeenCalledWith(
+      expect.arrayContaining(["--all", "--topo-order"])
+    );
+    expect(commits).toHaveLength(2);
+    expect(commits[0]).toMatchObject({
+      hash: "abc1234",
+      parents: ["def4567"],
+      subject: "fix: thing",
+      author: "Eren",
+      email: "eren@t.dev",
+      refs: "HEAD -> main, tag: v1.0",
+    });
+    expect(commits[0].timestamp).toBe(1700000000000);
+    expect(commits[1].parents).toEqual([]);
+    expect(commits[1].refs).toBe("origin/main");
   });
 
   test("getConflictedDiff should diff only conflicted files", async () => {

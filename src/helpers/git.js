@@ -438,18 +438,37 @@ async function removeWorktree(path) {
 }
 
 /**
- * Get git graph log
+ * Get structured commit data for the graph view, across all refs.
+ * Returns an array of { hash, parents[], subject, author, email, timestamp,
+ * refs }.
  */
-async function getGitGraph(count = 20) {
-  return await getGit().raw([
+async function getGraphData(count = 50) {
+  const result = await getGit().raw([
     "log",
-    "--graph",
-    "--oneline",
     "--all",
+    "--topo-order",
     "-n",
     count.toString(),
-    "--color=always", // Keep colors for display
+    "--format=%H%x1f%P%x1f%s%x1f%an%x1f%ae%x1f%at%x1f%D%x1e",
   ]);
+
+  return result
+    .split("\x1e")
+    .map((record) => record.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const [hash, parents, subject, author, email, timestamp, refs] =
+        record.split("\x1f");
+      return {
+        hash,
+        parents: parents ? parents.split(" ") : [],
+        subject: subject || "",
+        author: author || "",
+        email: email || "",
+        timestamp: timestamp ? parseInt(timestamp, 10) * 1000 : 0,
+        refs: refs || "",
+      };
+    });
 }
 
 /**
@@ -635,7 +654,7 @@ module.exports = {
   addWorktree,
   addWorktreeNewBranch,
   removeWorktree,
-  getGitGraph,
+  getGraphData,
   applyPatchString,
   compareBranches,
   rebase,

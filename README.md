@@ -27,6 +27,7 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 - **AI commit messages** based on your actual diff, with 11 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Amazon Bedrock, OpenCode Go, and more; see the [provider table](#ai-configuration))
 - **Select & edit** any suggestion before committing
 - **Staged diff review** with syntax highlighting
+- **Git Graph**: VS Code-style commit graph across all branches, with per-lane colors, pagination, and commit inspection
 - **Project story**: AI timeline of your commit history
 - **Lazygit integration**: run eckra's commit flow inside lazygit
 
@@ -75,6 +76,8 @@ Or jump straight into action:
 
 > [!TIP]
 > `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
+
+From the dashboard you can also open **Git Graph** (under Branch) to see your full commit topology across all branches, page through history, and inspect commits for cherry-picking.
 
 ### Lazygit Integration
 
