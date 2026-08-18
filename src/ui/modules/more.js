@@ -49,6 +49,7 @@ async function doMore() {
         backItem("Main Menu"),
       ],
       pageSize: 20,
+      loop: true,
     },
   ]);
 

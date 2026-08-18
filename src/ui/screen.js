@@ -2,6 +2,22 @@ const inquirer = require("inquirer");
 const eaw = require("eastasianwidth");
 const { s, cols, clear, header } = require("./common");
 
+// inquirer's `loop` option couples two behaviors: the selection cursor
+// wrapping around (wanted) and the list text being duplicated into an
+// endless circular scroll (`[lines, lines, lines]` in Paginator). The
+// latter makes the menu texts appear to loop forever. Decouple them by
+// forcing finite pagination: the highlight may wrap, but the printed
+// texts stay fixed.
+const Paginator = require("inquirer/lib/utils/paginator");
+const _paginate = Paginator.prototype.paginate;
+Paginator.prototype.paginate = function (output, active, pageSize) {
+  const wasInfinite = this.isInfinite;
+  this.isInfinite = false;
+  const result = _paginate.call(this, output, active, pageSize);
+  this.isInfinite = wasInfinite;
+  return result;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // SCREEN ANATOMY
 // Every screen follows the same skeleton:
@@ -120,7 +136,6 @@ async function prompt(questions, ...rest) {
   return inquirer.prompt(
     qs.map((q) => ({
       ...q,
-      loop: q.loop === undefined ? false : q.loop,
       prefix: q.prefix === null ? undefined : q.prefix || s.primary("?"),
     })),
     ...rest
