@@ -142,22 +142,22 @@ ollama pull qwen3.5:2b
 
 | Provider      | Setup                                          | Default Model     |
 | :------------ | :--------------------------------------------- | :---------------- |
-| **Ollama**    | Local server, default `http://localhost:11434` | `qwen3.5:2b`      |
-| **LM Studio** | Local server, default `http://localhost:1234`  | (user-configured) |
+| `Ollama`      | Local server, default `http://localhost:11434` | `qwen3.5:2b`      |
+| `LM Studio`   | Local server, default `http://localhost:1234`  | (user-configured) |
 
 ### Cloud providers (API key)
 
 | Provider                  | Requires                                                     | Default Model             |
 | :------------------------ | :----------------------------------------------------------- | :------------------------ |
-| **OpenAI**                | OpenAI API key                                               | `gpt-5-mini`              |
-| **Anthropic (Claude)**    | Anthropic API key                                            | `claude-sonnet-4-6`       |
-| **Google Gemini**         | Google AI Studio API key                                     | `gemini-3.1-flash-lite`   |
-| **OpenRouter**            | OpenRouter API key                                           | `openai/gpt-oss-120b`     |
-| **DeepSeek**              | DeepSeek API key                                             | `deepseek-chat`           |
-| **OpenCode Go**           | OpenCode Go API key                                          | `deepseek-v4-flash`       |
-| **Ollama Cloud**          | Ollama Cloud API key (ollama.com/settings/keys)              | `qwen3.5:2b`              |
-| **Amazon Bedrock**        | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-sonnet-4-6` |
-| **Amazon Bedrock Mantle** | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-sonnet-4-6` |
+| `OpenAI`                  | OpenAI API key                                               | `gpt-5-mini`              |
+| `Anthropic (Claude)`      | Anthropic API key                                            | `claude-haiku-4-5-20251001` |
+| `Google Gemini`           | Google AI Studio API key                                     | `gemini-3.1-flash-lite`   |
+| `OpenRouter`              | OpenRouter API key                                           | `openai/gpt-oss-120b`     |
+| `DeepSeek`                | DeepSeek API key                                             | `deepseek-chat`           |
+| `OpenCode Go`             | OpenCode Go API key                                          | `deepseek-v4-flash`       |
+| `Ollama Cloud`            | Ollama Cloud API key (ollama.com/settings/keys)              | `qwen3.5:2b`              |
+| `Amazon Bedrock`          | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-haiku-4-5` |
+| `Amazon Bedrock Mantle`   | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-haiku-4-5` |
 
 Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you.
 
