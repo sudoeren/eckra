@@ -48,7 +48,7 @@ async function doMore() {
         menuItem("About", "text", "about"),
         backItem("Main Menu"),
       ],
-      pageSize: 20,
+      pageSize: 25,
       loop: true,
     },
   ]);
