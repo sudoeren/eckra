@@ -377,6 +377,15 @@ async function squashCommits(count, message) {
 }
 
 /**
+ * Number of commits on the current branch (HEAD), 0 when unavailable.
+ */
+async function getCommitCount() {
+  const out = await getGit().raw(["rev-list", "--count", "HEAD"]);
+  const n = parseInt(out.trim(), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
  * Get conflicted files with content
  */
 async function getConflictDetails() {
@@ -705,6 +714,7 @@ module.exports = {
   removeRemote,
   getRepoStats,
   squashCommits,
+  getCommitCount,
   getConflictDetails,
   getConflictedDiff,
   acceptOurs,

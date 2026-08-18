@@ -1,11 +1,11 @@
 const {
-  getCommitLog,
   squashCommits,
   rebase,
   abortRebase,
   continueRebase,
   getBranches,
   getCurrentBranch,
+  getCommitCount,
 } = require("../../helpers/git");
 const { s, pause } = require("../common");
 const {
@@ -128,13 +128,18 @@ async function doContinueRebase() {
 }
 
 async function doSquash() {
-  const log = await getCommitLog(10);
+  const total = await getCommitCount();
 
-  if (log.all.length < 2) {
+  if (total < 2) {
     console.log(s.warning("  Not enough commits to squash."));
     await pause();
     return;
   }
+
+  // Squashing `count` runs `git reset --soft HEAD~count`, which needs
+  // `count` to stay below the total commit count (HEAD~count must exist).
+  // Cap the offered range at 10 and at total-1.
+  const maxCount = Math.min(10, total - 1);
 
   const { count } = await prompt([
     {
@@ -143,9 +148,9 @@ async function doSquash() {
       message: "How many commits to squash (from HEAD)?",
       default: 2,
       validate: (val) =>
-        val > 1 && val <= log.all.length
+        Number.isInteger(val) && val > 1 && val <= maxCount
           ? true
-          : `Enter a number between 2 and ${log.all.length}`,
+          : `Enter a number between 2 and ${maxCount}`,
     },
   ]);
 
