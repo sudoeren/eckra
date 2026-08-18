@@ -108,7 +108,6 @@ async function startApp() {
 
     choices.push(menuItem("Status", "text", "status"));
     choices.push(menuItem("Branch", "text", "branch"));
-    choices.push(menuItem("Git Graph", "text", "graph"));
     choices.push(menuItem("Log", "text", "log"));
     choices.push(menuItem("More", "text", "more"));
 

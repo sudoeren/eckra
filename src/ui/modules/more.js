@@ -8,6 +8,7 @@ const { doTag } = require("./tag");
 const { doRemote } = require("./remote");
 const { doStats } = require("./stats");
 const { doSearch } = require("./search");
+const { doGraph } = require("./graph");
 const { doBlame } = require("./blame");
 const { doWorktree } = require("./worktree");
 const { doSubmodule } = require("./submodule");
@@ -35,6 +36,7 @@ async function doMore() {
         menuItem("Remote", "text", "remote"),
         sep(),
         menuItem("Statistics", "text", "stats"),
+        menuItem("Git Graph", "text", "graph"),
         menuItem("Search Commits", "text", "search"),
         menuItem("Blame", "text", "blame"),
         menuItem("Worktrees", "text", "worktree"),
@@ -77,6 +79,9 @@ async function doMore() {
       break;
     case "stats":
       await doStats();
+      break;
+    case "graph":
+      await doGraph();
       break;
     case "search":
       await doSearch();
