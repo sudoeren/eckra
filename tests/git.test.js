@@ -12,6 +12,7 @@ const {
   getConflictedDiff,
   getGraphData,
   listTagDetails,
+  getRepoStats,
   resetGitCache,
 } = require("../src/helpers/git");
 
@@ -161,6 +162,51 @@ describe("Git Helper", () => {
     expect(commits[0].timestamp).toBe(1700000000000);
     expect(commits[1].parents).toEqual([]);
     expect(commits[1].refs).toBe("origin/main");
+  });
+
+  test("getRepoStats computes counts, dates and distributions", async () => {
+    mockGit.branch.mockResolvedValue({
+      all: ["main", "remotes/origin/main"],
+    });
+    mockGit.tags.mockResolvedValue({ all: ["v1.0", "v1.1"] });
+    mockGit.raw.mockImplementation((args) => {
+      if (args[0] === "rev-list" && args.includes("--merges")) {
+        return "2";
+      }
+      if (args[0] === "rev-list") {
+        return "10";
+      }
+      if (args[0] === "shortlog") {
+        return "   6\tEren\n   4\tsudoeren";
+      }
+      if (args[0] === "log") {
+        return [
+          "2026-08-19T10:30:00+03:00",
+          "2026-08-01T09:00:00+03:00",
+          "2026-07-15T23:00:00+03:00",
+          "2026-07-02T18:00:00+03:00",
+          "",
+        ].join("\n");
+      }
+      return "";
+    });
+
+    const stats = await getRepoStats();
+    expect(stats.totalCommits).toBe(10);
+    expect(stats.merges).toBe(2);
+    expect(stats.branches).toBe(1);
+    expect(stats.remoteBranches).toBe(1);
+    expect(stats.tags).toBe(2);
+    expect(stats.totalAuthors).toBe(2);
+    expect(stats.authors).toEqual({ Eren: 6, sudoeren: 4 });
+    expect(stats.firstCommit.date).toBe("2026-07-02T18:00:00+03:00");
+    expect(stats.lastCommit.date).toBe("2026-08-19T10:30:00+03:00");
+    expect(stats.activity).toEqual([
+      { period: "2026-07", count: 2 },
+      { period: "2026-08", count: 2 },
+    ]);
+    expect(stats.byDayOfWeek.reduce((a, b) => a + b, 0)).toBe(4);
+    expect(stats.byHour.reduce((a, b) => a + b, 0)).toBe(4);
   });
 
   test("getConflictedDiff should diff only conflicted files", async () => {

@@ -306,6 +306,13 @@ async function getRepoStats() {
       10
     ) || 0;
 
+  // Merge commits
+  const merges =
+    parseInt(
+      (await getGit().raw(["rev-list", "--all", "--count", "--merges"])).trim(),
+      10
+    ) || 0;
+
   // Author -> commit count via shortlog (cheaper than walking every commit)
   const shortlog = (await getGit().raw(["shortlog", "-sn", "--all"])).trim();
   const authorStats = {};
@@ -316,13 +323,34 @@ async function getRepoStats() {
     }
   }
 
-  // First (oldest) and last (newest) commit dates without loading full history
-  const lastDate = (
-    await getGit().raw(["log", "--all", "-1", "--format=%aI"])
+  // All commit datetimes (committer, strict ISO), newest first. Used for
+  // activity/timing analysis and first/last commit dates in one pass.
+  const datesRaw = (
+    await getGit().raw(["log", "--all", "--format=%cI"])
   ).trim();
-  const firstDate = (
-    await getGit().raw(["log", "--all", "--reverse", "-1", "--format=%aI"])
-  ).trim();
+  const dates = datesRaw ? datesRaw.split("\n").filter((d) => d.trim()) : [];
+  const lastDate = dates[0] || "";
+  const firstDate = dates[dates.length - 1] || "";
+
+  // Monthly commit counts (YYYY-MM -> count)
+  const activityMap = {};
+  for (const d of dates) {
+    const period = d.slice(0, 7);
+    activityMap[period] = (activityMap[period] || 0) + 1;
+  }
+  const activity = Object.entries(activityMap)
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([period, count]) => ({ period, count }));
+
+  // Day of week (0=Sun..6=Sat) and hour (0-23) distributions
+  const byDayOfWeek = Array.from({ length: 7 }, () => 0);
+  const byHour = Array.from({ length: 24 }, () => 0);
+  for (const d of dates) {
+    const dt = new Date(d);
+    if (isNaN(dt)) continue;
+    byDayOfWeek[dt.getDay()] += 1;
+    byHour[dt.getHours()] += 1;
+  }
 
   return {
     totalCommits,
@@ -330,6 +358,11 @@ async function getRepoStats() {
     remoteBranches: branches.all.filter((b) => b.startsWith("remotes/")).length,
     tags: tags.all.length,
     authors: authorStats,
+    totalAuthors: Object.keys(authorStats).length,
+    merges,
+    activity,
+    byDayOfWeek,
+    byHour,
     firstCommit: firstDate ? { date: firstDate } : null,
     lastCommit: lastDate ? { date: lastDate } : null,
   };
