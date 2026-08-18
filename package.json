@@ -1,6 +1,6 @@
 {
   "name": "eckra",
-  "version": "1.4.9",
+  "version": "1.4.10",
   "description": "AI-powered Git management CLI with multi-provider support (OpenAI, Anthropic, OpenRouter, Gemini, DeepSeek, OpenCode Go, Amazon Bedrock, Ollama, LM Studio)",
   "main": "src/index.js",
   "bin": {
