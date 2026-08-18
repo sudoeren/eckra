@@ -22,9 +22,14 @@ async function doStash() {
   const stashes = await listStashes();
 
   if (stashes.all.length > 0) {
-    stashes.all.slice(0, 5).forEach((st, i) => {
+    const shown = stashes.all.slice(0, 10);
+    shown.forEach((st, i) => {
       console.log(s.muted(`  ${i}: `) + s.text(st.message));
     });
+    const hidden = stashes.all.length - shown.length;
+    if (hidden > 0) {
+      console.log(s.muted(`  … and ${hidden} more`));
+    }
     console.log();
   } else {
     emptyState("No stashes.", "Stash changes to work on something else.");
