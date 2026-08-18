@@ -57,7 +57,9 @@ async function doRebase() {
 async function doRebaseOnto() {
   const branches = await getBranches();
   const current = await getCurrentBranch();
-  const otherBranches = branches.all.filter((b) => b !== current);
+  const otherBranches = branches.all.filter(
+    (b) => b !== current && !b.startsWith("remotes/")
+  );
 
   if (otherBranches.length === 0) {
     console.log(s.warning("  No other branches to rebase onto."));

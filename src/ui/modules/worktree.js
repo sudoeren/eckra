@@ -70,12 +70,13 @@ async function doWorktree() {
 
         if (type === "existing") {
           const branches = await getBranches();
+          const locals = branches.all.filter((b) => !b.startsWith("remotes/"));
           const { branch } = await prompt([
             {
               type: "list",
               name: "branch",
               message: s.muted("Select branch:"),
-              choices: branches.all,
+              choices: locals,
               pageSize: 15,
             },
           ]);

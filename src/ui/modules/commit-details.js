@@ -25,7 +25,7 @@ const {
 async function showCommitSelector({ commits, title, backLabel, onBack }) {
   if (title) open(title);
 
-  const choices = commits.slice(0, 20).map((commit) => ({
+  const choices = commits.map((commit) => ({
     name: `  ${s.primary(commit.hash.substring(0, 7))} ${truncate(
       commit.message,
       cols() - 25
