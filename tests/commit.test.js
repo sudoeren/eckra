@@ -1,10 +1,12 @@
 const { doCommit } = require("../src/ui/modules/commit");
 const git = require("../src/helpers/git");
 const ai = require("../src/helpers/ai");
+const clipboard = require("../src/helpers/clipboard");
 const screen = require("../src/ui/screen");
 
 jest.mock("../src/helpers/git");
 jest.mock("../src/helpers/ai");
+jest.mock("../src/helpers/clipboard");
 jest.mock("../src/ui/screen", () => ({
   open: jest.fn(),
   prompt: jest.fn(),
@@ -36,6 +38,7 @@ describe("Commit flow (aicommits-style)", () => {
     git.getStagedDiff.mockResolvedValue("diff");
     ai.generateCommitSuggestions.mockResolvedValue(["feat: x\n\n- body"]);
     git.createCommit.mockResolvedValue({ commit: "abc1234def5678" });
+    clipboard.copyToClipboard.mockResolvedValue(true);
   });
 
   test("generates one message, confirms, and commits", async () => {
@@ -134,6 +137,22 @@ describe("Commit flow (aicommits-style)", () => {
   test("noCommit only shows the message and never commits", async () => {
     await doCommit(null, { noCommit: true });
 
+    expect(git.createCommit).not.toHaveBeenCalled();
+  });
+
+  test("clipboard copies the message instead of committing", async () => {
+    await doCommit(null, { clipboard: true });
+
+    expect(clipboard.copyToClipboard).toHaveBeenCalledWith("feat: x\n\n- body");
+    expect(git.createCommit).not.toHaveBeenCalled();
+  });
+
+  test("clipboard failure reports a warning but never commits", async () => {
+    clipboard.copyToClipboard.mockResolvedValue(false);
+
+    await doCommit(null, { clipboard: true });
+
+    expect(clipboard.copyToClipboard).toHaveBeenCalledTimes(1);
     expect(git.createCommit).not.toHaveBeenCalled();
   });
 

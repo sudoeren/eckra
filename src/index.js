@@ -84,6 +84,10 @@ program
     "-t, --type <format>",
     "Commit message format: plain, conventional, conventional+body, gitmoji, subject+body"
   )
+  .option(
+    "-c, --clipboard",
+    "Copy the generated message to the clipboard instead of committing"
+  )
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
@@ -106,6 +110,7 @@ program
         instruction: options.instruction,
         noCommit: options.commit === false,
         type: options.type,
+        clipboard: options.clipboard,
       });
     }
   });

@@ -5,6 +5,7 @@ const {
   createCommit,
 } = require("../../helpers/git");
 const { generateCommitSuggestions } = require("../../helpers/ai");
+const { copyToClipboard } = require("../../helpers/clipboard");
 const { s, pause } = require("../common");
 const { open, prompt, spinner, done, fail } = require("../screen");
 
@@ -56,6 +57,7 @@ async function doCommit(info, opts = {}) {
     yes = false,
     noCommit = false,
     type = null,
+    clipboard = false,
   } = opts;
   let generate = parseInt(opts.generate, 10);
   if (!Number.isFinite(generate) || generate < 1) generate = 1;
@@ -139,6 +141,21 @@ async function doCommit(info, opts = {}) {
 
   if (noCommit) {
     console.log(s.muted("  (--no-commit: nothing committed)"));
+    await pause();
+    return;
+  }
+
+  if (clipboard) {
+    const copied = await copyToClipboard(message);
+    if (copied) {
+      console.log(s.success("\n  ✓ Copied to clipboard."));
+    } else {
+      console.log(
+        s.warning(
+          "\n  ⚠ Could not copy to clipboard (no pbcopy/xclip/wl-copy found)."
+        )
+      );
+    }
     await pause();
     return;
   }
