@@ -181,6 +181,14 @@ program
     await require("./ui/modules/onboarding").doOnboarding();
   });
 
+program
+  .command("model")
+  .description("Interactively select the AI model for the current provider")
+  .action(async () => {
+    if (!(await app().ensureOnboarding())) return;
+    await require("./ui/modules/settings").doModelSelector();
+  });
+
 // ─── eckra config ───────────────────────────────────────────────
 // Non-interactive config view/edit. Works outside git repos.
 

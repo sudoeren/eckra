@@ -779,4 +779,22 @@ async function doSettings() {
   }
 }
 
-module.exports = { doSettings, promptModelSearch };
+/**
+ * Standalone model selector (used by the `eckra model` command). Shows the
+ * current provider and lets the user pick a model, saving the choice.
+ */
+async function doModelSelector() {
+  open("Model");
+  const config = getConfig();
+  const provider = config.aiProvider || "lmstudio";
+
+  console.log(s.muted("  Provider: ") + s.text(provider));
+
+  const result = await promptModelSearch(provider, {}, config);
+  saveConfig(result);
+
+  console.log(s.success("\n  ✓ Model updated!"));
+  await sleep(600);
+}
+
+module.exports = { doSettings, promptModelSearch, doModelSelector };

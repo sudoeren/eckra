@@ -1,4 +1,7 @@
-const { promptModelSearch } = require("../src/ui/modules/settings");
+const {
+  promptModelSearch,
+  doModelSelector,
+} = require("../src/ui/modules/settings");
 const ai = require("../src/helpers/ai");
 const screen = require("../src/ui/screen");
 const { DEFAULT_CONFIG } = require("../src/helpers/config");
@@ -210,5 +213,23 @@ describe("Settings provider flow", () => {
     const question = screen.prompt.mock.calls[0][0][0];
     expect(question.name).toBe("ollamaCloudModel");
     expect(question.default).toBe(DEFAULT_CONFIG.ollamaCloudModel);
+  });
+
+  test("doModelSelector fetches models for the active provider and saves", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    screen.prompt.mockResolvedValue({ openaiModel: "gpt-4o" });
+
+    await doModelSelector();
+
+    expect(screen.open).toHaveBeenCalledWith("Model");
+    expect(ai.fetchOpenAIModels).toHaveBeenCalledWith("sk");
+    expect(configHelper.saveConfig).toHaveBeenCalledWith({
+      openaiModel: "gpt-4o",
+    });
   });
 });
