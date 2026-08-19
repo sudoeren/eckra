@@ -395,9 +395,14 @@ async function generateCommitMessage(diff, filesList, options = {}) {
   const instructionText = config.aiInstruction
     ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n`
     : "";
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the commit message in the "${config.locale}" language.\n`
+      : "";
 
   const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a professional commit message.
 ${instructionText}
+${localeText}
 ${getConventionalTypesBlock(type)}
 Changed files:
 ${filesList.join("\n")}
@@ -458,9 +463,14 @@ async function generateCommitSuggestions(
   if (activeInstruction) {
     instructionText = `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`;
   }
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the commit message in the "${config.locale}" language.\n`
+      : "";
 
   const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages.
 ${instructionText}
+${localeText}
 ${getConventionalTypesBlock(type)}
 Changed files:
 ${filesList.join("\n")}

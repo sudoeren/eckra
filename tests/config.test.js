@@ -45,6 +45,7 @@ describe("Config Helper", () => {
     expect(config).toEqual(DEFAULT_CONFIG);
     expect(config.commitType).toBe("conventional+body");
     expect(config.subjectMaxLength).toBe(50);
+    expect(config.locale).toBe("en");
   });
 
   test("should merge global config correctly", () => {

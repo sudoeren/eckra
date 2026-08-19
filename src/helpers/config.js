@@ -37,6 +37,7 @@ const DEFAULT_CONFIG = {
   onboarded: false,
   commitType: "conventional+body",
   subjectMaxLength: 50,
+  locale: "en",
   aiInstruction:
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };

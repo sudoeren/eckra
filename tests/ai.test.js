@@ -626,6 +626,32 @@ describe("AI Helper", () => {
       expect(userPrompt()).not.toContain("Conventional Commits types");
     });
 
+    test("injects the locale instruction when it is not English", async () => {
+      configHelper.getConfig.mockReturnValue({
+        aiProvider: "openai",
+        openaiApiKey: "sk-test",
+        openaiModel: "gpt-4o",
+        locale: "tr",
+      });
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "feat: merhaba" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles);
+
+      expect(userPrompt()).toContain('"tr" language');
+    });
+
+    test("omits the locale instruction for the default English locale", async () => {
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "feat: ok" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles);
+
+      expect(userPrompt()).not.toContain("language");
+    });
+
     test("truncates the subject to the configured subjectMaxLength", async () => {
       configHelper.getConfig.mockReturnValue({
         aiProvider: "openai",
