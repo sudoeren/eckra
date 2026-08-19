@@ -75,6 +75,14 @@ describe("Git Helper", () => {
     expect(mockGit.commit).toHaveBeenCalledWith(message);
   });
 
+  test("createCommit with noVerify passes --no-verify to git", async () => {
+    const message = "feat: test commit";
+    await createCommit(message, { noVerify: true });
+    expect(mockGit.commit).toHaveBeenCalledWith(message, [], {
+      "--no-verify": null,
+    });
+  });
+
   test("getStagedDiff should call git.diff with --cached", async () => {
     await getStagedDiff();
     expect(mockGit.diff).toHaveBeenCalledWith(["--cached"]);

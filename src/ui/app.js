@@ -179,7 +179,7 @@ async function quickCommit(message, opts = {}) {
     try {
       const statusResult = await getGitStatus();
       if (statusResult.staged.length === 0) await stageAll();
-      await createCommit(message);
+      await createCommit(message, { noVerify: opts.noVerify });
       console.log(s.success("\n  ✓ Commit done!\n"));
     } catch (err) {
       console.log(s.error(`\n  ✗ ${err.message}`));

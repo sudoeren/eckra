@@ -58,6 +58,7 @@ async function doCommit(info, opts = {}) {
     noCommit = false,
     type = null,
     clipboard = false,
+    noVerify = false,
   } = opts;
   let generate = parseInt(opts.generate, 10);
   if (!Number.isFinite(generate) || generate < 1) generate = 1;
@@ -186,7 +187,7 @@ async function doCommit(info, opts = {}) {
   const spinCommit = spinner("Creating commit...");
   spinCommit.start();
   try {
-    const result = await createCommit(message);
+    const result = await createCommit(message, { noVerify });
     done(spinCommit, `Commit: ${result.commit.substring(0, 7)}`);
   } catch (err) {
     fail(spinCommit, `Commit failed: ${err.message}`);

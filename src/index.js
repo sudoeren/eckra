@@ -88,6 +88,10 @@ program
     "-c, --clipboard",
     "Copy the generated message to the clipboard instead of committing"
   )
+  .option(
+    "-n, --no-verify",
+    "Bypass pre-commit and commit-msg hooks while committing"
+  )
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
@@ -111,6 +115,7 @@ program
         noCommit: options.commit === false,
         type: options.type,
         clipboard: options.clipboard,
+        noVerify: options.noVerify,
       });
     }
   });

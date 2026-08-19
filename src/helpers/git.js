@@ -35,7 +35,10 @@ async function stageAll() {
 /**
  * Create a commit with message
  */
-async function createCommit(message) {
+async function createCommit(message, { noVerify = false } = {}) {
+  if (noVerify) {
+    return await getGit().commit(message, [], { "--no-verify": null });
+  }
   return await getGit().commit(message);
 }
 

@@ -53,7 +53,9 @@ describe("Commit flow (aicommits-style)", () => {
       null,
       { type: null }
     );
-    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body");
+    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body", {
+      noVerify: false,
+    });
   });
 
   test("passes the commit format through to the AI", async () => {
@@ -68,7 +70,9 @@ describe("Commit flow (aicommits-style)", () => {
       null,
       { type: "gitmoji" }
     );
-    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body");
+    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body", {
+      noVerify: false,
+    });
   });
 
   test("passes the instruction through to the AI", async () => {
@@ -92,6 +96,16 @@ describe("Commit flow (aicommits-style)", () => {
     expect(git.createCommit).toHaveBeenCalledTimes(1);
   });
 
+  test("passes noVerify through to createCommit", async () => {
+    screen.prompt.mockResolvedValueOnce({ confirm: true });
+
+    await doCommit(null, { noVerify: true });
+
+    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body", {
+      noVerify: true,
+    });
+  });
+
   test("asks for a manual message when the AI message is declined", async () => {
     screen.prompt
       .mockResolvedValueOnce({ confirm: false })
@@ -99,7 +113,9 @@ describe("Commit flow (aicommits-style)", () => {
 
     await doCommit(null);
 
-    expect(git.createCommit).toHaveBeenCalledWith("fix: my own message");
+    expect(git.createCommit).toHaveBeenCalledWith("fix: my own message", {
+      noVerify: false,
+    });
   });
 
   test("cancels when the manual message is empty", async () => {
@@ -131,7 +147,9 @@ describe("Commit flow (aicommits-style)", () => {
       null,
       { type: null }
     );
-    expect(git.createCommit).toHaveBeenCalledWith("fix: two");
+    expect(git.createCommit).toHaveBeenCalledWith("fix: two", {
+      noVerify: false,
+    });
   });
 
   test("noCommit only shows the message and never commits", async () => {
@@ -164,7 +182,9 @@ describe("Commit flow (aicommits-style)", () => {
 
     await doCommit(null);
 
-    expect(git.createCommit).toHaveBeenCalledWith("chore: manual fallback");
+    expect(git.createCommit).toHaveBeenCalledWith("chore: manual fallback", {
+      noVerify: false,
+    });
   });
 
   test("stages all changes with the all option", async () => {
