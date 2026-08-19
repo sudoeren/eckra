@@ -55,6 +55,7 @@ async function doCommit(info, opts = {}) {
     all = false,
     yes = false,
     noCommit = false,
+    type = null,
   } = opts;
   let generate = parseInt(opts.generate, 10);
   if (!Number.isFinite(generate) || generate < 1) generate = 1;
@@ -106,7 +107,8 @@ async function doCommit(info, opts = {}) {
         diff,
         status.staged,
         generate,
-        instruction
+        instruction,
+        { type }
       );
       spin.stop();
       message = await pickSuggestion(suggestions);
@@ -115,7 +117,8 @@ async function doCommit(info, opts = {}) {
         diff,
         status.staged,
         1,
-        instruction
+        instruction,
+        { type }
       );
       spin.stop();
       message = suggestion;

@@ -3,6 +3,113 @@ const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
 
 const MAX_DIFF_CHARS = 2000;
 
+const COMMIT_FORMATS = [
+  "plain",
+  "conventional",
+  "conventional+body",
+  "gitmoji",
+  "subject+body",
+];
+
+/**
+ * Resolve the commit message format for a generation request. An explicit
+ * `type` wins, otherwise the config default is used, falling back to
+ * conventional+body for unknown values so existing behavior is preserved.
+ */
+function resolveCommitType(type) {
+  const config = getConfig();
+  const candidate = type || config.commitType || DEFAULT_CONFIG.commitType;
+  return COMMIT_FORMATS.includes(candidate)
+    ? candidate
+    : DEFAULT_CONFIG.commitType;
+}
+
+/**
+ * Conventional Commits type list, only relevant for the conventional-ish
+ * formats. Returns an empty string otherwise.
+ */
+function getConventionalTypesBlock(type) {
+  if (
+    type !== "conventional" &&
+    type !== "conventional+body" &&
+    type !== "gitmoji"
+  ) {
+    return "";
+  }
+  return `Conventional Commits types:
+- feat: A new feature
+- fix: A bug fix
+- docs: Documentation only changes
+- style: Changes that do not affect the code (whitespace, formatting, missing semicolons, etc.)
+- refactor: Code change that neither fixes a bug nor adds a feature
+- perf: Code change that improves performance
+- test: Adding missing tests or correcting existing tests
+- chore: Changes to the build process or auxiliary tools
+
+`;
+}
+
+/**
+ * Format-specific instructions plus a worked example. Shared by the single
+ * and multi-suggestion prompts so the two never drift apart.
+ */
+function getCommitFormatBlock(type, maxLength) {
+  const max = maxLength || DEFAULT_CONFIG.subjectMaxLength;
+  switch (type) {
+    case "plain":
+      return `1. **Subject line** (first line): short, plain description. Max ${max} characters. Use imperative mood ("add" not "added").
+2. **Body** (optional but recommended): 1-3 bullet points explaining WHAT changed and WHY. Wrap at 72 characters.
+
+Example:
+add autocomplete search for providers
+
+- Implement type-to-search in provider selection
+- Fetch models from each provider's API`;
+
+    case "conventional":
+      return `1. **Subject line** (first line): type(scope): brief description. Max ${max} characters. Use imperative mood ("add" not "added").
+2. **Body**: none (subject line only).
+
+Example:
+feat(auth): add JWT token validation`;
+
+    case "gitmoji":
+      return `1. **Subject line** (first line): a relevant emoji, then type(scope): brief description (e.g. "✨ feat(auth): add login"). Max ${max} characters. Use imperative mood ("add" not "added").
+2. **Blank line**
+3. **Body** (optional but recommended): 1-3 bullet points explaining WHAT changed and WHY. Wrap at 72 characters.
+
+Example:
+✨ feat(auth): add JWT token validation
+
+- Implement token verification middleware
+- Add refresh token rotation for security`;
+
+    case "subject+body":
+      return `1. **Subject line** (first line): short, plain description. Max ${max} characters. Use imperative mood ("add" not "added").
+2. **Blank line**
+3. **Body** (optional but recommended): 1-3 bullet points explaining WHAT changed and WHY. Wrap at 72 characters.
+
+Example:
+add JWT token validation
+
+- Implement token verification middleware
+- Add refresh token rotation for security`;
+
+    case "conventional+body":
+    default:
+      return `1. **Subject line** (first line): type(scope): brief description. Max ${max} characters. Use imperative mood ("add" not "added").
+2. **Blank line**
+3. **Body** (optional but recommended): 1-3 bullet points explaining WHAT changed and WHY. Wrap at 72 characters.
+
+Example:
+feat: add autocomplete search for providers
+
+- Implement type-to-search in provider selection
+- Fetch models from each provider's API
+- Add fallback to manual input when API fails`;
+  }
+}
+
 function formatDiffForPrompt(diff, maxChars = MAX_DIFF_CHARS) {
   if (!diff || diff.length <= maxChars) return diff || "";
 
@@ -278,24 +385,17 @@ async function callProvider(
 /**
  * Generate commit message using the configured AI provider
  */
-async function generateCommitMessage(diff, filesList) {
+async function generateCommitMessage(diff, filesList, options = {}) {
   const config = getConfig();
+  const type = resolveCommitType(options.type);
+  const maxLength = config.subjectMaxLength || DEFAULT_CONFIG.subjectMaxLength;
   const instructionText = config.aiInstruction
     ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n`
     : "";
 
-  const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a professional commit message in Conventional Commits format.
+  const prompt = `You are a Git commit message generator. Based on the following changes${config.aiInstruction ? " and the user instruction" : ""}, create a professional commit message.
 ${instructionText}
-Conventional Commits format:
-- feat: A new feature
-- fix: A bug fix
-- docs: Documentation only changes
-- style: Changes that do not affect the code (whitespace, formatting, missing semicolons, etc.)
-- refactor: Code change that neither fixes a bug nor adds a feature
-- perf: Code change that improves performance
-- test: Adding missing tests or correcting existing tests
-- chore: Changes to the build process or auxiliary tools
-
+${getConventionalTypesBlock(type)}
 Changed files:
 ${filesList.join("\n")}
 
@@ -303,19 +403,7 @@ Diff:
 ${formatDiffForPrompt(diff)}
 
 Write a commit message in the following format:
-
-1. **Subject line** (first line): Type, scope (optional), and brief description. Max 50 characters. Use imperative mood ("add" not "added").
-
-2. **Blank line**
-
-3. **Body** (optional but recommended): Explain WHAT changed and WHY. Wrap at 72 characters. Use bullet points for multiple changes.
-
-Example:
-feat: add autocomplete search for providers
-
-- Implement type-to-search in provider selection
-- Fetch models from each provider's API
-- Add fallback to manual input when API fails
+${getCommitFormatBlock(type, maxLength)}
 
 Write only the commit message, no explanations.`;
 
@@ -323,7 +411,7 @@ Write only the commit message, no explanations.`;
     {
       role: "system",
       content:
-        "You are a helpful assistant that generates professional Git commit messages following Conventional Commits specification. Always include a subject line and a detailed body explaining the changes.",
+        "You are a helpful assistant that generates professional Git commit messages.",
     },
     {
       role: "user",
@@ -338,8 +426,8 @@ Write only the commit message, no explanations.`;
 
   const lines = message.split("\n").map((line) => line.trimEnd());
 
-  if (lines.length > 0 && lines[0].length > 50) {
-    lines[0] = lines[0].substring(0, 50);
+  if (lines.length > 0 && lines[0].length > maxLength) {
+    lines[0] = lines[0].substring(0, maxLength);
   }
 
   return lines.join("\n");
@@ -352,9 +440,12 @@ async function generateCommitSuggestions(
   diff,
   filesList,
   count = 3,
-  instruction = null
+  instruction = null,
+  options = {}
 ) {
   const config = getConfig();
+  const type = resolveCommitType(options.type);
+  const maxLength = config.subjectMaxLength || DEFAULT_CONFIG.subjectMaxLength;
   const activeInstruction = instruction || config.aiInstruction;
 
   let instructionText = "";
@@ -362,8 +453,9 @@ async function generateCommitSuggestions(
     instructionText = `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`;
   }
 
-  const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages. Each MUST follow Conventional Commits format with a detailed body.
+  const prompt = `You are a Git commit message generator. Based on the following changes${activeInstruction ? " and the user instruction" : ""}, suggest ${count} different commit messages.
 ${instructionText}
+${getConventionalTypesBlock(type)}
 Changed files:
 ${filesList.join("\n")}
 
@@ -371,39 +463,16 @@ Diff:
 ${formatDiffForPrompt(diff)}
 
 CRITICAL FORMAT REQUIREMENTS:
-Each suggestion MUST have:
-1. Subject line (max 50 chars): type(scope): brief description
-2. Empty line
-3. Body section with 2-4 bullet points explaining WHAT changed and WHY
+Each suggestion MUST follow this format:
+${getCommitFormatBlock(type, maxLength)}
 
-EXAMPLE 1:
-feat(auth): add JWT token validation
-
-- Implement token verification middleware
-- Add refresh token rotation for security
-- Store tokens in httpOnly cookies
-
-EXAMPLE 2:
-fix(ui): resolve dark mode contrast issues
-
-- Update color palette for better accessibility
-- Add CSS variables for theme switching
-- Test with WCAG 2.1 AA standards
-
-EXAMPLE 3:
-refactor(api): optimize database queries
-
-- Add indexes for frequently queried fields
-- Implement query caching with Redis
-- Reduce response time by 40%
-
-Write exactly ${count} suggestions following this format. Separate each with "---" on its own line. Do NOT write single-line messages.`;
+Write exactly ${count} suggestions following this format. Separate each with "---" on its own line.`;
 
   const messages = [
     {
       role: "system",
       content:
-        "You are a professional Git commit message writer. ALWAYS generate multi-line messages with a subject and detailed body. Never write single-line commits.",
+        "You are a professional Git commit message writer. Follow the requested format precisely.",
     },
     {
       role: "user",
@@ -438,8 +507,8 @@ Write exactly ${count} suggestions following this format. Separate each with "--
         .map((block) => {
           const lines = block.split("\n").map((line) => line.trimEnd());
 
-          if (lines.length > 0 && lines[0].length > 50) {
-            lines[0] = lines[0].substring(0, 50);
+          if (lines.length > 0 && lines[0].length > maxLength) {
+            lines[0] = lines[0].substring(0, maxLength);
           }
 
           return lines.join("\n");
@@ -1111,6 +1180,8 @@ Write in a natural, narrative tone. Keep each section concise and scannable.`;
 }
 
 module.exports = {
+  COMMIT_FORMATS,
+  resolveCommitType,
   formatDiffForPrompt,
   generateCommitMessage,
   generateCommitSuggestions,

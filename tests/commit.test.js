@@ -47,7 +47,23 @@ describe("Commit flow (aicommits-style)", () => {
       "diff",
       ["a.js"],
       1,
-      null
+      null,
+      { type: null }
+    );
+    expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body");
+  });
+
+  test("passes the commit format through to the AI", async () => {
+    screen.prompt.mockResolvedValueOnce({ confirm: true });
+
+    await doCommit(null, { type: "gitmoji" });
+
+    expect(ai.generateCommitSuggestions).toHaveBeenCalledWith(
+      "diff",
+      ["a.js"],
+      1,
+      null,
+      { type: "gitmoji" }
     );
     expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body");
   });
@@ -61,7 +77,8 @@ describe("Commit flow (aicommits-style)", () => {
       "diff",
       ["a.js"],
       1,
-      "focus on tests"
+      "focus on tests",
+      { type: null }
     );
   });
 
@@ -108,7 +125,8 @@ describe("Commit flow (aicommits-style)", () => {
       "diff",
       ["a.js"],
       3,
-      null
+      null,
+      { type: null }
     );
     expect(git.createCommit).toHaveBeenCalledWith("fix: two");
   });

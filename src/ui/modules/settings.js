@@ -510,6 +510,10 @@ async function doSettings() {
 
   console.log(s.muted("  Theme: ") + s.text(config.theme || "auto"));
   console.log(
+    s.muted("  Commit Format: ") +
+      s.text(config.commitType || DEFAULT_CONFIG.commitType)
+  );
+  console.log(
     s.muted("  AI Status: ") +
       (aiStatus.connected
         ? s.success("Connected ✓")
@@ -529,6 +533,7 @@ async function doSettings() {
         menuItem("Configure Provider Settings", "text", "configure"),
         menuItem("Show AI Instruction", "text", "show-instruction"),
         menuItem("Change AI Instructions", "text", "instruction"),
+        menuItem("Change Commit Format", "text", "commit-type"),
         menuItem("Change Theme", "text", "theme"),
         sep(),
         menuItem("Reset & Restart Onboarding", "danger", "reset"),
@@ -743,6 +748,33 @@ async function doSettings() {
     const { resetThemeCache } = require("../common");
     resetThemeCache();
     console.log(s.success("\n  ✓ Theme changed to " + theme));
+    await sleep(600);
+  }
+
+  if (action === "commit-type") {
+    const { COMMIT_FORMATS } = require("../../helpers/ai");
+    const COMMIT_TYPE_LABELS = {
+      "conventional+body": "Conventional + body (recommended)",
+      conventional: "Conventional (subject only)",
+      gitmoji: "Gitmoji (emoji prefix)",
+      "subject+body": "Subject + body",
+      plain: "Plain (simple subject)",
+    };
+    const { commitType } = await prompt([
+      {
+        type: "list",
+        name: "commitType",
+        message: s.muted("Select Commit Format:"),
+        choices: COMMIT_FORMATS.map((value) => ({
+          name: COMMIT_TYPE_LABELS[value] || value,
+          value,
+        })),
+        default: config.commitType || DEFAULT_CONFIG.commitType,
+        pageSize: 10,
+      },
+    ]);
+    saveConfig({ commitType });
+    console.log(s.success("\n  ✓ Commit format changed to " + commitType));
     await sleep(600);
   }
 }

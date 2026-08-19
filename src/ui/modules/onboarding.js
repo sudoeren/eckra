@@ -182,7 +182,30 @@ async function doOnboarding() {
     answers,
     DEFAULT_CONFIG
   );
-  configData = { ...configData, ...modelAnswers, onboarded: true };
+  configData = { ...configData, ...modelAnswers };
+
+  const { COMMIT_FORMATS } = require("../../helpers/ai");
+  const COMMIT_TYPE_LABELS = {
+    "conventional+body": "Conventional + body (recommended)",
+    conventional: "Conventional (subject only)",
+    gitmoji: "Gitmoji (emoji prefix)",
+    "subject+body": "Subject + body",
+    plain: "Plain (simple subject)",
+  };
+  const { commitType } = await prompt([
+    {
+      type: "list",
+      name: "commitType",
+      message: "Preferred commit message format?",
+      choices: COMMIT_FORMATS.map((value) => ({
+        name: COMMIT_TYPE_LABELS[value] || value,
+        value,
+      })),
+      default: DEFAULT_CONFIG.commitType,
+      pageSize: 10,
+    },
+  ]);
+  configData = { ...configData, commitType, onboarded: true };
 
   // Save the config
   saveConfig(configData);

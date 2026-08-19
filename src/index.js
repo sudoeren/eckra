@@ -80,10 +80,24 @@ program
     "-g, --generate <count>",
     "Generate N messages to pick from (default 1)"
   )
+  .option(
+    "-t, --type <format>",
+    "Commit message format: plain, conventional, conventional+body, gitmoji, subject+body"
+  )
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
     if (!(await app().ensureOnboarding())) return;
+    const { COMMIT_FORMATS } = require("./helpers/ai");
+    if (options.type && !COMMIT_FORMATS.includes(options.type)) {
+      console.log(
+        s.error(
+          `  ✗ Unknown commit format: "${options.type}". Valid: ${COMMIT_FORMATS.join(", ")}`
+        )
+      );
+      process.exitCode = 1;
+      return;
+    }
     if (await checkGitRepo()) {
       await app().quickCommit(options.message, {
         all: options.all,
@@ -91,6 +105,7 @@ program
         generate: options.generate,
         instruction: options.instruction,
         noCommit: options.commit === false,
+        type: options.type,
       });
     }
   });
@@ -366,11 +381,23 @@ program
 
 async function runSuggestCommand(options) {
   const { generateSuggestedCommit } = require("./helpers/suggest");
+  const { COMMIT_FORMATS } = require("./helpers/ai");
+
+  if (options.type && !COMMIT_FORMATS.includes(options.type)) {
+    process.stderr.write(
+      s.error(
+        `  ✗ Unknown commit format: "${options.type}". Valid: ${COMMIT_FORMATS.join(", ")}\n`
+      )
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   try {
     const message = await generateSuggestedCommit({
       all: options.all,
       instruction: options.instruction,
+      type: options.type,
     });
 
     if (options.output) {
@@ -392,6 +419,10 @@ program
   )
   .option("--all", "Stage all changes before generating")
   .option("--instruction <text>", "Optional instruction for the AI")
+  .option(
+    "-t, --type <format>",
+    "Commit message format: plain, conventional, conventional+body, gitmoji, subject+body"
+  )
   .option("--output <file>", "Write the message to a file instead of stdout")
   .action(runSuggestCommand);
 

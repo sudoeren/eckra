@@ -43,6 +43,8 @@ describe("Config Helper", () => {
   test("should return default config when no config files exist", () => {
     const config = getConfig();
     expect(config).toEqual(DEFAULT_CONFIG);
+    expect(config.commitType).toBe("conventional+body");
+    expect(config.subjectMaxLength).toBe(50);
   });
 
   test("should merge global config correctly", () => {

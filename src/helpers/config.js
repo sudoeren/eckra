@@ -35,6 +35,8 @@ const DEFAULT_CONFIG = {
   theme: "auto",
   lazygitKey: "C",
   onboarded: false,
+  commitType: "conventional+body",
+  subjectMaxLength: 50,
   aiInstruction:
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };

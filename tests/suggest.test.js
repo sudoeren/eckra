@@ -27,7 +27,8 @@ describe("Suggest Helper", () => {
       "diff",
       ["a.js"],
       1,
-      null
+      null,
+      { type: null }
     );
     expect(git.stageAll).not.toHaveBeenCalled();
   });
@@ -56,7 +57,29 @@ describe("Suggest Helper", () => {
       "diff",
       ["b.js"],
       1,
-      null
+      null,
+      { type: null }
+    );
+  });
+
+  test("passes the commit format through to the AI", async () => {
+    git.getGitStatus.mockResolvedValue({
+      staged: ["a.js"],
+      modified: [],
+      not_added: [],
+      deleted: [],
+    });
+    git.getStagedDiff.mockResolvedValue("diff");
+    ai.generateCommitSuggestions.mockResolvedValue(["✨ feat: x"]);
+
+    await generateSuggestedCommit({ type: "gitmoji" });
+
+    expect(ai.generateCommitSuggestions).toHaveBeenCalledWith(
+      "diff",
+      ["a.js"],
+      1,
+      null,
+      { type: "gitmoji" }
     );
   });
 
@@ -76,7 +99,8 @@ describe("Suggest Helper", () => {
       "diff",
       ["a.js"],
       1,
-      "focus on tests"
+      "focus on tests",
+      { type: null }
     );
   });
 

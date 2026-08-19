@@ -10,6 +10,7 @@ const { generateCommitSuggestions } = require("./ai");
 async function generateSuggestedCommit({
   all = false,
   instruction = null,
+  type = null,
 } = {}) {
   let status;
   try {
@@ -38,7 +39,8 @@ async function generateSuggestedCommit({
     diff,
     status.staged,
     1,
-    instruction
+    instruction,
+    { type }
   );
   return message;
 }

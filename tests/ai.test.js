@@ -1,6 +1,8 @@
 const axios = require("axios");
 const {
   generateCommitMessage,
+  generateCommitSuggestions,
+  resolveCommitType,
   formatDiffForPrompt,
   checkAIConnection,
   resetAIConnectionCache,
@@ -574,6 +576,118 @@ describe("AI Helper", () => {
       await fetchOllamaCloudModels("oc-test");
 
       expect(axios.get).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Commit message formats", () => {
+    beforeEach(() => {
+      configHelper.getConfig.mockReturnValue({
+        aiProvider: "openai",
+        openaiApiKey: "sk-test",
+        openaiModel: "gpt-4o",
+      });
+    });
+
+    function userPrompt() {
+      const [, body] = axios.post.mock.calls[0];
+      return body.messages.find((m) => m.role === "user").content;
+    }
+
+    test("defaults to conventional+body when no type is given", async () => {
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "feat: ok" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles);
+
+      expect(userPrompt()).toContain("type(scope): brief description");
+      expect(userPrompt()).toContain("Conventional Commits types");
+    });
+
+    test("builds a gitmoji prompt when type is gitmoji", async () => {
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "✨ feat: ok" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles, { type: "gitmoji" });
+
+      expect(userPrompt()).toContain("a relevant emoji");
+      expect(userPrompt()).toContain("✨ feat(auth): add login");
+    });
+
+    test("builds a plain prompt without conventional types", async () => {
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "add stuff" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles, { type: "plain" });
+
+      expect(userPrompt()).toContain("short, plain description");
+      expect(userPrompt()).not.toContain("Conventional Commits types");
+    });
+
+    test("truncates the subject to the configured subjectMaxLength", async () => {
+      configHelper.getConfig.mockReturnValue({
+        aiProvider: "openai",
+        openaiApiKey: "sk-test",
+        openaiModel: "gpt-4o",
+        subjectMaxLength: 10,
+      });
+      axios.post.mockResolvedValue({
+        data: {
+          choices: [{ message: { content: "a very long subject line here" } }],
+        },
+      });
+
+      const message = await generateCommitMessage(mockDiff, mockFiles);
+
+      expect(message.split("\n")[0].length).toBe(10);
+    });
+
+    test("falls back to the default format for unknown types", async () => {
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "feat: ok" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles, { type: "bogus" });
+
+      expect(userPrompt()).toContain("type(scope): brief description");
+    });
+
+    test("resolveCommitType prefers the passed type over config", () => {
+      configHelper.getConfig.mockReturnValue({ commitType: "plain" });
+
+      expect(resolveCommitType("gitmoji")).toBe("gitmoji");
+      expect(resolveCommitType(null)).toBe("plain");
+      expect(resolveCommitType("bogus")).toBe("conventional+body");
+    });
+
+    test("multi-suggestion generation respects the requested format", async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          choices: [
+            {
+              message: {
+                content: "fix: one\n\n- body\n---\nfeat: two\n\n- body",
+              },
+            },
+          ],
+        },
+      });
+
+      const suggestions = await generateCommitSuggestions(
+        mockDiff,
+        mockFiles,
+        2,
+        null,
+        { type: "conventional+body" }
+      );
+
+      expect(suggestions).toEqual([
+        "fix: one\n\n- body",
+        "feat: two\n\n- body",
+      ]);
+      expect(userPrompt()).toContain('Separate each with "---"');
     });
   });
 });
