@@ -26,6 +26,7 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 - **Interactive dashboard**: manage staging, branches, stashes, and remotes from one menu
 - **AI commit messages** based on your actual diff, with 11 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Amazon Bedrock, OpenCode Go, and more; see the [provider table](#ai-configuration))
 - **Select & edit** any suggestion before committing
+- **Choose your commit format**: `plain`, `conventional`, `conventional+body`, `gitmoji`, or `subject+body` — picked during setup, changeable in Settings or per-commit with `--type`
 - **Staged diff review** with syntax highlighting
 - **Git Graph**: VS Code-style commit graph across all branches, with per-lane colors, pagination, and commit inspection
 - **Project story**: AI timeline of your commit history
@@ -56,7 +57,7 @@ eckra
 ```
 
 > [!NOTE]
-> On first run, eckra walks you through a quick setup wizard. You can re-run the setup anytime with `eckra setup`.
+> On first run, eckra walks you through a quick setup wizard (provider, model, and preferred commit format). You can re-run the setup anytime with `eckra setup`.
 
 Or jump straight into action:
 
@@ -74,6 +75,7 @@ Or jump straight into action:
 | `eckra doctor`  | `dr`  | Health check                  |
 | `eckra suggest` | `sg`  | Print an AI commit message    |
 | `eckra setup`   |       | Run the setup/onboarding wizard |
+| `eckra model`   |       | Interactively pick the AI model |
 
 > [!TIP]
 > `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
@@ -123,8 +125,25 @@ eckra lazygit remove     # Remove it
 | `--all`                | `-a`  | Stage all changes before generating    |
 | `--yes`                | `-y`  | Skip the confirmation prompt           |
 | `--generate <count>`   | `-g`  | Generate N messages to pick from       |
+| `--type <format>`      | `-t`  | Commit message format (see below)      |
+| `--clipboard`          | `-c`  | Copy the message to the clipboard instead of committing |
+| `--no-verify`          | `-n`  | Bypass pre-commit and commit-msg hooks |
+| `--exclude <files>`    | `-x`  | Exclude files/glob patterns from AI analysis (comma-separated) |
+| `--max-length <n>`     |       | Preferred max subject length (default 50) |
 | `--instruction <text>` |       | Extra instruction for the AI           |
 | `--no-commit`          |       | Only generate and show the message     |
+
+#### Commit message formats
+
+`--type` (or the `commitType` config, chosen during setup) selects the format the AI writes in:
+
+| Format              | Example subject            |
+| :------------------ | :------------------------- |
+| `plain`             | `add autocomplete search`  |
+| `conventional`      | `feat(auth): add login`    |
+| `conventional+body` | `feat: add login` + bullets (default) |
+| `gitmoji`           | `✨ feat(auth): add login` |
+| `subject+body`      | `add login` + bullets      |
 
 Other commands:
 
@@ -133,6 +152,9 @@ eckra push -y                              # push without the confirmation promp
 eckra suggest --all --instruction "focus on the why"   # non-interactive, stdout
 eckra suggest --output commit-msg.txt                  # write to a file (CI-friendly)
 eckra story --count 20                                 # analyze the last 20 commits
+eckra commit --type gitmoji                            # gitmoji-style message
+eckra commit --clipboard                               # copy the message, don't commit
+eckra commit -x "*.lock,config.local.js"              # ignore files in AI analysis
 ```
 
 Risky operations ask for confirmation before running: **push**, **pull**, **push tags**, **delete tag**, **drop stash**, **amend**, **rebase** and **squash**. Pass `-y/--yes` on `eckra push` to skip it.
@@ -166,7 +188,7 @@ ollama pull qwen3.5:2b
 | `Amazon Bedrock`          | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-haiku-4-5` |
 | `Amazon Bedrock Mantle`   | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-haiku-4-5` |
 
-Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you.
+Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you — switch models anytime with `eckra model` or from Settings.
 
 > [!NOTE]
 > Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
@@ -176,7 +198,9 @@ Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/
 ```bash
 eckra config                    # Show config (secrets masked)
 eckra config get aiProvider     # Print a value
+eckra config get aiProvider theme   # Print several values at once
 eckra config set theme dark     # Set a value
+eckra config set theme=dark locale=tr   # Set several key=value pairs at once
 eckra config unset aiInstruction# Remove a key
 eckra config reset              # Restore defaults
 eckra config path               # Config file path
@@ -184,6 +208,8 @@ eckra config path               # Config file path
 
 > [!NOTE]
 > Add `--local` to target the project's `.eckrarc` instead.
+
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), and `timeout` (AI request timeout in ms, default 30000).
 
 ### Health check
 
@@ -212,6 +238,8 @@ You can also check from the menu: **More > Check for Updates**.
 eckra suggest                    # Message for staged changes
 eckra suggest --all              # Stage everything first
 eckra suggest --instruction "focus on the why"
+eckra suggest --type gitmoji     # Pick the commit message format
+eckra suggest -x "dist/"         # Exclude files from the analysis
 ```
 
 ## Troubleshooting
