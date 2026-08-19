@@ -38,6 +38,7 @@ const DEFAULT_CONFIG = {
   commitType: "conventional+body",
   subjectMaxLength: 50,
   locale: "en",
+  timeout: 30000,
   aiInstruction:
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };

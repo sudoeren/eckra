@@ -318,7 +318,10 @@ async function callProvider(
   }
 
   try {
-    const response = await axios.post(url, body, { headers, timeout: 30000 });
+    const response = await axios.post(url, body, {
+      headers,
+      timeout: config.timeout || DEFAULT_CONFIG.timeout,
+    });
 
     let content = "";
     if (provider === "anthropic") {

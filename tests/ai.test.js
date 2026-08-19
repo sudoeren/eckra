@@ -652,6 +652,26 @@ describe("AI Helper", () => {
       expect(userPrompt()).not.toContain("language");
     });
 
+    test("uses the configured request timeout", async () => {
+      configHelper.getConfig.mockReturnValue({
+        aiProvider: "openai",
+        openaiApiKey: "sk-test",
+        openaiModel: "gpt-4o",
+        timeout: 12345,
+      });
+      axios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: "feat: ok" } }] },
+      });
+
+      await generateCommitMessage(mockDiff, mockFiles);
+
+      expect(axios.post).toHaveBeenCalledWith(
+        "https://api.openai.com/v1/chat/completions",
+        expect.any(Object),
+        expect.objectContaining({ timeout: 12345 })
+      );
+    });
+
     test("truncates the subject to the configured subjectMaxLength", async () => {
       configHelper.getConfig.mockReturnValue({
         aiProvider: "openai",

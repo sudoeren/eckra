@@ -46,6 +46,7 @@ describe("Config Helper", () => {
     expect(config.commitType).toBe("conventional+body");
     expect(config.subjectMaxLength).toBe(50);
     expect(config.locale).toBe("en");
+    expect(config.timeout).toBe(30000);
   });
 
   test("should merge global config correctly", () => {
