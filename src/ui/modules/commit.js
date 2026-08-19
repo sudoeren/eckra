@@ -61,6 +61,7 @@ async function doCommit(info, opts = {}) {
     clipboard = false,
     noVerify = false,
     exclude = null,
+    maxLength = null,
   } = opts;
   let generate = parseInt(opts.generate, 10);
   if (!Number.isFinite(generate) || generate < 1) generate = 1;
@@ -122,7 +123,7 @@ async function doCommit(info, opts = {}) {
         filesList,
         generate,
         instruction,
-        { type }
+        { type, maxLength }
       );
       spin.stop();
       message = await pickSuggestion(suggestions);
@@ -132,7 +133,7 @@ async function doCommit(info, opts = {}) {
         filesList,
         1,
         instruction,
-        { type }
+        { type, maxLength }
       );
       spin.stop();
       message = suggestion;

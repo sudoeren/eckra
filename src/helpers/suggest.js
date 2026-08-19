@@ -16,6 +16,7 @@ async function generateSuggestedCommit({
   instruction = null,
   type = null,
   exclude = null,
+  maxLength = null,
 } = {}) {
   let status;
   try {
@@ -53,7 +54,7 @@ async function generateSuggestedCommit({
     filesList,
     1,
     instruction,
-    { type }
+    { type, maxLength }
   );
   return message;
 }

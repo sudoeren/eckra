@@ -644,6 +644,26 @@ describe("AI Helper", () => {
       expect(message.split("\n")[0].length).toBe(10);
     });
 
+    test("maxLength option overrides the configured subject length", async () => {
+      configHelper.getConfig.mockReturnValue({
+        aiProvider: "openai",
+        openaiApiKey: "sk-test",
+        openaiModel: "gpt-4o",
+        subjectMaxLength: 50,
+      });
+      axios.post.mockResolvedValue({
+        data: {
+          choices: [{ message: { content: "a very long subject line here" } }],
+        },
+      });
+
+      const message = await generateCommitMessage(mockDiff, mockFiles, {
+        maxLength: 12,
+      });
+
+      expect(message.split("\n")[0].length).toBe(12);
+    });
+
     test("falls back to the default format for unknown types", async () => {
       axios.post.mockResolvedValue({
         data: { choices: [{ message: { content: "feat: ok" } }] },

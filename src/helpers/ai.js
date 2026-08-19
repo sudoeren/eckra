@@ -388,7 +388,10 @@ async function callProvider(
 async function generateCommitMessage(diff, filesList, options = {}) {
   const config = getConfig();
   const type = resolveCommitType(options.type);
-  const maxLength = config.subjectMaxLength || DEFAULT_CONFIG.subjectMaxLength;
+  const maxLength =
+    options.maxLength ||
+    config.subjectMaxLength ||
+    DEFAULT_CONFIG.subjectMaxLength;
   const instructionText = config.aiInstruction
     ? `\nIMPORTANT USER INSTRUCTION: ${config.aiInstruction}\n`
     : "";
@@ -445,7 +448,10 @@ async function generateCommitSuggestions(
 ) {
   const config = getConfig();
   const type = resolveCommitType(options.type);
-  const maxLength = config.subjectMaxLength || DEFAULT_CONFIG.subjectMaxLength;
+  const maxLength =
+    options.maxLength ||
+    config.subjectMaxLength ||
+    DEFAULT_CONFIG.subjectMaxLength;
   const activeInstruction = instruction || config.aiInstruction;
 
   let instructionText = "";

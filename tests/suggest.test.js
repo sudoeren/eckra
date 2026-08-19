@@ -28,7 +28,7 @@ describe("Suggest Helper", () => {
       ["a.js"],
       1,
       null,
-      { type: null }
+      { type: null, maxLength: null }
     );
     expect(git.stageAll).not.toHaveBeenCalled();
   });
@@ -58,7 +58,7 @@ describe("Suggest Helper", () => {
       ["b.js"],
       1,
       null,
-      { type: null }
+      { type: null, maxLength: null }
     );
   });
 
@@ -79,7 +79,7 @@ describe("Suggest Helper", () => {
       ["a.js"],
       1,
       null,
-      { type: "gitmoji" }
+      { type: "gitmoji", maxLength: null }
     );
   });
 
@@ -133,7 +133,7 @@ describe("Suggest Helper", () => {
       ["a.js"],
       1,
       "focus on tests",
-      { type: null }
+      { type: null, maxLength: null }
     );
   });
 

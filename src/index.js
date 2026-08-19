@@ -96,6 +96,10 @@ program
     "-x, --exclude <files>",
     "Files or glob patterns to exclude from AI analysis (comma-separated)"
   )
+  .option(
+    "--max-length <number>",
+    "Preferred max character length for the commit subject (default 50)"
+  )
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
@@ -110,6 +114,15 @@ program
       process.exitCode = 1;
       return;
     }
+    if (
+      options.maxLength != null &&
+      (!Number.isFinite(Number(options.maxLength)) ||
+        Number(options.maxLength) < 1)
+    ) {
+      console.log(s.error(`  ✗ Invalid --max-length: "${options.maxLength}"`));
+      process.exitCode = 1;
+      return;
+    }
     if (await checkGitRepo()) {
       await app().quickCommit(options.message, {
         all: options.all,
@@ -121,6 +134,7 @@ program
         clipboard: options.clipboard,
         noVerify: options.noVerify,
         exclude: options.exclude,
+        maxLength: options.maxLength,
       });
     }
   });
@@ -414,6 +428,7 @@ async function runSuggestCommand(options) {
       instruction: options.instruction,
       type: options.type,
       exclude: options.exclude,
+      maxLength: options.maxLength,
     });
 
     if (options.output) {
@@ -442,6 +457,10 @@ program
   .option(
     "-x, --exclude <files>",
     "Files or glob patterns to exclude from AI analysis (comma-separated)"
+  )
+  .option(
+    "--max-length <number>",
+    "Preferred max character length for the commit subject (default 50)"
   )
   .option("--output <file>", "Write the message to a file instead of stdout")
   .action(runSuggestCommand);

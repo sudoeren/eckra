@@ -51,7 +51,7 @@ describe("Commit flow (aicommits-style)", () => {
       ["a.js"],
       1,
       null,
-      { type: null }
+      { type: null, maxLength: null }
     );
     expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body", {
       noVerify: false,
@@ -68,7 +68,7 @@ describe("Commit flow (aicommits-style)", () => {
       ["a.js"],
       1,
       null,
-      { type: "gitmoji" }
+      { type: "gitmoji", maxLength: null }
     );
     expect(git.createCommit).toHaveBeenCalledWith("feat: x\n\n- body", {
       noVerify: false,
@@ -85,7 +85,7 @@ describe("Commit flow (aicommits-style)", () => {
       ["a.js"],
       1,
       "focus on tests",
-      { type: null }
+      { type: null, maxLength: null }
     );
   });
 
@@ -145,7 +145,7 @@ describe("Commit flow (aicommits-style)", () => {
       ["a.js"],
       3,
       null,
-      { type: null }
+      { type: null, maxLength: null }
     );
     expect(git.createCommit).toHaveBeenCalledWith("fix: two", {
       noVerify: false,
