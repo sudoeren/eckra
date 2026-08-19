@@ -99,7 +99,54 @@ function generatePatch(file, selectedHunkIndices) {
   return patch;
 }
 
+/**
+ * Turn a comma/glob-style pattern into a RegExp. `*` matches anything,
+ * everything else is matched literally so paths with dots are safe.
+ */
+function patternToRegExp(pattern) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("^" + escaped.replace(/\*/g, ".*") + "$");
+}
+
+/**
+ * Check whether a file name matches any of the exclusion patterns
+ * (exact match or `*` glob).
+ */
+function matchesExclude(fileName, patterns) {
+  return patterns.some((pattern) => patternToRegExp(pattern).test(fileName));
+}
+
+/**
+ * Filter a parsed file list, dropping entries that match the exclusion patterns.
+ */
+function filterFilesList(files, excludedPatterns) {
+  if (!excludedPatterns || excludedPatterns.length === 0) return files;
+  return files.filter((name) => !matchesExclude(name, excludedPatterns));
+}
+
+/**
+ * Remove the diff sections of excluded files from a raw git diff. The
+ * remaining files are re-joined so the result is still a valid-looking diff.
+ * Returns the original diff when nothing is excluded or nothing can be parsed.
+ */
+function filterDiff(diffOutput, excludedPatterns) {
+  if (!excludedPatterns || excludedPatterns.length === 0) return diffOutput;
+
+  const files = parseDiff(diffOutput);
+  if (files.length === 0) return diffOutput;
+
+  const kept = files.filter(
+    (file) => !matchesExclude(file.name, excludedPatterns)
+  );
+  if (kept.length === files.length) return diffOutput;
+
+  const allHunks = (file) => file.hunks.map((_, i) => i);
+  return kept.map((file) => generatePatch(file, allHunks(file))).join("\n");
+}
+
 module.exports = {
   parseDiff,
   generatePatch,
+  filterFilesList,
+  filterDiff,
 };

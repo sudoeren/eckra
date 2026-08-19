@@ -6,6 +6,7 @@ const {
 } = require("../../helpers/git");
 const { generateCommitSuggestions } = require("../../helpers/ai");
 const { copyToClipboard } = require("../../helpers/clipboard");
+const { filterDiff, filterFilesList } = require("../../helpers/patch");
 const { s, pause } = require("../common");
 const { open, prompt, spinner, done, fail } = require("../screen");
 
@@ -59,6 +60,7 @@ async function doCommit(info, opts = {}) {
     type = null,
     clipboard = false,
     noVerify = false,
+    exclude = null,
   } = opts;
   let generate = parseInt(opts.generate, 10);
   if (!Number.isFinite(generate) || generate < 1) generate = 1;
@@ -105,10 +107,19 @@ async function doCommit(info, opts = {}) {
   try {
     const diff = await getStagedDiff();
 
+    const excluded = exclude
+      ? String(exclude)
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [];
+    const filesList = filterFilesList(status.staged, excluded);
+    const diffForAI = filterDiff(diff, excluded);
+
     if (generate > 1) {
       const suggestions = await generateCommitSuggestions(
-        diff,
-        status.staged,
+        diffForAI,
+        filesList,
         generate,
         instruction,
         { type }
@@ -117,8 +128,8 @@ async function doCommit(info, opts = {}) {
       message = await pickSuggestion(suggestions);
     } else {
       const [suggestion] = await generateCommitSuggestions(
-        diff,
-        status.staged,
+        diffForAI,
+        filesList,
         1,
         instruction,
         { type }

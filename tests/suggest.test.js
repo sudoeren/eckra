@@ -83,6 +83,39 @@ describe("Suggest Helper", () => {
     );
   });
 
+  test("excludes matching files from the AI analysis", async () => {
+    const diff = [
+      "diff --git a/a.js b/a.js",
+      "index 111..222 100644",
+      "--- a/a.js",
+      "+++ b/a.js",
+      "@@ -1 +1 @@",
+      "-const x = 1;",
+      "+const x = 2;",
+      "diff --git a/secret.js b/secret.js",
+      "index 333..444 100644",
+      "--- a/secret.js",
+      "+++ b/secret.js",
+      "@@ -1 +1 @@",
+      "-secret = 1;",
+      "+secret = 2;",
+    ].join("\n");
+    git.getGitStatus.mockResolvedValue({
+      staged: ["a.js", "secret.js"],
+      modified: [],
+      not_added: [],
+      deleted: [],
+    });
+    git.getStagedDiff.mockResolvedValue(diff);
+    ai.generateCommitSuggestions.mockResolvedValue(["feat: x"]);
+
+    await generateSuggestedCommit({ exclude: "secret*" });
+
+    const [sentDiff, files] = ai.generateCommitSuggestions.mock.calls[0];
+    expect(files).toEqual(["a.js"]);
+    expect(sentDiff).not.toContain("secret");
+  });
+
   test("passes the instruction through to the AI", async () => {
     git.getGitStatus.mockResolvedValue({
       staged: ["a.js"],

@@ -174,6 +174,40 @@ describe("Commit flow (aicommits-style)", () => {
     expect(git.createCommit).not.toHaveBeenCalled();
   });
 
+  test("excludes matching files from the AI analysis", async () => {
+    const diff = [
+      "diff --git a/a.js b/a.js",
+      "index 111..222 100644",
+      "--- a/a.js",
+      "+++ b/a.js",
+      "@@ -1 +1 @@",
+      "-const x = 1;",
+      "+const x = 2;",
+      "diff --git a/secret.js b/secret.js",
+      "index 333..444 100644",
+      "--- a/secret.js",
+      "+++ b/secret.js",
+      "@@ -1 +1 @@",
+      "-secret = 1;",
+      "+secret = 2;",
+    ].join("\n");
+    git.getGitStatus.mockResolvedValue({
+      staged: ["a.js", "secret.js"],
+      modified: [],
+      not_added: [],
+      deleted: [],
+    });
+    git.getStagedDiff.mockResolvedValue(diff);
+    screen.prompt.mockResolvedValueOnce({ confirm: true });
+
+    await doCommit(null, { exclude: "secret.js" });
+
+    const [sentDiff, files] = ai.generateCommitSuggestions.mock.calls[0];
+    expect(files).toEqual(["a.js"]);
+    expect(sentDiff).toContain("diff --git a/a.js");
+    expect(sentDiff).not.toContain("secret");
+  });
+
   test("falls back to a manual message when the AI fails", async () => {
     ai.generateCommitSuggestions.mockRejectedValue(new Error("provider down"));
     screen.prompt

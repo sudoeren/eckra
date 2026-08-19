@@ -1,16 +1,21 @@
 const { getGitStatus, stageAll, getStagedDiff } = require("./git");
 const { generateCommitSuggestions } = require("./ai");
+const { filterDiff, filterFilesList } = require("./patch");
 
 /**
  * Generate a single non-interactive commit message from staged changes.
  * - `all: true` stages all changes first (mirrors the "easy" flow).
  * - `instruction` is an optional user direction for the AI.
+ * - `type` selects the commit message format.
+ * - `exclude` is a comma-separated list of files/glob patterns to leave out
+ *   of the AI analysis (the files are still committed).
  * Throws a plain Error when not in a repo or when nothing is staged.
  */
 async function generateSuggestedCommit({
   all = false,
   instruction = null,
   type = null,
+  exclude = null,
 } = {}) {
   let status;
   try {
@@ -35,9 +40,17 @@ async function generateSuggestedCommit({
   }
 
   const diff = await getStagedDiff();
+  const excluded = exclude
+    ? String(exclude)
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [];
+  const filesList = filterFilesList(status.staged, excluded);
+  const diffForAI = filterDiff(diff, excluded);
   const [message] = await generateCommitSuggestions(
-    diff,
-    status.staged,
+    diffForAI,
+    filesList,
     1,
     instruction,
     { type }

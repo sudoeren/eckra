@@ -1,4 +1,9 @@
-const { parseDiff, generatePatch } = require("../src/helpers/patch");
+const {
+  parseDiff,
+  generatePatch,
+  filterFilesList,
+  filterDiff,
+} = require("../src/helpers/patch");
 
 describe("Patch Helper", () => {
   const mockDiff = `diff --git a/test.js b/test.js
@@ -67,5 +72,53 @@ new mode 100755
     expect(header).toContain("new mode 100755");
     expect(header).toContain("--- a/old.js");
     expect(header).toContain("+++ b/new.js");
+  });
+
+  describe("filterDiff / filterFilesList", () => {
+    const twoFileDiff = `diff --git a/a.js b/a.js
+index 111..222 100644
+--- a/a.js
++++ b/a.js
+@@ -1 +1 @@
+-const x = 1;
++const x = 2;
+diff --git a/secret.js b/secret.js
+index 333..444 100644
+--- a/secret.js
++++ b/secret.js
+@@ -1 +1 @@
+-secret = 1;
++secret = 2;`;
+
+    test("filterFilesList drops exact matches", () => {
+      expect(filterFilesList(["a.js", "secret.js"], ["secret.js"])).toEqual([
+        "a.js",
+      ]);
+    });
+
+    test("filterFilesList supports glob patterns", () => {
+      expect(
+        filterFilesList(["a.js", "b.test.js", "c.js"], ["*.test.js"])
+      ).toEqual(["a.js", "c.js"]);
+    });
+
+    test("filterFilesList returns the original list when nothing is excluded", () => {
+      const files = ["a.js"];
+      expect(filterFilesList(files, [])).toBe(files);
+      expect(filterFilesList(files, null)).toBe(files);
+    });
+
+    test("filterDiff removes the excluded file section", () => {
+      const filtered = filterDiff(twoFileDiff, ["secret.js"]);
+
+      expect(filtered).toContain("diff --git a/a.js");
+      expect(filtered).toContain("+const x = 2;");
+      expect(filtered).not.toContain("secret");
+    });
+
+    test("filterDiff returns the original diff when nothing matches", () => {
+      expect(filterDiff(twoFileDiff, ["nope.js"])).toBe(twoFileDiff);
+      expect(filterDiff(twoFileDiff, [])).toBe(twoFileDiff);
+    });
   });
 });

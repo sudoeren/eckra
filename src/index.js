@@ -92,6 +92,10 @@ program
     "-n, --no-verify",
     "Bypass pre-commit and commit-msg hooks while committing"
   )
+  .option(
+    "-x, --exclude <files>",
+    "Files or glob patterns to exclude from AI analysis (comma-separated)"
+  )
   .option("--instruction <text>", "Optional instruction for the AI")
   .option("--no-commit", "Only generate and show the message, do not commit")
   .action(async (options) => {
@@ -116,6 +120,7 @@ program
         type: options.type,
         clipboard: options.clipboard,
         noVerify: options.noVerify,
+        exclude: options.exclude,
       });
     }
   });
@@ -408,6 +413,7 @@ async function runSuggestCommand(options) {
       all: options.all,
       instruction: options.instruction,
       type: options.type,
+      exclude: options.exclude,
     });
 
     if (options.output) {
@@ -432,6 +438,10 @@ program
   .option(
     "-t, --type <format>",
     "Commit message format: plain, conventional, conventional+body, gitmoji, subject+body"
+  )
+  .option(
+    "-x, --exclude <files>",
+    "Files or glob patterns to exclude from AI analysis (comma-separated)"
   )
   .option("--output <file>", "Write the message to a file instead of stdout")
   .action(runSuggestCommand);
