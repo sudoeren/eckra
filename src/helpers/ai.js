@@ -256,7 +256,12 @@ async function callProvider(
         model: config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel,
         messages,
         temperature,
-        max_tokens,
+        // Reasoning models on this gateway (e.g. muse-spark) spend their
+        // token budget thinking before answering — a small max_tokens then
+        // comes back with empty content. Give them headroom and keep the
+        // effort low so responses stay fast.
+        max_tokens: Math.max(max_tokens, 2000),
+        reasoning_effort: "low",
       };
       break;
 
@@ -320,7 +325,12 @@ async function callProvider(
   try {
     const response = await axios.post(url, body, {
       headers,
-      timeout: config.timeout || DEFAULT_CONFIG.timeout,
+      // Reasoning providers think before they answer and routinely exceed
+      // the default 30s budget — give them a higher floor.
+      timeout:
+        provider === "opencodego"
+          ? Math.max(config.timeout || DEFAULT_CONFIG.timeout, 90000)
+          : config.timeout || DEFAULT_CONFIG.timeout,
     });
 
     let content = "";
