@@ -6,6 +6,8 @@ const {
   getConfigPath,
   isValidConfigKey,
   findLocalConfig,
+  listAIConnections,
+  MANAGED_CONFIG_KEYS,
 } = require("./config");
 
 const MIN_NODE_MAJOR = 20;
@@ -229,7 +231,35 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
   );
 
   const provider = config.aiProvider || "ollama";
-  checks.push(checkResult("Config", "Provider configured", "info", provider));
+  const activeConnection =
+    typeof config.activeAiConnection === "string"
+      ? config.activeAiConnection
+      : "";
+  checks.push(
+    checkResult(
+      "Config",
+      "Provider configured",
+      "info",
+      activeConnection
+        ? `${provider} (connection: ${activeConnection})`
+        : provider
+    )
+  );
+
+  let savedConnections = listAIConnections();
+  if (!Array.isArray(savedConnections)) savedConnections = [];
+  checks.push(
+    checkResult(
+      "Config",
+      "Saved connections",
+      "info",
+      savedConnections.length > 0
+        ? `${savedConnections.length} (${savedConnections
+            .map((c) => c.name)
+            .join(", ")})`
+        : "none — save one with `eckra provider add`"
+    )
+  );
 
   const keyField = PROVIDER_KEY_FIELDS[provider];
   if (!keyField) {
@@ -277,7 +307,9 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
     );
   }
 
-  const legacyKeys = Object.keys(config).filter((k) => !isValidConfigKey(k));
+  const legacyKeys = Object.keys(config).filter(
+    (k) => !isValidConfigKey(k) && !MANAGED_CONFIG_KEYS.includes(k)
+  );
   if (legacyKeys.length > 0) {
     checks.push(
       checkResult(

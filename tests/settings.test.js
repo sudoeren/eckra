@@ -28,6 +28,12 @@ jest.mock("../src/helpers/config", () => {
     getConfig: jest.fn(),
     saveConfig: jest.fn(),
     resetConfig: jest.fn(),
+    listAIConnections: jest.fn(),
+    getAIConnection: jest.fn(),
+    saveAIConnection: jest.fn(),
+    deleteAIConnection: jest.fn(),
+    renameAIConnection: jest.fn(),
+    setActiveAIConnection: jest.fn(),
   };
 });
 
@@ -230,6 +236,32 @@ describe("Settings provider flow", () => {
     expect(ai.fetchOpenAIModels).toHaveBeenCalledWith("sk");
     expect(configHelper.saveConfig).toHaveBeenCalledWith({
       openaiModel: "gpt-4o",
+      aiProvider: "openai",
     });
+  });
+
+  test("doModelSelector updates the active connection when one is set", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk",
+      activeAiConnection: "work",
+    });
+    configHelper.getAIConnection.mockReturnValue({
+      name: "work",
+      provider: "openai",
+      openaiApiKey: "sk-old",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    screen.prompt.mockResolvedValue({ openaiModel: "gpt-4o" });
+
+    await doModelSelector();
+
+    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
+      "work",
+      { provider: "openai", openaiApiKey: "sk-old", openaiModel: "gpt-4o" },
+      { activate: true }
+    );
+    expect(configHelper.saveConfig).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,12 @@ const {
   unsetConfigValue,
   resetConfig,
   envVarName,
+  listAIConnections,
+  getAIConnection,
+  saveAIConnection,
+  deleteAIConnection,
+  renameAIConnection,
+  setActiveAIConnection,
 } = require("../src/helpers/config");
 
 // Mock fs to avoid touching real files
@@ -410,6 +416,279 @@ describe("Config Helper", () => {
       const config = getConfig();
 
       expect(config.lmStudioUrl).toBe("http://localhost:1234");
+    });
+  });
+
+  describe("saved AI connections", () => {
+    const localPath = path.join(MOCK_CWD, ".eckrarc");
+    // The module captures CONFIG_FILE from the real homedir at first load,
+    // so match loosely like the rest of this suite.
+    const GLOBAL_CONFIG_RE = /[/\\]\.eckra[/\\]config\.json$/;
+
+    function mockFiles(files) {
+      const pick = (p) => {
+        const str = String(p);
+        if (GLOBAL_CONFIG_RE.test(str)) return files.global;
+        if (str === localPath) return files.local;
+        return undefined;
+      };
+      fs.existsSync.mockImplementation((p) => pick(p) !== undefined);
+      fs.readFileSync.mockImplementation((p) => pick(p) || "");
+      fs.writeFileSync.mockImplementation((p, data) => {
+        const str = String(p);
+        if (GLOBAL_CONFIG_RE.test(str)) files.global = data;
+        else if (str === localPath) files.local = data;
+      });
+    }
+
+    test("defaults include an empty connection list and no active connection", () => {
+      const config = getConfig();
+      expect(config.activeAiConnection).toBe("");
+      expect(config.aiConnections).toEqual({});
+    });
+
+    test("active connection fields override global flat keys", () => {
+      mockFiles({
+        global: JSON.stringify({
+          aiProvider: "openai",
+          openaiApiKey: "sk-flat",
+          openaiModel: "gpt-flat",
+          activeAiConnection: "work",
+          aiConnections: {
+            work: { provider: "openai", openaiApiKey: "sk-work" },
+            home: {
+              provider: "ollama",
+              ollamaUrl: "http://192.168.1.10:11434/",
+              ollamaModel: "qwen3.5:2b",
+            },
+          },
+        }),
+      });
+
+      const config = getConfig();
+
+      expect(config.aiProvider).toBe("openai");
+      expect(config.openaiApiKey).toBe("sk-work");
+      // Flat-key values not in the connection stay untouched
+      expect(config.openaiModel).toBe("gpt-flat");
+    });
+
+    test("connection URLs are normalized too", () => {
+      mockFiles({
+        global: JSON.stringify({
+          activeAiConnection: "home",
+          aiConnections: {
+            home: {
+              provider: "ollama",
+              ollamaUrl: "http://192.168.1.10:11434///",
+              ollamaModel: "qwen3.5:2b",
+            },
+          },
+        }),
+      });
+
+      expect(getConfig().ollamaUrl).toBe("http://192.168.1.10:11434");
+    });
+
+    test("an unknown active connection name is ignored gracefully", () => {
+      mockFiles({
+        global: JSON.stringify({
+          aiProvider: "openai",
+          openaiApiKey: "sk-flat",
+          activeAiConnection: "ghost",
+          aiConnections: {},
+        }),
+      });
+
+      const config = getConfig();
+
+      expect(config.aiProvider).toBe("openai");
+      expect(config.openaiApiKey).toBe("sk-flat");
+    });
+
+    test(".eckrarc can pin a different connection for the repo", () => {
+      mockFiles({
+        global: JSON.stringify({
+          activeAiConnection: "work",
+          aiConnections: {
+            work: { provider: "openai", openaiApiKey: "sk-work" },
+            home: { provider: "openai", openaiApiKey: "sk-home" },
+          },
+        }),
+        local: JSON.stringify({ activeAiConnection: "home" }),
+      });
+
+      const config = getConfig();
+
+      expect(config.activeAiConnection).toBe("home");
+      expect(config.openaiApiKey).toBe("sk-home");
+    });
+
+    test("local field overrides beat connection fields", () => {
+      mockFiles({
+        global: JSON.stringify({
+          activeAiConnection: "work",
+          aiConnections: {
+            work: {
+              provider: "ollama",
+              ollamaUrl: "http://conn:11434",
+              ollamaModel: "conn-model",
+            },
+          },
+        }),
+        local: JSON.stringify({ ollamaModel: "local-model" }),
+      });
+
+      const config = getConfig();
+
+      expect(config.ollamaUrl).toBe("http://conn:11434");
+      expect(config.ollamaModel).toBe("local-model");
+    });
+
+    test("env selects the connection and overrides its fields", () => {
+      process.env.ECKRA_ACTIVE_AI_CONNECTION = "work";
+      process.env.ECKRA_OPENAI_API_KEY = "sk-env";
+      mockFiles({
+        global: JSON.stringify({
+          aiConnections: {
+            work: { provider: "openai", openaiApiKey: "sk-work" },
+          },
+        }),
+      });
+
+      const config = getConfig();
+
+      expect(config.activeAiConnection).toBe("work");
+      expect(config.aiProvider).toBe("openai");
+      expect(config.openaiApiKey).toBe("sk-env");
+
+      delete process.env.ECKRA_ACTIVE_AI_CONNECTION;
+      delete process.env.ECKRA_OPENAI_API_KEY;
+    });
+
+    test("listAIConnections and getAIConnection read saved entries", () => {
+      mockFiles({
+        global: JSON.stringify({
+          activeAiConnection: "b",
+          aiConnections: {
+            b: { provider: "openai", openaiApiKey: "sk-b" },
+            a: { provider: "ollama", ollamaUrl: "http://a:11434" },
+          },
+        }),
+      });
+
+      expect(listAIConnections().map((c) => c.name)).toEqual(["a", "b"]);
+      expect(getAIConnection("b")).toEqual({
+        name: "b",
+        provider: "openai",
+        openaiApiKey: "sk-b",
+      });
+      expect(getAIConnection("missing")).toBeNull();
+    });
+
+    test("saveAIConnection writes only the delta and validates input", () => {
+      mockFiles({ global: JSON.stringify({ theme: "dark" }) });
+
+      saveAIConnection(
+        "work",
+        { provider: "openai", openaiApiKey: "sk-1" },
+        { activate: true }
+      );
+
+      const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
+      expect(written).toEqual({
+        theme: "dark",
+        activeAiConnection: "work",
+        aiConnections: {
+          work: { provider: "openai", openaiApiKey: "sk-1" },
+        },
+      });
+      expect(getConfig().openaiApiKey).toBe("sk-1");
+
+      expect(() => saveAIConnection("x", { provider: "nope" })).toThrow(
+        "Unknown provider"
+      );
+      expect(() =>
+        saveAIConnection("x", { provider: "openai", nope: 1 })
+      ).toThrow("not a openai field");
+      expect(() => saveAIConnection("", { provider: "openai" })).toThrow(
+        "Connection name is required"
+      );
+    });
+
+    test("deleteAIConnection removes the entry and clears the pointer", () => {
+      const files = {
+        global: JSON.stringify({
+          activeAiConnection: "work",
+          aiConnections: {
+            work: { provider: "openai", openaiApiKey: "sk-1" },
+            home: { provider: "openai", openaiApiKey: "sk-2" },
+          },
+        }),
+      };
+      mockFiles(files);
+
+      expect(deleteAIConnection("work")).toBe(true);
+      expect(deleteAIConnection("work")).toBe(false);
+
+      const written = JSON.parse(files.global);
+      expect(written.activeAiConnection).toBe("");
+      expect(written.aiConnections.home).toBeDefined();
+      expect(getConfig().openaiApiKey).not.toBe("sk-1");
+    });
+
+    test("renameAIConnection renames and keeps the connection active", () => {
+      const files = {
+        global: JSON.stringify({
+          activeAiConnection: "old",
+          aiConnections: {
+            old: { provider: "openai", openaiApiKey: "sk-1" },
+          },
+        }),
+      };
+      mockFiles(files);
+
+      renameAIConnection("old", "new");
+
+      const written = JSON.parse(files.global);
+      expect(written.aiConnections.new.openaiApiKey).toBe("sk-1");
+      expect(written.aiConnections.old).toBeUndefined();
+      expect(written.activeAiConnection).toBe("new");
+
+      expect(() => renameAIConnection("missing", "x")).toThrow(
+        'No saved connection named "missing"'
+      );
+    });
+
+    test("setActiveAIConnection validates and writes via setConfigValue", () => {
+      const files = {
+        global: JSON.stringify({
+          aiConnections: {
+            work: { provider: "openai", openaiApiKey: "sk-1" },
+          },
+        }),
+      };
+      mockFiles(files);
+
+      setActiveAIConnection("work");
+      expect(JSON.parse(files.global).activeAiConnection).toBe("work");
+
+      expect(() => setActiveAIConnection("ghost")).toThrow(
+        'No saved connection named "ghost"'
+      );
+
+      setActiveAIConnection("work", { local: true });
+      expect(JSON.parse(files.local)).toEqual({
+        activeAiConnection: "work",
+      });
+    });
+
+    test("managed keys are not editable via config set/unset", () => {
+      expect(isValidConfigKey("aiConnections")).toBe(false);
+      expect(isValidConfigKey("activeAiConnection")).toBe(true);
+      expect(() => setConfigValue("aiConnections", "{}")).toThrow(
+        "Unknown config key"
+      );
     });
   });
 });

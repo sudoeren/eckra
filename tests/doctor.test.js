@@ -33,6 +33,7 @@ describe("Doctor Helper", () => {
     });
     configHelper.getConfigPath.mockReturnValue(CONFIG_PATH);
     configHelper.getRawConfig.mockReturnValue({});
+    configHelper.listAIConnections.mockReturnValue([]);
     configHelper.isValidConfigKey.mockImplementation((k) =>
       [
         "aiProvider",

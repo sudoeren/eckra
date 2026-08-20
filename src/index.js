@@ -354,6 +354,263 @@ program
   .option("--show-secrets", "Show full API keys when displaying config")
   .action(runConfigCommand);
 
+// ─── eckra provider ────────────────────────────────────────────
+// Manage saved AI provider connections: multiple providers and multiple
+// accounts per provider, stored side by side in the global config.
+
+function describeConnection(conn) {
+  const parts = [conn.provider];
+  const secretKey = Object.keys(conn).find((k) => SECRET_KEY_RE.test(k));
+  if (secretKey && conn[secretKey]) parts.push(maskSecret(conn[secretKey]));
+  const modelKey = Object.keys(conn).find((k) => /model$/i.test(k));
+  if (modelKey && conn[modelKey]) parts.push(String(conn[modelKey]));
+  return parts.join(" · ");
+}
+
+function providerUsage() {
+  console.log(
+    s.muted(
+      "Usage: eckra provider <list|use|add|remove|rename|show> [name...] [--local] [--show-secrets]"
+    )
+  );
+}
+
+async function runProviderCommand(action, args, options) {
+  const {
+    listAIConnections,
+    getAIConnection,
+    saveAIConnection,
+    deleteAIConnection,
+    renameAIConnection,
+    setActiveAIConnection,
+    AI_PROVIDERS,
+  } = require("./helpers/config");
+  const names = Array.isArray(args) ? args : [];
+  const { showSecrets = false } = options || {};
+
+  if (!action || action === "list") {
+    const connections = listAIConnections();
+    if (connections.length === 0) {
+      console.log(s.muted("  No saved provider connections yet."));
+      console.log(s.muted("  Add one with: eckra provider add"));
+      return;
+    }
+    const activeName = getConfig().activeAiConnection || "";
+    console.log(s.bold("  Saved provider connections"));
+    console.log();
+    for (const conn of connections) {
+      const marker = conn.name === activeName ? s.success("✓") : s.muted(" ");
+      console.log(
+        `  ${marker} ${s.text(conn.name)} ${s.muted(describeConnection(conn))}`
+      );
+    }
+    console.log();
+    console.log(
+      s.muted(
+        "  Active connection is marked with ✓. Switch: eckra provider use <name>"
+      )
+    );
+    return;
+  }
+
+  if (action === "use") {
+    if (options.none) {
+      setActiveAIConnection("", { local: options.local });
+      console.log(s.success("  ✓ Active connection cleared."));
+      return;
+    }
+    const name = names[0];
+    if (!name) {
+      providerUsage();
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      setActiveAIConnection(name, { local: options.local });
+      console.log(
+        s.success(
+          `  ✓ Switched to "${name}"${options.local ? " (pinned to this repo via .eckrarc)" : ""}`
+        )
+      );
+    } catch (err) {
+      console.log(s.error(`  ✗ ${err.message}`));
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (action === "show") {
+    const name = names[0];
+    if (!name) {
+      providerUsage();
+      process.exitCode = 1;
+      return;
+    }
+    const conn = getAIConnection(name);
+    if (!conn) {
+      console.log(s.error(`  ✗ No saved connection named "${name}"`));
+      process.exitCode = 1;
+      return;
+    }
+    const activeName = getConfig().activeAiConnection || "";
+    console.log(
+      s.bold(`  ${conn.name}`) +
+        (conn.name === activeName ? s.success("  (active)") : "")
+    );
+    for (const [key, value] of Object.entries(conn)) {
+      if (key === "name") continue;
+      console.log(
+        `  ${s.muted(key + ":")} ${s.text(maskForDisplay(key, value, showSecrets))}`
+      );
+    }
+    return;
+  }
+
+  if (action === "add") {
+    // Non-interactive when --provider/--set are supplied.
+    if (options.set || (options.provider && options.name)) {
+      const provider = options.provider;
+      if (!provider || !AI_PROVIDERS.includes(provider)) {
+        console.log(
+          s.error(
+            `  ✗ Unknown or missing --provider. Valid: ${AI_PROVIDERS.join(", ")}`
+          )
+        );
+        process.exitCode = 1;
+        return;
+      }
+      if (!options.name) {
+        console.log(s.error("  ✗ --name is required for non-interactive add."));
+        process.exitCode = 1;
+        return;
+      }
+      const fields = {};
+      let failed = false;
+      for (const pair of options.set || []) {
+        const idx = pair.indexOf("=");
+        if (idx <= 0) {
+          console.log(
+            s.error(`  ✗ Invalid --set pair: "${pair}" (expected key=value)`)
+          );
+          failed = true;
+          continue;
+        }
+        fields[pair.slice(0, idx)] = pair.slice(idx + 1);
+      }
+      if (failed) {
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        saveAIConnection(
+          options.name,
+          { provider, ...fields },
+          { activate: Boolean(options.use) }
+        );
+        console.log(
+          s.success(
+            `  ✓ Saved connection "${options.name}" (${provider})${options.use ? " — now active" : ""}`
+          )
+        );
+      } catch (err) {
+        console.log(s.error(`  ✗ ${err.message}`));
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    await require("./ui/modules/settings").addAIConnectionFlow({
+      name: options.name,
+      provider: options.provider,
+    });
+    return;
+  }
+
+  if (action === "remove") {
+    const name = names[0];
+    if (!name) {
+      providerUsage();
+      process.exitCode = 1;
+      return;
+    }
+    if (!getAIConnection(name)) {
+      console.log(s.error(`  ✗ No saved connection named "${name}"`));
+      process.exitCode = 1;
+      return;
+    }
+    if (!options.yes) {
+      const { prompt } = require("./ui/screen");
+      const { confirmed } = await prompt([
+        {
+          type: "confirm",
+          name: "confirmed",
+          message: s.warning(
+            `Delete connection "${name}"? This cannot be undone.`
+          ),
+          default: false,
+        },
+      ]);
+      if (!confirmed) {
+        console.log(s.muted("  Cancelled."));
+        return;
+      }
+    }
+    const wasActive = (getConfig().activeAiConnection || "") === name;
+    deleteAIConnection(name);
+    console.log(s.success(`  ✓ Deleted "${name}"`));
+    if (wasActive) {
+      console.log(
+        s.muted(
+          "  It was active — eckra will use your base settings until you switch."
+        )
+      );
+    }
+    return;
+  }
+
+  if (action === "rename") {
+    const [oldName, newName] = names;
+    if (!oldName || !newName) {
+      providerUsage();
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      renameAIConnection(oldName, newName);
+      console.log(s.success(`  ✓ Renamed "${oldName}" to "${newName}"`));
+    } catch (err) {
+      console.log(s.error(`  ✗ ${err.message}`));
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  console.log(s.error(`  ✗ Unknown provider action: "${action}"`));
+  providerUsage();
+  process.exitCode = 1;
+}
+
+program
+  .command("provider")
+  .alias("pv")
+  .description(
+    "Manage saved AI provider connections (multiple accounts/providers)"
+  )
+  .argument("[action]", "list, use, add, remove, rename, show")
+  .argument("[args...]", "Connection name(s) or key=value pair(s)")
+  .option(
+    "--local",
+    "With `use`: pin the active connection to this repo (.eckrarc)"
+  )
+  .option("--none", "With `use`: clear the active connection")
+  .option("-y, --yes", "With `remove`: skip the confirmation prompt")
+  .option("--provider <id>", "With `add`: provider id (e.g. openai)")
+  .option("--name <name>", "With `add`: connection name")
+  .option("--set <pairs...>", "With `add`: provider fields as key=value pairs")
+  .option("--use", "With `add`: switch to the new connection")
+  .option("--show-secrets", "Show full API keys when displaying connections")
+  .action(runProviderCommand);
+
 // ─── eckra doctor ──────────────────────────────────────────────
 // Diagnostic health check: git + config + AI provider.
 
