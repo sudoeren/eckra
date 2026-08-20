@@ -707,7 +707,23 @@ async function askProviderConfig(provider, config) {
   return { ...answers, ...modelAnswers };
 }
 
+/**
+ * Settings menu loop: keeps the user inside Settings until they pick Back,
+ * so consecutive actions (switch connection, change theme, ...) don't kick
+ * them back to the main menu after every single change.
+ */
 async function doSettings() {
+  let running = true;
+  while (running) {
+    running = await settingsMenu();
+  }
+}
+
+/**
+ * One iteration of the Settings screen. Returns true to stay in Settings,
+ * false to leave.
+ */
+async function settingsMenu() {
   open("Settings");
 
   const config = getConfig();
@@ -861,7 +877,7 @@ async function doSettings() {
     },
   ]);
 
-  if (action === "back") return;
+  if (action === "back") return false;
 
   if (action === "reset") {
     const { confirmReset } = await prompt([
@@ -882,9 +898,9 @@ async function doSettings() {
       );
       await sleep(1000);
       await require("./onboarding").doOnboarding();
-      return;
+      return false;
     }
-    return;
+    return true;
   }
 
   if (action === "uninstall") {
@@ -899,7 +915,7 @@ async function doSettings() {
       },
     ]);
 
-    if (!confirmUninstall) return;
+    if (!confirmUninstall) return true;
 
     const { reallySure } = await prompt([
       {
@@ -910,7 +926,7 @@ async function doSettings() {
       },
     ]);
 
-    if (reallySure !== "uninstall") return;
+    if (reallySure !== "uninstall") return true;
 
     clear();
     console.log(s.muted("\n  Uninstalling Eckra...\n"));
@@ -1005,7 +1021,7 @@ async function doSettings() {
     if (saved && saved.target !== "connection") {
       await offerSaveConnection(provider, answers);
     }
-    return;
+    return true;
   }
 
   if (action === "configure") {
@@ -1019,17 +1035,17 @@ async function doSettings() {
     if (saved && saved.target !== "connection") {
       await offerSaveConnection(provider, answers);
     }
-    return;
+    return true;
   }
 
   if (action === "switch") {
     await switchAIConnection(config);
-    return;
+    return true;
   }
 
   if (action === "manage") {
     await manageAIConnections(config);
-    return;
+    return true;
   }
 
   if (action === "show-instruction") {
@@ -1104,6 +1120,8 @@ async function doSettings() {
     console.log(s.success("\n  ✓ Commit format changed to " + commitType));
     await sleep(600);
   }
+
+  return true;
 }
 
 /**

@@ -18,6 +18,15 @@ const { doTimeline } = require("./timeline");
 const { doAbout } = require("./about");
 
 async function doMore() {
+  // Stay inside More Options until the user explicitly goes back, so an
+  // action (stash, tag, settings, ...) doesn't dump them to the main menu.
+  let running = true;
+  while (running) {
+    running = await moreMenu();
+  }
+}
+
+async function moreMenu() {
   open("More Options");
 
   const { action } = await prompt([
@@ -53,7 +62,7 @@ async function doMore() {
     },
   ]);
 
-  if (action === "back") return;
+  if (action === "back") return false;
 
   switch (action) {
     case "undo":
@@ -108,6 +117,8 @@ async function doMore() {
       await doAbout();
       break;
   }
+
+  return true;
 }
 
 module.exports = { doMore };
