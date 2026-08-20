@@ -25,6 +25,7 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 - **Works out of the box with [Ollama](https://ollama.com)**: no API key needed to start, cloud providers are optional
 - **Interactive dashboard**: manage staging, branches, stashes, and remotes from one menu
 - **AI commit messages** based on your actual diff, with 11 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Amazon Bedrock, OpenCode Go, and more; see the [provider table](#ai-configuration))
+- **Multiple providers & accounts**: save several provider configurations side by side (e.g. two OpenAI accounts plus OpenRouter) and switch anytime from Settings or `eckra provider use`
 - **Select & edit** any suggestion before committing
 - **Choose your commit format**: `plain`, `conventional`, `conventional+body`, `gitmoji`, or `subject+body` — picked during setup, changeable in Settings or per-commit with `--type`
 - **Staged diff review** with syntax highlighting
@@ -72,6 +73,7 @@ Or jump straight into action:
 | `eckra start`   | `s`   | Interactive dashboard         |
 | `eckra lazygit` | `lg`  | Lazygit AI-commit integration |
 | `eckra config`  | `cfg` | View or edit config           |
+| `eckra provider`| `pv`  | Manage saved AI provider connections |
 | `eckra doctor`  | `dr`  | Health check                  |
 | `eckra suggest` | `sg`  | Print an AI commit message    |
 | `eckra setup`   |       | Run the setup/onboarding wizard |
@@ -190,6 +192,29 @@ ollama pull qwen3.5:2b
 
 Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you — switch models anytime with `eckra model` or from Settings.
 
+### Saved connections (multiple providers & accounts)
+
+eckra can store several provider configurations at once — different providers and/or multiple accounts for the same provider (e.g. a work and a personal OpenAI key). One connection is active at a time and every AI call uses it.
+
+After configuring a provider in **More > Settings**, eckra offers to save it as a named connection. You can also add one directly, then switch anytime:
+
+```bash
+eckra provider list              # All saved connections, active marked with ✓
+eckra provider add               # Interactive: provider → key → model → name
+eckra provider add --name work --provider openai \
+  --set openaiApiKey=sk-... openaiModel=gpt-5-mini --use   # Non-interactive
+eckra provider use work          # Switch globally
+eckra provider use home --local  # Pin a connection to this repo only (.eckrarc)
+eckra provider show work         # Details (secrets masked)
+eckra provider rename work is    # Rename (stays active if it was)
+eckra provider remove work -y    # Delete
+```
+
+The same actions live in the settings menu under **Switch Provider / Account** and **Manage Saved Providers**.
+
+> [!NOTE]
+> The active connection can also be set per environment with `ECKRA_ACTIVE_AI_CONNECTION`, or per repository via `.eckrarc` (`eckra config set activeAiConnection <name> --local`). With no active connection, eckra falls back to your base settings.
+
 > [!NOTE]
 > Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
 
@@ -209,7 +234,7 @@ eckra config path               # Config file path
 > [!NOTE]
 > Add `--local` to target the project's `.eckrarc` instead.
 
-A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), and `timeout` (AI request timeout in ms, default 30000).
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Saved connections themselves live under the `aiConnections` key — manage them with `eckra provider`, not `eckra config set`.
 
 ### Health check
 
@@ -245,6 +270,7 @@ eckra suggest -x "dist/"         # Exclude files from the analysis
 ## Troubleshooting
 
 - **"AI Provider Error" / connection failed**: run `eckra doctor` to see exactly what's failing, then check the API key and model in **More > Settings**.
+- **Wrong account or provider in use**: check which connection is active with `eckra provider list` and switch with `eckra provider use <name>`.
 - **Ollama errors**: make sure the server is running (`ollama serve`) and the model is pulled: `ollama pull qwen3.5:2b`.
 - **401 Unauthorized**: the API key is wrong or expired. Re-enter it in **More > Settings** or set it via `eckra config set <key> <value>`.
 - **AI returns a warning or empty message**: some providers flag safe content; try a different model or check the provider's dashboard for rate limits.

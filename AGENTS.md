@@ -18,15 +18,16 @@ Verification order: `npm run lint` then `npm test`.
 
 ## Architecture
 
-- `src/index.js` — single entrypoint. `commander` CLI, defines subcommands + aliases (`c`=commit, `e`=easy, `st`=status, `p`=push, `t`=story, `s`=start). UI modules are **lazy-loaded** via `app()`/`require()` to keep startup fast — don't eagerly require UI modules at the top of index.js.
-- `src/helpers/` — pure logic: `git.js` (wraps `simple-git`), `ai.js` (provider HTTP via axios), `config.js`, `patch.js`.
+- `src/index.js` — single entrypoint. `commander` CLI, defines subcommands + aliases (`c`=commit, `e`=easy, `st`=status, `p`=push, `t`=story, `s`=start, `pv`=provider). UI modules are **lazy-loaded** via `app()`/`require()` to keep startup fast — don't eagerly require UI modules at the top of index.js.
+- `src/helpers/` — pure logic: `git.js` (wraps `simple-git`), `ai.js` (provider HTTP via axios), `config.js` (config + saved AI connections), `patch.js`.
 - `src/ui/` — all interaction: `app.js` (main menu loop), `common.js` (styles `s.*`, `clear`, `header`), `screen.js` (inquirer prompts, `spinner`/`done`/`fail`), `diff-view.js`.
 - `src/ui/modules/` — one file per feature, each exporting `doXxx(info)` for the menu flow plus smaller helpers. Follow this pattern for new features; keep git/AI logic in `helpers/`.
 
 ## Gotchas
 
 - **Module-level caches**: `helpers/config.js` caches config (`getConfig` returns the same object), `helpers/git.js` caches the simple-git instance, `helpers/ai.js` caches provider connection status. Tests must call `resetConfigCache()` / `resetGitCache()` / `resetAIConnectionCache()` in `beforeEach` (existing tests do this).
-- **Config precedence**: defaults ← `~/.eckra/config.json` ← repo-local `.eckrarc` (searched up the directory tree). `.eckrarc` is gitignored because it can hold API keys. Global config is written with `0600` permissions — keep that security behavior.
+- **Config precedence**: defaults ← `~/.eckra/config.json` ← active saved AI connection (`aiConnections` map, resolved in `getConfig`) ← repo-local `.eckrarc` (searched up the directory tree) ← `ECKRA_*` env vars. `.eckrarc` is gitignored because it can hold API keys. Global config is written with `0600` permissions — keep that security behavior.
+- **Saved AI connections**: multiple provider credentials (per provider and per account) live in the global config under `aiConnections`; `activeAiConnection` selects one. Manage them only via the dedicated helpers (`saveAIConnection`, `setActiveAIConnection`, …) or `eckra provider` — the raw `aiConnections` key is excluded from `eckra config set/unset` (`MANAGED_CONFIG_KEYS`). When a connection is active, provider settings/model changes must be written back into it, not to the flat keys (see `saveProviderSettings` in `ui/modules/settings.js`).
 - **Provider URLs**: `lmStudioUrl` / `ollamaUrl` are normalized (trailing slashes stripped) in `getConfig` so downstream path concatenation doesn't double up `/`.
 - **Conventional commits**: AI-generated messages follow `type: subject` style; keep new commit messages consistent with the repo history (`feat:`, `fix:`, `refactor:`, `docs:`…).
 - `.eckrarc`, `.eckra/`, `docs/`, `*.log` are gitignored.
