@@ -258,8 +258,10 @@ async function callProvider(
         temperature,
         // Reasoning models on this gateway (e.g. muse-spark) spend their
         // token budget thinking before answering — a small max_tokens then
-        // comes back with empty content. Give them headroom and keep the
-        // effort low so responses stay fast.
+        // comes back with empty content and generation takes 30-60s.
+        // `think: false` disables that phase (the gateway ignores it for
+        // non-reasoning models), keeping responses in the ~5s range.
+        think: false,
         max_tokens: Math.max(max_tokens, 2000),
         reasoning_effort: "low",
       };
@@ -329,7 +331,7 @@ async function callProvider(
       // the default 30s budget — give them a higher floor.
       timeout:
         provider === "opencodego"
-          ? Math.max(config.timeout || DEFAULT_CONFIG.timeout, 90000)
+          ? Math.max(config.timeout || DEFAULT_CONFIG.timeout, 120000)
           : config.timeout || DEFAULT_CONFIG.timeout,
     });
 
