@@ -708,30 +708,14 @@ async function askProviderConfig(provider, config) {
 }
 
 /**
- * Settings menu loop: keeps the user inside Settings until they pick Back,
- * so consecutive actions (switch connection, change theme, ...) don't kick
- * them back to the main menu after every single change.
+ * Print the current AI configuration: active provider/connection plus
+ * provider-specific details (model, API key or URL/region).
  */
-async function doSettings() {
-  let running = true;
-  while (running) {
-    running = await settingsMenu();
-  }
-}
+function showAISettingsSummary(config) {
+  const provider = config.aiProvider || "lmstudio";
+  const providerLabel = PROVIDER_LABELS[provider] || provider;
 
-/**
- * One iteration of the Settings screen. Returns true to stay in Settings,
- * false to leave.
- */
-async function settingsMenu() {
-  open("Settings");
-
-  const config = getConfig();
-  const aiStatus = await checkAIConnection();
-
-  console.log(
-    s.muted("  Provider: ") + s.text(config.aiProvider || "lmstudio")
-  );
+  console.log(s.muted("  Provider: ") + s.text(providerLabel));
   console.log(
     s.muted("  Connection: ") +
       s.text(config.activeAiConnection || "(none — base settings)")
@@ -838,6 +822,92 @@ async function settingsMenu() {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
     console.log(s.muted("  Model: ") + s.text(config.model));
   }
+}
+
+/**
+ * Pick a different AI provider and configure/test/save it.
+ */
+async function changeProviderFlow(config) {
+  const { provider } = await prompt([
+    {
+      type: "autocomplete",
+      name: "provider",
+      message: s.muted("Select AI Provider (type to search):"),
+      source: (_answers, input) => {
+        if (!input) return PROVIDER_CHOICES;
+        const term = input.toLowerCase();
+        return PROVIDER_CHOICES.filter(
+          (c) =>
+            c.name.toLowerCase().includes(term) ||
+            c.value.toLowerCase().includes(term)
+        );
+      },
+      default: config.aiProvider,
+      pageSize: 15,
+    },
+  ]);
+
+  // Check if this provider requires an API key and it's not yet configured
+  const keyField = getRequiredKeyField(provider);
+  const needsSetup = keyField && !config[keyField];
+
+  let answers = {};
+  if (needsSetup) {
+    console.log(
+      s.muted("\n  This provider requires configuration. Let's set it up:\n")
+    );
+    answers = await askProviderConfig(provider, config);
+  }
+
+  const saved = await testAndSaveProvider(
+    provider,
+    { ...config, ...answers },
+    answers
+  );
+  if (saved && saved.target !== "connection") {
+    await offerSaveConnection(provider, answers);
+  }
+}
+
+/**
+ * Re-configure credentials/model for the currently active provider.
+ */
+async function configureProviderFlow(config) {
+  const provider = config.aiProvider || "lmstudio";
+  const answers = await askProviderConfig(provider, config);
+  const saved = await testAndSaveProvider(
+    provider,
+    { ...config, ...answers },
+    answers
+  );
+  if (saved && saved.target !== "connection") {
+    await offerSaveConnection(provider, answers);
+  }
+}
+
+/**
+ * Settings menu loop: keeps the user inside Settings until they pick Back,
+ * so consecutive actions (switch connection, change theme, ...) don't kick
+ * them back to the main menu after every single change.
+ */
+async function doSettings() {
+  let running = true;
+  while (running) {
+    running = await settingsMenu();
+  }
+}
+
+/**
+ * One iteration of the Settings screen. Returns true to stay in Settings,
+ * false to leave.
+ */
+async function settingsMenu() {
+  open("Settings");
+
+  const config = getConfig();
+  const aiStatus = await checkAIConnection();
+
+  showAISettingsSummary(config);
 
   console.log(s.muted("  Theme: ") + s.text(config.theme || "auto"));
   console.log(
@@ -982,59 +1052,12 @@ async function settingsMenu() {
   }
 
   if (action === "provider") {
-    const { provider } = await prompt([
-      {
-        type: "autocomplete",
-        name: "provider",
-        message: s.muted("Select AI Provider (type to search):"),
-        source: (_answers, input) => {
-          if (!input) return PROVIDER_CHOICES;
-          const term = input.toLowerCase();
-          return PROVIDER_CHOICES.filter(
-            (c) =>
-              c.name.toLowerCase().includes(term) ||
-              c.value.toLowerCase().includes(term)
-          );
-        },
-        default: config.aiProvider,
-        pageSize: 15,
-      },
-    ]);
-
-    // Check if this provider requires an API key and it's not yet configured
-    const keyField = getRequiredKeyField(provider);
-    const needsSetup = keyField && !config[keyField];
-
-    let answers = {};
-    if (needsSetup) {
-      console.log(
-        s.muted("\n  This provider requires configuration. Let's set it up:\n")
-      );
-      answers = await askProviderConfig(provider, config);
-    }
-
-    const saved = await testAndSaveProvider(
-      provider,
-      { ...config, ...answers },
-      answers
-    );
-    if (saved && saved.target !== "connection") {
-      await offerSaveConnection(provider, answers);
-    }
+    await changeProviderFlow(config);
     return true;
   }
 
   if (action === "configure") {
-    const provider = config.aiProvider || "lmstudio";
-    const answers = await askProviderConfig(provider, config);
-    const saved = await testAndSaveProvider(
-      provider,
-      { ...config, ...answers },
-      answers
-    );
-    if (saved && saved.target !== "connection") {
-      await offerSaveConnection(provider, answers);
-    }
+    await configureProviderFlow(config);
     return true;
   }
 
@@ -1125,25 +1148,60 @@ async function settingsMenu() {
 }
 
 /**
- * Standalone model selector (used by the `eckra model` command). Shows the
- * current provider and lets the user pick a model, saving the choice into
- * the active connection when one is set, otherwise into base settings.
+ * Standalone AI settings command (`eckra model`). Shows the current
+ * provider/connection/model summary and lets the user change the model,
+ * re-configure the provider, switch providers, or pick another saved
+ * connection — staying in the menu until they exit. Model changes are
+ * written into the active connection when one is set, otherwise into
+ * base settings.
  */
 async function doModelSelector() {
-  open("Model");
-  const config = getConfig();
-  const provider = config.aiProvider || "lmstudio";
+  let running = true;
+  while (running) {
+    open("Model");
 
-  console.log(s.muted("  Provider: ") + s.text(provider));
-  if (config.activeAiConnection) {
-    console.log(s.muted("  Connection: ") + s.text(config.activeAiConnection));
+    const config = getConfig();
+    showAISettingsSummary(config);
+
+    console.log();
+    const { action } = await prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("What should I do?"),
+        choices: [
+          menuItem("Change Model", "primary", "model"),
+          menuItem("Configure Provider Settings", "text", "configure"),
+          menuItem("Change Provider", "text", "provider"),
+          menuItem("Switch Provider / Account", "text", "switch"),
+          sep(),
+          backItem(),
+        ],
+        pageSize: 10,
+      },
+    ]);
+
+    running = false;
+
+    if (action === "model") {
+      const provider = config.aiProvider || "lmstudio";
+      const result = await promptModelSearch(provider, {}, config);
+      saveProviderSettings(provider, result);
+      resetAIConnectionCache();
+      console.log(s.success("\n  ✓ Model updated!"));
+      await sleep(600);
+      running = true;
+    } else if (action === "configure") {
+      await configureProviderFlow(config);
+      running = true;
+    } else if (action === "provider") {
+      await changeProviderFlow(config);
+      running = true;
+    } else if (action === "switch") {
+      await switchAIConnection(config);
+      running = true;
+    }
   }
-
-  const result = await promptModelSearch(provider, {}, config);
-  saveProviderSettings(provider, result);
-
-  console.log(s.success("\n  ✓ Model updated!"));
-  await sleep(600);
 }
 
 /**

@@ -183,7 +183,10 @@ program
 
 program
   .command("model")
-  .description("Interactively select the AI model for the current provider")
+  .alias("m")
+  .description(
+    "Show current AI settings and change the model/provider/connection"
+  )
   .action(async () => {
     if (!(await app().ensureOnboarding())) return;
     await require("./ui/modules/settings").doModelSelector();

@@ -19,6 +19,7 @@ jest.mock("../src/helpers/ai", () => ({
   fetchOllamaCloudModels: jest.fn(),
   checkAIConnection: jest.fn(),
   testProviderConnection: jest.fn(),
+  resetAIConnectionCache: jest.fn(),
 }));
 
 jest.mock("../src/helpers/config", () => {
@@ -228,7 +229,10 @@ describe("Settings provider flow", () => {
       openaiApiKey: "sk",
     });
     ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
-    screen.prompt.mockResolvedValue({ openaiModel: "gpt-4o" });
+    screen.prompt
+      .mockResolvedValueOnce({ action: "model" })
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
+      .mockResolvedValue({ action: "back" });
 
     await doModelSelector();
 
@@ -253,7 +257,10 @@ describe("Settings provider flow", () => {
       openaiApiKey: "sk-old",
     });
     ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
-    screen.prompt.mockResolvedValue({ openaiModel: "gpt-4o" });
+    screen.prompt
+      .mockResolvedValueOnce({ action: "model" })
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
+      .mockResolvedValue({ action: "back" });
 
     await doModelSelector();
 
@@ -263,5 +270,89 @@ describe("Settings provider flow", () => {
       { activate: true }
     );
     expect(configHelper.saveConfig).not.toHaveBeenCalled();
+  });
+
+  test("doModelSelector shows the AI settings summary before the menu", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk-secret-1234",
+      openaiModel: "gpt-4o",
+      activeAiConnection: "work",
+    });
+    screen.prompt.mockResolvedValue({ action: "back" });
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      await doModelSelector();
+
+      const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(output).toContain("Provider:");
+      expect(output).toContain("OpenAI");
+      expect(output).toContain("Connection:");
+      expect(output).toContain("work");
+      expect(output).toContain("Model:");
+      expect(output).toContain("gpt-4o");
+      expect(output).toContain("API Key:");
+      expect(output).not.toContain("sk-secret-1234");
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  test("doModelSelector exits without fetching models on Back", async () => {
+    screen.prompt.mockResolvedValue({ action: "back" });
+
+    await doModelSelector();
+
+    expect(screen.open).toHaveBeenCalledWith("Model");
+    expect(ai.fetchOpenAIModels).not.toHaveBeenCalled();
+    expect(screen.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  test("doModelSelector reconfigures the provider via Configure Provider", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection.mockResolvedValue({ connected: true });
+    screen.prompt
+      .mockResolvedValueOnce({ action: "configure" })
+      .mockResolvedValueOnce({ openaiApiKey: "sk-new" })
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
+      .mockResolvedValueOnce({ saveConn: false })
+      .mockResolvedValue({ action: "back" });
+
+    await doModelSelector();
+
+    expect(ai.testProviderConnection).toHaveBeenCalled();
+    expect(configHelper.saveConfig).toHaveBeenCalledWith({
+      openaiApiKey: "sk-new",
+      openaiModel: "gpt-4o",
+      aiProvider: "openai",
+    });
+  });
+
+  test("doModelSelector switches to a saved connection", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({ aiProvider: "openai" });
+    configHelper.listAIConnections.mockReturnValue([
+      { name: "work", provider: "openai" },
+    ]);
+    configHelper.getAIConnection.mockReturnValue({
+      name: "work",
+      provider: "openai",
+    });
+    screen.prompt
+      .mockResolvedValueOnce({ action: "switch" })
+      .mockResolvedValueOnce({ name: "work" })
+      .mockResolvedValue({ action: "back" });
+
+    await doModelSelector();
+
+    expect(configHelper.setActiveAIConnection).toHaveBeenCalledWith("work");
+    expect(ai.resetAIConnectionCache).toHaveBeenCalled();
   });
 });
