@@ -1,6 +1,7 @@
 const {
   promptModelSearch,
   doModelSelector,
+  connectionWizard,
 } = require("../src/ui/modules/settings");
 const ai = require("../src/helpers/ai");
 const screen = require("../src/ui/screen");
@@ -29,7 +30,7 @@ jest.mock("../src/helpers/config", () => {
     getConfig: jest.fn(),
     saveConfig: jest.fn(),
     resetConfig: jest.fn(),
-    listAIConnections: jest.fn(),
+    listAIConnections: jest.fn(() => []),
     getAIConnection: jest.fn(),
     saveAIConnection: jest.fn(),
     deleteAIConnection: jest.fn(),
@@ -40,9 +41,9 @@ jest.mock("../src/helpers/config", () => {
 
 jest.mock("../src/ui/screen", () => ({
   open: jest.fn(),
-  menuItem: jest.fn(),
-  backItem: jest.fn(),
-  sep: jest.fn(),
+  menuItem: jest.fn((_label, _tone, value) => value),
+  backItem: jest.fn(() => "back"),
+  sep: jest.fn(() => "sep"),
   prompt: jest.fn(),
   spinner: () => ({ start: jest.fn(), stop: jest.fn() }),
   done: jest.fn(),
@@ -64,6 +65,9 @@ jest.mock("../src/ui/common", () => ({
 describe("Settings provider flow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Restore default listAIConnections after clearAllMocks wipes implementations
+    const configHelper = require("../src/helpers/config");
+    configHelper.listAIConnections.mockReturnValue([]);
   });
 
   test("returns the selected model via autocomplete", async () => {
@@ -222,54 +226,19 @@ describe("Settings provider flow", () => {
     expect(question.default).toBe(DEFAULT_CONFIG.ollamaCloudModel);
   });
 
-  test("doModelSelector fetches models for the active provider and saves", async () => {
+  test("doModelSelector offers only Switch and Manage actions", async () => {
     const configHelper = require("../src/helpers/config");
-    configHelper.getConfig.mockReturnValue({
-      aiProvider: "openai",
-      openaiApiKey: "sk",
-    });
-    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
-    screen.prompt
-      .mockResolvedValueOnce({ action: "model" })
-      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
-      .mockResolvedValue({ action: "back" });
+    configHelper.getConfig.mockReturnValue({ aiProvider: "openai" });
+    screen.prompt.mockResolvedValue({ action: "back" });
 
     await doModelSelector();
 
-    expect(screen.open).toHaveBeenCalledWith("Model");
-    expect(ai.fetchOpenAIModels).toHaveBeenCalledWith("sk");
-    expect(configHelper.saveConfig).toHaveBeenCalledWith({
-      openaiModel: "gpt-4o",
-      aiProvider: "openai",
-    });
-  });
-
-  test("doModelSelector updates the active connection when one is set", async () => {
-    const configHelper = require("../src/helpers/config");
-    configHelper.getConfig.mockReturnValue({
-      aiProvider: "openai",
-      openaiApiKey: "sk",
-      activeAiConnection: "work",
-    });
-    configHelper.getAIConnection.mockReturnValue({
-      name: "work",
-      provider: "openai",
-      openaiApiKey: "sk-old",
-    });
-    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
-    screen.prompt
-      .mockResolvedValueOnce({ action: "model" })
-      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
-      .mockResolvedValue({ action: "back" });
-
-    await doModelSelector();
-
-    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
-      "work",
-      { provider: "openai", openaiApiKey: "sk-old", openaiModel: "gpt-4o" },
-      { activate: true }
-    );
-    expect(configHelper.saveConfig).not.toHaveBeenCalled();
+    const labels = screen.menuItem.mock.calls.map((c) => c[0]);
+    expect(labels).toContain("Switch Provider / Account");
+    expect(labels).toContain("Manage Providers");
+    expect(labels).not.toContain("Change Model");
+    expect(labels).not.toContain("Configure Provider Settings");
+    expect(labels).not.toContain("Change Provider");
   });
 
   test("doModelSelector shows the AI settings summary before the menu", async () => {
@@ -312,31 +281,6 @@ describe("Settings provider flow", () => {
     expect(screen.prompt).toHaveBeenCalledTimes(1);
   });
 
-  test("doModelSelector reconfigures the provider via Configure Provider", async () => {
-    const configHelper = require("../src/helpers/config");
-    configHelper.getConfig.mockReturnValue({
-      aiProvider: "openai",
-      openaiApiKey: "sk",
-    });
-    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
-    ai.testProviderConnection.mockResolvedValue({ connected: true });
-    screen.prompt
-      .mockResolvedValueOnce({ action: "configure" })
-      .mockResolvedValueOnce({ openaiApiKey: "sk-new" })
-      .mockResolvedValueOnce({ openaiModel: "gpt-4o" })
-      .mockResolvedValueOnce({ saveConn: false })
-      .mockResolvedValue({ action: "back" });
-
-    await doModelSelector();
-
-    expect(ai.testProviderConnection).toHaveBeenCalled();
-    expect(configHelper.saveConfig).toHaveBeenCalledWith({
-      openaiApiKey: "sk-new",
-      openaiModel: "gpt-4o",
-      aiProvider: "openai",
-    });
-  });
-
   test("doModelSelector switches to a saved connection", async () => {
     const configHelper = require("../src/helpers/config");
     configHelper.getConfig.mockReturnValue({ aiProvider: "openai" });
@@ -356,5 +300,119 @@ describe("Settings provider flow", () => {
 
     expect(configHelper.setActiveAIConnection).toHaveBeenCalledWith("work");
     expect(ai.resetAIConnectionCache).toHaveBeenCalled();
+  });
+
+  test("connectionWizard creates a new connection with test and activation", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk-old",
+      openaiModel: "gpt-5-mini",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection.mockResolvedValue({ connected: true });
+    screen.prompt
+      .mockResolvedValueOnce({ openaiApiKey: "sk-new" }) // credentials
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }) // model
+      .mockResolvedValueOnce({ activateNow: true }); // switch now?
+
+    const result = await connectionWizard({
+      providerHint: "openai",
+      nameHint: "work",
+    });
+
+    expect(result).toBe("work");
+    expect(ai.testProviderConnection).toHaveBeenCalledWith(
+      "openai",
+      expect.objectContaining({ aiProvider: "openai", openaiApiKey: "sk-new" })
+    );
+    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
+      "work",
+      { provider: "openai", openaiApiKey: "sk-new", openaiModel: "gpt-4o" },
+      { activate: false }
+    );
+    expect(configHelper.setActiveAIConnection).toHaveBeenCalledWith("work");
+  });
+
+  test("connectionWizard retries after a failed test then saves", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection
+      .mockResolvedValueOnce({ connected: false, error: "401" })
+      .mockResolvedValueOnce({ connected: true });
+    screen.prompt
+      .mockResolvedValueOnce({ openaiApiKey: "bad-key" }) // credentials (1st)
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }) // model (1st)
+      .mockResolvedValueOnce({ testAction: "retry" }) // failed test menu
+      .mockResolvedValueOnce({ openaiApiKey: "good-key" }) // credentials (2nd)
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }) // model (2nd)
+      .mockResolvedValueOnce({ activateNow: false }); // switch now?
+
+    const result = await connectionWizard({
+      providerHint: "openai",
+      nameHint: "work",
+    });
+
+    expect(result).toBe("work");
+    expect(ai.testProviderConnection).toHaveBeenCalledTimes(2);
+    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
+      "work",
+      { provider: "openai", openaiApiKey: "good-key", openaiModel: "gpt-4o" },
+      { activate: false }
+    );
+    expect(configHelper.setActiveAIConnection).not.toHaveBeenCalled();
+  });
+
+  test("connectionWizard cancels without saving", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      openaiApiKey: "sk",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection.mockResolvedValue({
+      connected: false,
+      error: "timeout",
+    });
+    screen.prompt
+      .mockResolvedValueOnce({ openaiApiKey: "bad-key" }) // credentials
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }) // model
+      .mockResolvedValueOnce({ testAction: "cancel" }); // failed test menu
+
+    const result = await connectionWizard({
+      providerHint: "openai",
+      nameHint: "work",
+    });
+
+    expect(result).toBeNull();
+    expect(configHelper.saveAIConnection).not.toHaveBeenCalled();
+  });
+
+  test("connectionWizard updates an existing connection in place", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getAIConnection.mockReturnValue({
+      name: "work",
+      provider: "openai",
+      openaiApiKey: "sk-old",
+    });
+    configHelper.getConfig.mockReturnValue({ aiProvider: "openai" });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection.mockResolvedValue({ connected: true });
+    screen.prompt
+      .mockResolvedValueOnce({ openaiApiKey: "sk-fixed" }) // credentials
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }); // model
+
+    const result = await connectionWizard({ existingName: "work" });
+
+    expect(result).toBe("work");
+    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
+      "work",
+      { provider: "openai", openaiApiKey: "sk-fixed", openaiModel: "gpt-4o" },
+      { activate: true }
+    );
   });
 });

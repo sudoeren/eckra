@@ -1,7 +1,14 @@
 const autocomplete = require("inquirer-autocomplete-prompt");
 const inquirer = require("inquirer");
 const boxen = require("boxen");
-const { saveConfig, DEFAULT_CONFIG } = require("../../helpers/config");
+const {
+  saveConfig,
+  saveAIConnection,
+  DEFAULT_CONFIG,
+} = require("../../helpers/config");
+const {
+  PROVIDER_CHOICES: REGISTRY_CHOICES,
+} = require("../../helpers/providers");
 const { s, clear, sleep } = require("../common");
 const { prompt } = require("../screen");
 
@@ -27,30 +34,16 @@ async function doOnboarding() {
 
   console.log("\n" + welcome + "\n");
 
-  // Choose provider
-  const providerChoices = [
-    { name: "Ollama (Local, no API key needed)", value: "ollama" },
-    { name: "Ollama Cloud", value: "ollamacloud" },
-    { name: "LM Studio (Local, no API key needed)", value: "lmstudio" },
-    { name: "OpenAI (GPT-4o, etc.)", value: "openai" },
-    { name: "Anthropic (Claude)", value: "anthropic" },
-    { name: "Google Gemini", value: "gemini" },
-    { name: "OpenRouter", value: "openrouter" },
-    { name: "OpenCode Go", value: "opencodego" },
-    { name: "DeepSeek", value: "deepseek" },
-    { name: "Amazon Bedrock", value: "bedrock" },
-    { name: "Amazon Bedrock Mantle", value: "bedrockmantle" },
-  ];
-
+  // Choose provider (single registry source)
   const { provider } = await prompt([
     {
       type: "autocomplete",
       name: "provider",
       message: "Which AI provider would you like to use? (type to search)",
       source: (_answers, input) => {
-        if (!input) return providerChoices;
+        if (!input) return REGISTRY_CHOICES;
         const term = input.toLowerCase();
-        return providerChoices.filter(
+        return REGISTRY_CHOICES.filter(
           (c) =>
             c.name.toLowerCase().includes(term) ||
             c.value.toLowerCase().includes(term)
@@ -59,130 +52,19 @@ async function doOnboarding() {
     },
   ]);
 
-  let configData = { aiProvider: provider, theme: "auto" };
+  const { getProviderQuestions } = require("../../helpers/providers");
+  const credQuestions = getProviderQuestions(provider, DEFAULT_CONFIG);
   let answers = {};
-
-  if (provider === "openai") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "openaiApiKey",
-        message: "Enter your OpenAI API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "anthropic") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "anthropicApiKey",
-        message: "Enter your Anthropic API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "gemini") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "geminiApiKey",
-        message: "Enter your Google Gemini API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "ollama") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "ollamaUrl",
-        message: "Ollama URL:",
-        default: "http://localhost:11434",
-      },
-    ]);
-  } else if (provider === "openrouter") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "openrouterApiKey",
-        message: "Enter your OpenRouter API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "lmstudio") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "lmStudioUrl",
-        message: "LM Studio URL:",
-        default: "http://localhost:1234",
-      },
-    ]);
-  } else if (provider === "opencodego") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "opencodeGoApiKey",
-        message: "Enter your OpenCode Go API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "deepseek") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "deepseekApiKey",
-        message: "Enter your DeepSeek API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
-  } else if (provider === "bedrock") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "bedrockApiKey",
-        message: "Enter your Amazon Bedrock API Key:",
-        validate: (v) => v.length > 0,
-      },
-      {
-        type: "input",
-        name: "bedrockRegion",
-        message: "AWS Region:",
-        default: "us-east-1",
-      },
-    ]);
-  } else if (provider === "bedrockmantle") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "bedrockMantleApiKey",
-        message: "Enter your Amazon Bedrock Mantle API Key:",
-        validate: (v) => v.length > 0,
-      },
-      {
-        type: "input",
-        name: "bedrockMantleRegion",
-        message: "AWS Region:",
-        default: "us-east-1",
-      },
-    ]);
-  } else if (provider === "ollamacloud") {
-    answers = await prompt([
-      {
-        type: "input",
-        name: "ollamaCloudApiKey",
-        message: "Enter your Ollama Cloud API Key:",
-        validate: (v) => v.length > 0,
-      },
-    ]);
+  if (credQuestions.length > 0) {
+    answers = await prompt(credQuestions);
   }
-
-  configData = { ...configData, ...answers };
 
   const modelAnswers = await require("./settings").promptModelSearch(
     provider,
     answers,
     DEFAULT_CONFIG
   );
-  configData = { ...configData, ...modelAnswers };
+  answers = { ...answers, ...modelAnswers };
 
   const { COMMIT_FORMATS } = require("../../helpers/ai");
   const COMMIT_TYPE_LABELS = {
@@ -205,10 +87,11 @@ async function doOnboarding() {
       pageSize: 10,
     },
   ]);
-  configData = { ...configData, commitType, onboarded: true };
-
-  // Save the config
-  saveConfig(configData);
+  // Connections-first: onboarding result becomes the `default` connection
+  const { resetAIConnectionCache } = require("../../helpers/ai");
+  saveAIConnection("default", { provider, ...answers }, { activate: true });
+  resetAIConnectionCache();
+  saveConfig({ commitType, onboarded: true, theme: "auto" });
 
   clear();
   console.log(

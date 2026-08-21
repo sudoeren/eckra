@@ -45,35 +45,17 @@ const DEFAULT_CONFIG = {
     "Use concise, present tense, and descriptive language. Focus on the 'why' of the changes.",
 };
 
-/**
- * Field names each provider may store inside a saved AI connection.
- * Single source of truth for validating `saveAIConnection` input.
- */
-const PROVIDER_FIELDS = {
-  lmstudio: ["lmStudioUrl", "model"],
-  ollama: ["ollamaUrl", "ollamaModel"],
-  openai: ["openaiApiKey", "openaiModel"],
-  anthropic: ["anthropicApiKey", "anthropicModel"],
-  openrouter: ["openrouterApiKey", "openrouterModel"],
-  gemini: ["geminiApiKey", "geminiModel"],
-  opencodego: ["opencodeGoApiKey", "opencodeGoModel"],
-  deepseek: ["deepseekApiKey", "deepseekModel"],
-  bedrock: ["bedrockApiKey", "bedrockRegion", "bedrockModel"],
-  bedrockmantle: [
-    "bedrockMantleApiKey",
-    "bedrockMantleRegion",
-    "bedrockMantleModel",
-  ],
-  ollamacloud: ["ollamaCloudApiKey", "ollamaCloudModel"],
-};
-
-const AI_PROVIDERS = Object.keys(PROVIDER_FIELDS);
+const { PROVIDER_FIELDS, AI_PROVIDERS } = require("./providers");
 
 /**
  * Config keys managed through dedicated commands (`eckra provider`) rather
  * than `eckra config set` — raw maps are unsafe to edit as CLI strings.
  */
 const MANAGED_CONFIG_KEYS = ["aiConnections"];
+
+const PROVIDER_MANAGED_KEYS = [
+  ...new Set(Object.values(PROVIDER_FIELDS).flat()),
+];
 
 /**
  * Ensure config directory exists
@@ -133,6 +115,74 @@ function findLocalConfig(startDir = process.cwd()) {
 }
 
 let _cachedConfig = null;
+
+/**
+ * Active connection resolution:
+ * 1. The explicitly active name (precedence: local file > env var > global file)
+ * 2. If that name is missing/empty and a `default` connection exists, use it
+ * 3. Otherwise the first connection sorted alphabetically (if any)
+ */
+function resolveActiveConnectionName(
+  rawActiveName,
+  connections,
+  localRaw,
+  envOverrides,
+  globalRaw
+) {
+  if (typeof rawActiveName === "string" && rawActiveName.trim()) {
+    return rawActiveName.trim();
+  }
+  const map =
+    connections ||
+    (globalRaw.aiConnections && typeof globalRaw.aiConnections === "object"
+      ? globalRaw.aiConnections
+      : {});
+  const names = Object.keys(map);
+  if (names.includes("default")) return "default";
+  if (names.length > 0)
+    return names.slice().sort((a, b) => a.localeCompare(b))[0];
+  return "";
+}
+
+/**
+ * Connections-first migration: legacy flat provider fields (e.g.
+ * `openaiApiKey`) are copied into a `default` connection exactly once.
+ * The flat keys are kept on disk for downgrade safety — only copied, not
+ * removed. Returns true when a migration was written.
+ */
+function migrateLegacyToDefaultIfNeeded(raw) {
+  const existing = raw.aiConnections;
+  const hasConnections =
+    existing &&
+    typeof existing === "object" &&
+    Object.keys(existing).length > 0;
+  if (hasConnections) return false;
+
+  const provider = raw.aiProvider || DEFAULT_CONFIG.aiProvider;
+  const fields = PROVIDER_FIELDS[provider];
+  if (!fields) return false;
+
+  const hasLegacyValue = PROVIDER_MANAGED_KEYS.some(
+    (k) => raw[k] !== undefined && raw[k] !== "" && raw[k] !== null
+  );
+  if (!hasLegacyValue) return false;
+
+  const entry = { provider };
+  for (const field of fields) {
+    const value = raw[field];
+    if (value !== undefined && value !== null && value !== "") {
+      entry[field] = value;
+    }
+  }
+  if (Object.keys(entry).length <= 1) return false; // provider only, nothing to save
+
+  raw.aiConnections = { default: entry };
+  if (!raw.activeAiConnection) raw.activeAiConnection = "default";
+  try {
+    writeConfigFile(JSON.stringify(raw, null, 2));
+  } catch {}
+  return true;
+}
 
 const ENV_PREFIX = "ECKRA_";
 
@@ -195,6 +245,14 @@ function getConfig() {
     }
   }
 
+  // 1b. Connections-first migration (legacy flat keys → `default` connection, once)
+  if (Object.keys(globalRaw).length > 0) {
+    const didMigrate = migrateLegacyToDefaultIfNeeded(globalRaw);
+    if (didMigrate) {
+      config = { ...config, ...globalRaw };
+    }
+  }
+
   // 2. Local config raw (read once; applied after the active connection)
   let localRaw = {};
   const localConfigPath = findLocalConfig();
@@ -216,22 +274,30 @@ function getConfig() {
   const envOverrides = getEnvConfig();
 
   // 4. Active saved AI connection. The name resolves as
-  // .eckrarc > ECKRA_ACTIVE_AI_CONNECTION > global config; its fields are
-  // merged over the global values but stay weaker than local/env overrides.
+  // .eckrarc > ECKRA_ACTIVE_AI_CONNECTION > global config, falling back to
+  // `default` and then the first alphabetical connection when unset.
   const hasLocalActive = Object.prototype.hasOwnProperty.call(
     localRaw,
     "activeAiConnection"
   );
-  const activeName = hasLocalActive
+  const rawActiveName = hasLocalActive
     ? localRaw.activeAiConnection
     : envOverrides.activeAiConnection !== undefined
       ? envOverrides.activeAiConnection
       : globalRaw.activeAiConnection;
+  const _connectionsForActive =
+    globalRaw.aiConnections && typeof globalRaw.aiConnections === "object"
+      ? globalRaw.aiConnections
+      : {};
+  const activeName = resolveActiveConnectionName(
+    rawActiveName,
+    _connectionsForActive,
+    localRaw,
+    envOverrides,
+    globalRaw
+  );
   if (typeof activeName === "string" && activeName) {
-    const connections =
-      globalRaw.aiConnections && typeof globalRaw.aiConnections === "object"
-        ? globalRaw.aiConnections
-        : {};
+    const connections = _connectionsForActive;
     const connection = connections[activeName];
     if (
       connection &&
@@ -319,13 +385,22 @@ function getRawConfig({ local = false } = {}) {
 }
 
 /**
- * Whether `key` is a known config key (typo protection for set/unset)
+ * Whether `key` is a provider-managed field (stored inside a connection).
+ */
+function isProviderManagedKey(key) {
+  return PROVIDER_MANAGED_KEYS.includes(key);
+}
+
+/**
+ * Whether `key` is a known config key (typo protection for set/unset).
+ * Provider-managed fields are not settable via `eckra config set`.
  */
 function isValidConfigKey(key) {
   return (
     typeof key === "string" &&
     Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, key) &&
-    !MANAGED_CONFIG_KEYS.includes(key)
+    !MANAGED_CONFIG_KEYS.includes(key) &&
+    !PROVIDER_MANAGED_KEYS.includes(key)
   );
 }
 
@@ -345,9 +420,20 @@ function maskSecret(value) {
  * into the target file. Invalidates the in-memory config cache.
  */
 function setConfigValue(key, value, { local = false } = {}) {
+  if (isProviderManagedKey(key)) {
+    throw new Error(
+      `"${key}" is managed by your connections — use \`eckra provider edit <name>\` or run \`eckra setup\`. See \`eckra provider list\`.`
+    );
+  }
+  if (MANAGED_CONFIG_KEYS.includes(key)) {
+    throw new Error(
+      `"${key}" is managed internally — use \`eckra provider\` to manage connections.`
+    );
+  }
   if (!isValidConfigKey(key)) {
     const validKeys = Object.keys(DEFAULT_CONFIG).filter(
-      (k) => !MANAGED_CONFIG_KEYS.includes(k)
+      (k) =>
+        !MANAGED_CONFIG_KEYS.includes(k) && !PROVIDER_MANAGED_KEYS.includes(k)
     );
     throw new Error(
       `Unknown config key: "${key}". Valid keys: ${validKeys.join(", ")}`
@@ -574,6 +660,10 @@ module.exports = {
   PROVIDER_FIELDS,
   AI_PROVIDERS,
   MANAGED_CONFIG_KEYS,
+  PROVIDER_MANAGED_KEYS,
+  isProviderManagedKey,
+  resolveActiveConnectionName,
+  migrateLegacyToDefaultIfNeeded,
   normalizeUrl,
   envVarName,
   getEnvConfig,

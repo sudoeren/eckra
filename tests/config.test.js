@@ -20,6 +20,8 @@ const {
   deleteAIConnection,
   renameAIConnection,
   setActiveAIConnection,
+  resolveActiveConnectionName,
+  migrateLegacyToDefaultIfNeeded,
 } = require("../src/helpers/config");
 
 // Mock fs to avoid touching real files
@@ -222,7 +224,8 @@ describe("Config Helper", () => {
     const localPath = path.join(MOCK_CWD, ".eckrarc");
 
     test("isValidConfigKey accepts known keys and rejects unknown", () => {
-      expect(isValidConfigKey("openaiModel")).toBe(true);
+      // Provider-managed keys are no longer settable via `eckra config set`
+      expect(isValidConfigKey("openaiModel")).toBe(false);
       expect(isValidConfigKey("theme")).toBe(true);
       expect(isValidConfigKey("bogusKey")).toBe(false);
       expect(isValidConfigKey("")).toBe(false);
@@ -243,7 +246,7 @@ describe("Config Helper", () => {
         "ollamaCloudApiKey",
         "ollamaCloudModel",
       ];
-      newKeys.forEach((key) => expect(isValidConfigKey(key)).toBe(true));
+      newKeys.forEach((key) => expect(isValidConfigKey(key)).toBe(false));
     });
 
     test("maskSecret masks values and handles empty input", () => {
@@ -274,7 +277,7 @@ describe("Config Helper", () => {
         fileContents[p] = data;
       });
 
-      setConfigValue("openaiModel", "gpt-test", {});
+      setConfigValue("theme", "dark", {});
 
       const writeCall = fs.writeFileSync.mock.calls.find(
         (c) => c[0] === globalPath
@@ -282,11 +285,11 @@ describe("Config Helper", () => {
       expect(writeCall).toBeDefined();
       expect(JSON.parse(writeCall[1])).toEqual({
         aiProvider: "openai",
-        openaiModel: "gpt-test",
+        theme: "dark",
       });
       expect(writeCall[2]).toEqual(expect.objectContaining({ mode: 0o600 }));
 
-      expect(getConfig().openaiModel).toBe("gpt-test");
+      expect(getConfig().theme).toBe("dark");
     });
 
     test("setConfigValue with local writes to the cwd .eckrarc", () => {
@@ -686,9 +689,78 @@ describe("Config Helper", () => {
     test("managed keys are not editable via config set/unset", () => {
       expect(isValidConfigKey("aiConnections")).toBe(false);
       expect(isValidConfigKey("activeAiConnection")).toBe(true);
+      expect(isValidConfigKey("openaiModel")).toBe(false);
       expect(() => setConfigValue("aiConnections", "{}")).toThrow(
-        "Unknown config key"
+        "managed internally"
       );
+      expect(() => setConfigValue("openaiModel", "x")).toThrow(
+        "managed by your connections"
+      );
+    });
+  });
+
+  describe("connections-first migration & resolution", () => {
+    test("resolveActiveConnectionName prefers the explicit name", () => {
+      expect(
+        resolveActiveConnectionName("work", { work: {}, default: {} })
+      ).toBe("work");
+    });
+
+    test("falls back to `default`, then first alphabetical connection", () => {
+      expect(resolveActiveConnectionName("", { default: {}, work: {} })).toBe(
+        "default"
+      );
+      expect(
+        resolveActiveConnectionName(undefined, { zeta: {}, alpha: {} })
+      ).toBe("alpha");
+      expect(resolveActiveConnectionName("", {})).toBe("");
+    });
+
+    test("migrateLegacyToDefaultIfNeeded copies flat keys into `default`", () => {
+      const raw = {
+        aiProvider: "openai",
+        openaiApiKey: "sk-legacy",
+        openaiModel: "gpt-x",
+        onboarded: true,
+      };
+      const changed = migrateLegacyToDefaultIfNeeded(raw);
+
+      expect(changed).toBe(true);
+      expect(raw.aiConnections.default).toEqual({
+        provider: "openai",
+        openaiApiKey: "sk-legacy",
+        openaiModel: "gpt-x",
+      });
+      expect(raw.activeAiConnection).toBe("default");
+      // Flat keys are kept on disk for downgrade safety
+      expect(raw.openaiApiKey).toBe("sk-legacy");
+      expect(raw.openaiModel).toBe("gpt-x");
+    });
+
+    test("migration is skipped when connections already exist", () => {
+      const raw = {
+        aiProvider: "openai",
+        openaiApiKey: "sk",
+        openaiModel: "gpt-x",
+        aiConnections: { work: { provider: "anthropic" } },
+      };
+      expect(migrateLegacyToDefaultIfNeeded(raw)).toBe(false);
+      expect(raw.aiConnections.work).toBeDefined();
+      expect(raw.aiConnections.default).toBeUndefined();
+    });
+
+    test("migration is skipped when there is nothing to migrate", () => {
+      expect(migrateLegacyToDefaultIfNeeded({ aiProvider: "ollama" })).toBe(
+        false
+      );
+      // Provider set but no meaningful fields (only defaults, no values)
+      expect(
+        migrateLegacyToDefaultIfNeeded({
+          aiProvider: "openai",
+          openaiApiKey: "",
+          openaiModel: DEFAULT_CONFIG.openaiModel,
+        })
+      ).toBe(true); // model counts as a value worth migrating
     });
   });
 });

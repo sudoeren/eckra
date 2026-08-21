@@ -17,18 +17,19 @@ const {
   setActiveAIConnection,
 } = require("../../helpers/config");
 const {
+  PROVIDER_CHOICES,
+  PROVIDER_LABELS,
+  MODEL_KEY_BY_PROVIDER,
+  getProvider,
+  getRequiredKeyField,
+  getProviderQuestions,
+  fetchModelsFor,
+  getProviderFetchLabel,
+  getProviderDefaultModel,
+} = require("../../helpers/providers");
+const {
   checkAIConnection,
   testProviderConnection,
-  fetchOpenRouterModels,
-  fetchOpenAIModels,
-  fetchAnthropicModels,
-  fetchGeminiModels,
-  fetchOllamaModels,
-  fetchLMStudioModels,
-  fetchOpenCodeGoModels,
-  fetchDeepSeekModels,
-  fetchBedrockModels,
-  fetchOllamaCloudModels,
   resetAIConnectionCache,
 } = require("../../helpers/ai");
 const { s, clear, sleep, pause } = require("../common");
@@ -46,106 +47,6 @@ const {
 
 inquirer.registerPrompt("autocomplete", autocomplete);
 
-const PROVIDER_CHOICES = [
-  { name: "Ollama (Local)", value: "ollama" },
-  { name: "Ollama Cloud", value: "ollamacloud" },
-  { name: "LM Studio (Local)", value: "lmstudio" },
-  { name: "OpenAI", value: "openai" },
-  { name: "Anthropic (Claude)", value: "anthropic" },
-  { name: "OpenRouter", value: "openrouter" },
-  { name: "Google Gemini", value: "gemini" },
-  { name: "OpenCode Go", value: "opencodego" },
-  { name: "DeepSeek", value: "deepseek" },
-  { name: "Amazon Bedrock", value: "bedrock" },
-  { name: "Amazon Bedrock Mantle", value: "bedrockmantle" },
-];
-
-const PROVIDER_LABELS = Object.fromEntries(
-  PROVIDER_CHOICES.map((c) => [c.value, c.name.replace(/\s*\(.*\)$/, "")])
-);
-
-const MODEL_KEY_BY_PROVIDER = {
-  openai: "openaiModel",
-  anthropic: "anthropicModel",
-  gemini: "geminiModel",
-  ollama: "ollamaModel",
-  openrouter: "openrouterModel",
-  opencodego: "opencodeGoModel",
-  deepseek: "deepseekModel",
-  bedrock: "bedrockModel",
-  bedrockmantle: "bedrockMantleModel",
-  ollamacloud: "ollamaCloudModel",
-  lmstudio: "model",
-};
-
-/**
- * Persist provider credentials/model answers. When a saved connection with
- * the same provider is active its entry is updated (staying active);
- * otherwise the legacy flat config keys are written. Returns where the
- * data landed: `{ target: "connection", name }` or `{ target: "legacy" }`.
- */
-function saveProviderSettings(provider, answers) {
-  const config = getConfig();
-  const active =
-    typeof config.activeAiConnection === "string"
-      ? config.activeAiConnection
-      : "";
-  const existing = active ? getAIConnection(active) : null;
-  if (existing && existing.provider === provider) {
-    const { name, ...fields } = existing;
-    saveAIConnection(
-      name,
-      { ...fields, ...answers, provider },
-      {
-        activate: true,
-      }
-    );
-    return { target: "connection", name };
-  }
-  saveConfig({ ...answers, aiProvider: provider });
-  return { target: "legacy" };
-}
-
-/**
- * Test provider connection with a spinner, then save or let user decide.
- * Returns the persist result, or null when nothing was saved.
- */
-async function testAndSaveProvider(provider, fullConfig, answers) {
-  const spin = spinner("Testing connection...");
-  spin.start();
-  const result = await testProviderConnection(provider, fullConfig);
-  spin.stop();
-
-  if (result.connected) {
-    console.log(s.success("  ✓ Connection successful!"));
-    const saved = saveProviderSettings(provider, answers);
-    if (saved.target === "connection") {
-      console.log(s.success(`  ✓ Updated connection "${saved.name}"`));
-    } else {
-      console.log(s.success("  ✓ Provider configured: " + provider));
-    }
-    return saved;
-  }
-  console.log(
-    s.error("  ✗ Connection failed: " + (result.error || "Unknown error"))
-  );
-  const { saveAnyway } = await prompt([
-    {
-      type: "confirm",
-      name: "saveAnyway",
-      message: s.muted("Save settings anyway?"),
-      default: false,
-    },
-  ]);
-  if (saveAnyway) {
-    const saved = saveProviderSettings(provider, answers);
-    console.log(s.success("  ✓ Settings saved (connection pending)"));
-    return saved;
-  }
-  console.log(s.muted("  Settings not saved."));
-  return null;
-}
-
 /**
  * First free name for a new connection: "openai", "openai-2", ...
  */
@@ -156,46 +57,6 @@ function suggestConnectionName(provider, connections) {
     const candidate = `${provider}-${i}`;
     if (!names.has(candidate)) return candidate;
   }
-}
-
-/**
- * After configuring a provider, offer to keep it as a named connection so
- * the user can switch between providers/accounts anytime. Activated on save
- * since it mirrors what was just configured and tested.
- */
-async function offerSaveConnection(provider, answers) {
-  console.log();
-  const { saveConn } = await prompt([
-    {
-      type: "confirm",
-      name: "saveConn",
-      message: s.muted("Save this configuration for quick switching?"),
-      default: true,
-    },
-  ]);
-  if (!saveConn) return;
-
-  const suggested = suggestConnectionName(provider, listAIConnections());
-  const { connName } = await prompt([
-    {
-      type: "input",
-      name: "connName",
-      message: s.muted("Connection name:"),
-      default: suggested,
-      validate: (v) =>
-        (v && v.trim().length > 0) || "Please enter a connection name",
-    },
-  ]);
-
-  try {
-    const cleanName = String(connName).trim();
-    saveAIConnection(cleanName, { provider, ...answers }, { activate: true });
-    resetAIConnectionCache();
-    console.log(s.success(`  ✓ Saved connection "${cleanName}" — now active`));
-  } catch (err) {
-    console.log(s.error(`  ✗ ${err.message}`));
-  }
-  await sleep(600);
 }
 
 /**
@@ -273,251 +134,144 @@ async function switchAIConnection(config) {
 }
 
 /**
- * Rename/delete saved connections.
+ * Manage providers: add, edit credentials/model, rename/delete.
+ * Provides the full provider/model control surface requested — Switch handles
+ * fast switching, this menu handles CRUD.
  */
-async function manageAIConnections(config) {
-  const connections = listAIConnections();
-  if (connections.length === 0) {
-    console.log();
-    console.log(s.muted("  No saved provider connections yet."));
-    console.log(
-      s.muted(
-        '  Configure one via "Change Provider" and save it, or run `eckra provider add`.'
-      )
-    );
-    console.log();
-    await pause();
-    return;
-  }
+async function manageProvidersMenu(config) {
+  while (true) {
+    const connections = listAIConnections();
+    const activeName = (() => {
+      const raw = config.activeAiConnection || "";
+      if (raw) return raw;
+      if (connections.some((c) => c.name === "default")) return "default";
+      return connections[0]?.name || "";
+    })();
 
-  const activeName = config.activeAiConnection || "";
-  const { name } = await prompt([
-    {
-      type: "list",
-      name: "name",
-      message: s.muted("Manage which connection?"),
-      choices: [
-        ...connections.map((c) => ({
+    const choices = [];
+
+    choices.push(menuItem("Add Provider", "primary", "__add__"));
+
+    if (connections.length > 0) {
+      choices.push(sep());
+      for (const c of connections) {
+        choices.push({
           name: formatConnectionLabel(c, c.name === activeName),
           value: c.name,
           short: c.name,
-        })),
-        sep(),
-        backItem(),
-      ],
-      pageSize: 15,
-    },
-  ]);
-  if (name === "back") return;
-
-  const choices = [];
-  if (name !== activeName) {
-    choices.push(menuItem("Switch to this connection", "text", "switch"));
-  }
-  choices.push(menuItem("Rename", "text", "rename"));
-  choices.push(menuItem("Delete", "danger", "delete"));
-  choices.push(sep());
-  choices.push(backItem());
-
-  const { act } = await prompt([
-    {
-      type: "list",
-      name: "act",
-      message: s.muted(`"${name}" — what should I do?`),
-      choices,
-      pageSize: 10,
-    },
-  ]);
-  if (act === "back") return;
-
-  if (act === "switch") {
-    try {
-      setActiveAIConnection(name);
-      resetAIConnectionCache();
-      console.log(s.success(`\n  ✓ Switched to "${name}"`));
-    } catch (err) {
-      console.log(s.error(`\n  ✗ ${err.message}`));
+        });
+      }
     }
-    await sleep(600);
-    return;
-  }
 
-  if (act === "rename") {
-    const { newName } = await prompt([
+    choices.push(sep());
+    choices.push(backItem());
+
+    const { name } = await prompt([
       {
-        type: "input",
-        name: "newName",
-        message: s.muted("New name:"),
-        default: name,
-        validate: (v) =>
-          (v && v.trim().length > 0) || "Please enter a connection name",
+        type: "list",
+        name: "name",
+        message: s.muted("Manage providers — add or pick one to edit:"),
+        choices,
+        pageSize: 15,
       },
     ]);
-    try {
-      renameAIConnection(name, newName);
-      console.log(s.success(`\n  ✓ Renamed to "${String(newName).trim()}"`));
-    } catch (err) {
-      console.log(s.error(`\n  ✗ ${err.message}`));
+    if (name === "back") return;
+    if (name === "__add__") {
+      await connectionWizard({});
+      // Refresh config view after add
+      Object.assign(config, getConfig());
+      continue;
     }
-    await sleep(600);
-    return;
-  }
 
-  if (act === "delete") {
-    const confirmed = await confirmAction(
-      `Delete connection "${name}"? This cannot be undone.`
-    );
-    if (!confirmed) return;
-    const wasActive = activeName === name;
-    deleteAIConnection(name);
-    resetAIConnectionCache();
-    console.log(s.success(`\n  ✓ Deleted "${name}"`));
-    if (wasActive) {
-      console.log(
-        s.muted(
-          "  It was active — eckra will use your base settings until you switch."
-        )
+    const connChoices = [];
+    if (name !== activeName) {
+      connChoices.push(menuItem("Switch to this connection", "text", "switch"));
+    }
+    connChoices.push(menuItem("Edit Credentials / Model", "text", "edit"));
+    connChoices.push(menuItem("Change Model only", "text", "model"));
+    connChoices.push(menuItem("Rename", "text", "rename"));
+    connChoices.push(menuItem("Delete", "danger", "delete"));
+    connChoices.push(sep());
+    connChoices.push(backItem());
+
+    const { act } = await prompt([
+      {
+        type: "list",
+        name: "act",
+        message: s.muted(`"${name}" — what should I do?`),
+        choices: connChoices,
+        pageSize: 10,
+      },
+    ]);
+    if (act === "back") continue;
+
+    if (act === "switch") {
+      try {
+        setActiveAIConnection(name);
+        resetAIConnectionCache();
+        console.log(s.success(`\n  ✓ Switched to "${name}"`));
+      } catch (err) {
+        console.log(s.error(`\n  ✗ ${err.message}`));
+      }
+      await sleep(600);
+      Object.assign(config, getConfig());
+      continue;
+    }
+
+    if (act === "edit") {
+      await connectionWizard({ existingName: name });
+      Object.assign(config, getConfig());
+      continue;
+    }
+
+    if (act === "model") {
+      await changeModelForConnection(name);
+      Object.assign(config, getConfig());
+      continue;
+    }
+
+    if (act === "rename") {
+      const { newName } = await prompt([
+        {
+          type: "input",
+          name: "newName",
+          message: s.muted("New name:"),
+          default: name,
+          validate: (v) =>
+            (v && v.trim().length > 0) || "Please enter a connection name",
+        },
+      ]);
+      try {
+        renameAIConnection(name, newName);
+        console.log(s.success(`\n  ✓ Renamed to "${String(newName).trim()}"`));
+      } catch (err) {
+        console.log(s.error(`\n  ✗ ${err.message}`));
+      }
+      await sleep(600);
+      Object.assign(config, getConfig());
+      continue;
+    }
+
+    if (act === "delete") {
+      const confirmed = await confirmAction(
+        `Delete connection "${name}"? This cannot be undone.`
       );
+      if (!confirmed) continue;
+      const wasActive = activeName === name;
+      deleteAIConnection(name);
+      resetAIConnectionCache();
+      console.log(s.success(`\n  ✓ Deleted "${name}"`));
+      if (wasActive) {
+        console.log(
+          s.muted(
+            "  It was active — eckra will use your base settings until you switch."
+          )
+        );
+      }
+      await sleep(600);
+      Object.assign(config, getConfig());
+      continue;
     }
-    await sleep(600);
-  }
-}
-
-/**
- * Get the required API key field name for a provider (null if no key needed)
- */
-function getRequiredKeyField(provider) {
-  const keyFields = {
-    openai: "openaiApiKey",
-    anthropic: "anthropicApiKey",
-    openrouter: "openrouterApiKey",
-    gemini: "geminiApiKey",
-    opencodego: "opencodeGoApiKey",
-    deepseek: "deepseekApiKey",
-    bedrock: "bedrockApiKey",
-    bedrockmantle: "bedrockMantleApiKey",
-    ollamacloud: "ollamaCloudApiKey",
-  };
-  return keyFields[provider] || null;
-}
-
-/**
- * Get configuration questions for a provider (excluding model selection)
- */
-function getProviderQuestions(provider, config) {
-  switch (provider) {
-    case "openai":
-      return [
-        {
-          type: "input",
-          name: "openaiApiKey",
-          message: "OpenAI API Key:",
-          default: config.openaiApiKey,
-        },
-      ];
-    case "anthropic":
-      return [
-        {
-          type: "input",
-          name: "anthropicApiKey",
-          message: "Anthropic API Key:",
-          default: config.anthropicApiKey,
-        },
-      ];
-    case "ollama":
-      return [
-        {
-          type: "input",
-          name: "ollamaUrl",
-          message: "Ollama URL:",
-          default: config.ollamaUrl,
-        },
-      ];
-    case "openrouter":
-      return [
-        {
-          type: "input",
-          name: "openrouterApiKey",
-          message: "OpenRouter API Key:",
-          default: config.openrouterApiKey,
-        },
-      ];
-    case "gemini":
-      return [
-        {
-          type: "input",
-          name: "geminiApiKey",
-          message: "Google Gemini API Key:",
-          default: config.geminiApiKey,
-        },
-      ];
-    case "opencodego":
-      return [
-        {
-          type: "input",
-          name: "opencodeGoApiKey",
-          message: "OpenCode Go API Key:",
-          default: config.opencodeGoApiKey,
-        },
-      ];
-    case "deepseek":
-      return [
-        {
-          type: "input",
-          name: "deepseekApiKey",
-          message: "DeepSeek API Key:",
-          default: config.deepseekApiKey,
-        },
-      ];
-    case "bedrock":
-      return [
-        {
-          type: "input",
-          name: "bedrockApiKey",
-          message: "Amazon Bedrock API Key:",
-          default: config.bedrockApiKey,
-        },
-        {
-          type: "input",
-          name: "bedrockRegion",
-          message: "AWS Region:",
-          default: config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion,
-        },
-      ];
-    case "bedrockmantle":
-      return [
-        {
-          type: "input",
-          name: "bedrockMantleApiKey",
-          message: "Amazon Bedrock Mantle API Key:",
-          default: config.bedrockMantleApiKey,
-        },
-        {
-          type: "input",
-          name: "bedrockMantleRegion",
-          message: "AWS Region:",
-          default:
-            config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion,
-        },
-      ];
-    case "ollamacloud":
-      return [
-        {
-          type: "input",
-          name: "ollamaCloudApiKey",
-          message: "Ollama Cloud API Key:",
-          default: config.ollamaCloudApiKey,
-        },
-      ];
-    default:
-      return [
-        {
-          type: "input",
-          name: "lmStudioUrl",
-          message: "LM Studio URL:",
-          default: config.lmStudioUrl,
-        },
-      ];
   }
 }
 
@@ -525,132 +279,21 @@ function getProviderQuestions(provider, config) {
  * Prompt for model selection using autocomplete with models fetched from the provider's API
  */
 async function promptModelSearch(provider, answers, config) {
-  let models;
-  let currentModel;
-  let configKey;
-  let fetchLabel;
-
-  switch (provider) {
-    case "openai":
-      configKey = "openaiModel";
-      currentModel = config.openaiModel || DEFAULT_CONFIG.openaiModel;
-      fetchLabel = "Fetching models from OpenAI...";
-      break;
-    case "anthropic":
-      configKey = "anthropicModel";
-      currentModel = config.anthropicModel || DEFAULT_CONFIG.anthropicModel;
-      fetchLabel = "Loading Anthropic models...";
-      break;
-    case "gemini":
-      configKey = "geminiModel";
-      currentModel = config.geminiModel || DEFAULT_CONFIG.geminiModel;
-      fetchLabel = "Fetching models from Gemini...";
-      break;
-    case "ollama":
-      configKey = "ollamaModel";
-      currentModel = config.ollamaModel || DEFAULT_CONFIG.ollamaModel;
-      fetchLabel = "Fetching models from Ollama...";
-      break;
-    case "openrouter":
-      configKey = "openrouterModel";
-      currentModel = config.openrouterModel || DEFAULT_CONFIG.openrouterModel;
-      fetchLabel = "Fetching models from OpenRouter...";
-      break;
-    case "opencodego":
-      configKey = "opencodeGoModel";
-      currentModel = config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel;
-      fetchLabel = "Fetching models from OpenCode Go...";
-      break;
-    case "deepseek":
-      configKey = "deepseekModel";
-      currentModel = config.deepseekModel || DEFAULT_CONFIG.deepseekModel;
-      fetchLabel = "Fetching models from DeepSeek...";
-      break;
-    case "bedrock":
-      configKey = "bedrockModel";
-      currentModel = config.bedrockModel || DEFAULT_CONFIG.bedrockModel;
-      fetchLabel = "Fetching models from Amazon Bedrock...";
-      break;
-    case "bedrockmantle":
-      configKey = "bedrockMantleModel";
-      currentModel =
-        config.bedrockMantleModel || DEFAULT_CONFIG.bedrockMantleModel;
-      fetchLabel = "Fetching models from Bedrock Mantle...";
-      break;
-    case "ollamacloud":
-      configKey = "ollamaCloudModel";
-      currentModel = config.ollamaCloudModel || DEFAULT_CONFIG.ollamaCloudModel;
-      fetchLabel = "Fetching models from Ollama Cloud...";
-      break;
-    case "lmstudio":
-    default:
-      configKey = "model";
-      currentModel = config.model || DEFAULT_CONFIG.model;
-      fetchLabel = "Fetching models from LM Studio...";
-      break;
-  }
+  const fallbackProvider = "lmstudio";
+  const modelKey =
+    MODEL_KEY_BY_PROVIDER[provider] || MODEL_KEY_BY_PROVIDER[fallbackProvider];
+  const fetchLabel =
+    getProviderFetchLabel(provider) || getProviderFetchLabel(fallbackProvider);
+  const configKey = modelKey;
+  const currentModel =
+    (config && config[configKey]) ||
+    getProviderDefaultModel(provider) ||
+    getProviderDefaultModel(fallbackProvider);
 
   const spin = spinner(fetchLabel);
   spin.start();
 
-  switch (provider) {
-    case "openai":
-      models = await fetchOpenAIModels(
-        answers.openaiApiKey || config.openaiApiKey
-      );
-      break;
-    case "anthropic":
-      models = await fetchAnthropicModels();
-      break;
-    case "gemini":
-      models = await fetchGeminiModels(
-        answers.geminiApiKey || config.geminiApiKey
-      );
-      break;
-    case "ollama":
-      models = await fetchOllamaModels(answers.ollamaUrl || config.ollamaUrl);
-      break;
-    case "openrouter":
-      models = await fetchOpenRouterModels(
-        answers.openrouterApiKey || config.openrouterApiKey
-      );
-      break;
-    case "opencodego":
-      models = await fetchOpenCodeGoModels(
-        answers.opencodeGoApiKey || config.opencodeGoApiKey
-      );
-      break;
-    case "deepseek":
-      models = await fetchDeepSeekModels(
-        answers.deepseekApiKey || config.deepseekApiKey
-      );
-      break;
-    case "bedrock":
-      models = await fetchBedrockModels(
-        answers.bedrockRegion || config.bedrockRegion,
-        answers.bedrockApiKey || config.bedrockApiKey,
-        "runtime"
-      );
-      break;
-    case "bedrockmantle":
-      models = await fetchBedrockModels(
-        answers.bedrockMantleRegion || config.bedrockMantleRegion,
-        answers.bedrockMantleApiKey || config.bedrockMantleApiKey,
-        "mantle"
-      );
-      break;
-    case "ollamacloud":
-      models = await fetchOllamaCloudModels(
-        answers.ollamaCloudApiKey || config.ollamaCloudApiKey
-      );
-      break;
-    case "lmstudio":
-    default:
-      models = await fetchLMStudioModels(
-        answers.lmStudioUrl || config.lmStudioUrl
-      );
-      break;
-  }
+  const models = await fetchModelsFor(provider, answers, config);
 
   spin.stop();
 
@@ -698,128 +341,54 @@ async function promptModelSearch(provider, answers, config) {
 }
 
 /**
- * Ask provider configuration and return answers (handles model selection with autocomplete for all providers)
- */
-async function askProviderConfig(provider, config) {
-  const questions = getProviderQuestions(provider, config);
-  const answers = questions.length > 0 ? await prompt(questions) : {};
-
-  const modelAnswers = await promptModelSearch(provider, answers, config);
-
-  return { ...answers, ...modelAnswers };
-}
-
-/**
  * Print the current AI configuration: active provider/connection plus
  * provider-specific details (model, API key or URL/region).
  */
 function showAISettingsSummary(config) {
   const provider = config.aiProvider || "lmstudio";
-  const providerLabel = PROVIDER_LABELS[provider] || provider;
+  const p = getProvider(provider);
+  const providerLabel = (p && p.label) || PROVIDER_LABELS[provider] || provider;
 
   console.log(s.muted("  Provider: ") + s.text(providerLabel));
+
+  let displayConnection = config.activeAiConnection;
+  if (!displayConnection) {
+    const all = listAIConnections() || [];
+    if (all.some((c) => c.name === "default")) displayConnection = "default";
+    else if (all.length > 0) displayConnection = all[0].name;
+    else displayConnection = "";
+  }
   console.log(
-    s.muted("  Connection: ") +
-      s.text(config.activeAiConnection || "(none — base settings)")
+    s.muted("  Connection: ") + s.text(displayConnection || "(none)")
   );
 
-  if (config.aiProvider === "openai") {
-    console.log(s.muted("  Model: ") + s.text(config.openaiModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.openaiApiKey ? "****" + config.openaiApiKey.slice(-4) : "None"
-        )
-    );
-  } else if (config.aiProvider === "anthropic") {
-    console.log(s.muted("  Model: ") + s.text(config.anthropicModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.anthropicApiKey
-            ? "****" + config.anthropicApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "ollama") {
-    console.log(s.muted("  URL: ") + s.text(config.ollamaUrl));
-    console.log(s.muted("  Model: ") + s.text(config.ollamaModel));
-  } else if (config.aiProvider === "openrouter") {
-    console.log(s.muted("  Model: ") + s.text(config.openrouterModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.openrouterApiKey
-            ? "****" + config.openrouterApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "gemini") {
-    console.log(s.muted("  Model: ") + s.text(config.geminiModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.geminiApiKey ? "****" + config.geminiApiKey.slice(-4) : "None"
-        )
-    );
-  } else if (config.aiProvider === "opencodego") {
-    console.log(s.muted("  Model: ") + s.text(config.opencodeGoModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.opencodeGoApiKey
-            ? "****" + config.opencodeGoApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "deepseek") {
-    console.log(s.muted("  Model: ") + s.text(config.deepseekModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.deepseekApiKey
-            ? "****" + config.deepseekApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "bedrock") {
-    console.log(
-      s.muted("  Region: ") +
-        s.text(config.bedrockRegion || DEFAULT_CONFIG.bedrockRegion)
-    );
-    console.log(s.muted("  Model: ") + s.text(config.bedrockModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.bedrockApiKey
-            ? "****" + config.bedrockApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "bedrockmantle") {
-    console.log(
-      s.muted("  Region: ") +
-        s.text(config.bedrockMantleRegion || DEFAULT_CONFIG.bedrockMantleRegion)
-    );
-    console.log(s.muted("  Model: ") + s.text(config.bedrockMantleModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.bedrockMantleApiKey
-            ? "****" + config.bedrockMantleApiKey.slice(-4)
-            : "None"
-        )
-    );
-  } else if (config.aiProvider === "ollamacloud") {
-    console.log(s.muted("  Model: ") + s.text(config.ollamaCloudModel));
-    console.log(
-      s.muted("  API Key: ") +
-        s.text(
-          config.ollamaCloudApiKey
-            ? "****" + config.ollamaCloudApiKey.slice(-4)
-            : "None"
-        )
-    );
+  if (p) {
+    if (p.regionField) {
+      const regionVal =
+        config[p.regionField] ||
+        p.defaultRegion ||
+        DEFAULT_CONFIG[p.regionField] ||
+        "";
+      console.log(s.muted("  Region: ") + s.text(regionVal));
+    }
+    if (p.urlField) {
+      if (provider === "lmstudio") {
+        console.log(
+          s.muted("  LM Studio URL: ") + s.text(config[p.urlField] || "")
+        );
+      } else {
+        console.log(s.muted("  URL: ") + s.text(config[p.urlField] || ""));
+      }
+    }
+    const modelVal = config[p.modelKey] || p.defaultModel || "";
+    console.log(s.muted("  Model: ") + s.text(modelVal));
+    if (p.apiKeyField) {
+      const keyVal = config[p.apiKeyField];
+      console.log(
+        s.muted("  API Key: ") +
+          s.text(keyVal ? "****" + String(keyVal).slice(-4) : "None")
+      );
+    }
   } else {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
     console.log(s.muted("  Model: ") + s.text(config.model));
@@ -833,63 +402,180 @@ function showAISettingsSummary(config) {
 }
 
 /**
- * Pick a different AI provider and configure/test/save it.
+ * Unified connection wizard: create a new connection or edit an existing one.
+ * Steps: provider (if not fixed) → credentials (prefilled) → model → test → save.
+ * Returns the connection name on success, or null on cancel/failure.
  */
-async function changeProviderFlow(config) {
-  const { provider } = await prompt([
-    {
-      type: "autocomplete",
-      name: "provider",
-      message: s.muted("Select AI Provider (type to search):"),
-      source: (_answers, input) => {
-        if (!input) return PROVIDER_CHOICES;
-        const term = input.toLowerCase();
-        return PROVIDER_CHOICES.filter(
-          (c) =>
-            c.name.toLowerCase().includes(term) ||
-            c.value.toLowerCase().includes(term)
-        );
+async function connectionWizard({ existingName, providerHint, nameHint } = {}) {
+  const existing = existingName ? getAIConnection(existingName) : null;
+  let provider = providerHint || (existing ? existing.provider : null);
+
+  if (!provider) {
+    const answer = await prompt([
+      {
+        type: "autocomplete",
+        name: "provider",
+        message: s.muted("Which AI provider? (type to search):"),
+        source: (_answers, input) => {
+          if (!input) return PROVIDER_CHOICES;
+          const term = input.toLowerCase();
+          return PROVIDER_CHOICES.filter(
+            (c) =>
+              c.name.toLowerCase().includes(term) ||
+              c.value.toLowerCase().includes(term)
+          );
+        },
+        pageSize: 15,
       },
-      default: config.aiProvider,
-      pageSize: 15,
+    ]);
+    provider = answer.provider;
+  }
+
+  const baseConfig = existing ? { ...getConfig(), ...existing } : getConfig();
+  let pending = existing ? { ...existing } : {};
+  // Remove name so it doesn't leak into field validation
+  delete pending.name;
+
+  while (true) {
+    const questionDefaults = { ...baseConfig, ...pending };
+    const credQuestions = getProviderQuestions(provider, questionDefaults);
+    let credAnswers = {};
+    if (credQuestions.length > 0) {
+      credAnswers = await prompt(credQuestions);
+    }
+    pending = { ...pending, ...credAnswers };
+
+    const modelAnswers = await promptModelSearch(provider, pending, {
+      ...baseConfig,
+      ...pending,
+    });
+    pending = { ...pending, ...modelAnswers };
+
+    const fullConfig = { ...baseConfig, ...pending, aiProvider: provider };
+    const spin = spinner("Testing connection...");
+    spin.start();
+    const result = await testProviderConnection(provider, fullConfig);
+    spin.stop();
+
+    if (result.connected) {
+      console.log(s.success("  ✓ Connection successful!"));
+      break;
+    }
+
+    console.log(
+      s.error("  ✗ Connection failed: " + (result.error || "Unknown error"))
+    );
+    const { testAction } = await prompt([
+      {
+        type: "list",
+        name: "testAction",
+        message: s.muted("What would you like to do?"),
+        choices: [
+          menuItem("Retry test", "text", "retry"),
+          menuItem("Edit credentials / model", "text", "edit"),
+          menuItem("Save anyway", "primary", "save"),
+          menuItem("Cancel", "muted", "cancel"),
+        ],
+        pageSize: 10,
+      },
+    ]);
+    if (testAction === "cancel") return null;
+    if (testAction === "save") break;
+    // retry and edit both loop again (edit will re-prompt with current pending as defaults)
+  }
+
+  // Strip anything that isn't a valid field for this provider (defensive)
+  const sanitized = { provider };
+  const allowed = new Set(getProvider(provider)?.fields || []);
+  for (const [k, v] of Object.entries(pending)) {
+    if (allowed.has(k) && v !== undefined && v !== null && v !== "") {
+      sanitized[k] = v;
+    }
+  }
+
+  if (existingName) {
+    try {
+      saveAIConnection(existingName, sanitized, { activate: true });
+      resetAIConnectionCache();
+      console.log(s.success(`  ✓ Updated connection "${existingName}"`));
+      await sleep(600);
+      return existingName;
+    } catch (err) {
+      console.log(s.error(`  ✗ ${err.message}`));
+      return null;
+    }
+  }
+
+  let cleanName = nameHint ? String(nameHint).trim() : "";
+  if (!cleanName) {
+    const suggested = suggestConnectionName(provider, listAIConnections());
+    const { connName } = await prompt([
+      {
+        type: "input",
+        name: "connName",
+        message: s.muted("Connection name:"),
+        default: suggested,
+        validate: (v) =>
+          (v && v.trim().length > 0) || "Please enter a connection name",
+      },
+    ]);
+    cleanName = String(connName).trim();
+  }
+  try {
+    saveAIConnection(cleanName, sanitized, { activate: false });
+  } catch (err) {
+    console.log(s.error(`  ✗ ${err.message}`));
+    return null;
+  }
+  console.log(s.success(`\n  ✓ Saved connection "${cleanName}"`));
+  const { activateNow } = await prompt([
+    {
+      type: "confirm",
+      name: "activateNow",
+      message: s.muted("Switch to this connection now?"),
+      default: true,
     },
   ]);
-
-  // Check if this provider requires an API key and it's not yet configured
-  const keyField = getRequiredKeyField(provider);
-  const needsSetup = keyField && !config[keyField];
-
-  let answers = {};
-  if (needsSetup) {
-    console.log(
-      s.muted("\n  This provider requires configuration. Let's set it up:\n")
-    );
-    answers = await askProviderConfig(provider, config);
+  if (activateNow) {
+    setActiveAIConnection(cleanName);
+    resetAIConnectionCache();
+    console.log(s.success(`  ✓ "${cleanName}" is now the active connection.`));
   }
-
-  const saved = await testAndSaveProvider(
-    provider,
-    { ...config, ...answers },
-    answers
-  );
-  if (saved && saved.target !== "connection") {
-    await offerSaveConnection(provider, answers);
-  }
+  await sleep(600);
+  return cleanName;
 }
 
 /**
- * Re-configure credentials/model for the currently active provider.
+ * Change only the model for an existing connection.
  */
-async function configureProviderFlow(config) {
-  const provider = config.aiProvider || "lmstudio";
-  const answers = await askProviderConfig(provider, config);
-  const saved = await testAndSaveProvider(
+async function changeModelForConnection(name) {
+  const conn = getAIConnection(name);
+  if (!conn) {
+    console.log(s.error(`  ✗ No connection named "${name}"`));
+    return;
+  }
+  const provider = conn.provider;
+  const cfg = getConfig();
+  const result = await promptModelSearch(
     provider,
-    { ...config, ...answers },
-    answers
+    { ...conn },
+    { ...cfg, ...conn }
   );
-  if (saved && saved.target !== "connection") {
-    await offerSaveConnection(provider, answers);
+  const sanitized = { provider };
+  const allowed = new Set(getProvider(provider)?.fields || []);
+  for (const [k, v] of Object.entries({ ...conn, ...result })) {
+    if (k === "name") continue;
+    if (allowed.has(k) && v !== undefined && v !== null && v !== "") {
+      sanitized[k] = v;
+    }
+  }
+  try {
+    saveAIConnection(name, sanitized, { activate: true });
+    resetAIConnectionCache();
+    console.log(s.success(`\n  ✓ Model updated for "${name}"`));
+    await sleep(600);
+  } catch (err) {
+    console.log(s.error(`  ✗ ${err.message}`));
   }
 }
 
@@ -938,10 +624,8 @@ async function settingsMenu() {
       name: "action",
       message: s.muted("What should I do?"),
       choices: [
-        menuItem("Change Provider", "text", "provider"),
-        menuItem("Configure Provider Settings", "text", "configure"),
         menuItem("Switch Provider / Account", "text", "switch"),
-        menuItem("Manage Saved Providers", "text", "manage"),
+        menuItem("Manage Providers", "text", "manage"),
         menuItem("Show AI Instruction", "text", "show-instruction"),
         menuItem("Change AI Instructions", "text", "instruction"),
         menuItem("Change Commit Format", "text", "commit-type"),
@@ -1059,23 +743,13 @@ async function settingsMenu() {
     process.exit(0);
   }
 
-  if (action === "provider") {
-    await changeProviderFlow(config);
-    return true;
-  }
-
-  if (action === "configure") {
-    await configureProviderFlow(config);
-    return true;
-  }
-
   if (action === "switch") {
     await switchAIConnection(config);
     return true;
   }
 
   if (action === "manage") {
-    await manageAIConnections(config);
+    await manageProvidersMenu(config);
     return true;
   }
 
@@ -1157,11 +831,8 @@ async function settingsMenu() {
 
 /**
  * Standalone AI settings command (`eckra model`). Shows the current
- * provider/connection/model summary and lets the user change the model,
- * re-configure the provider, switch providers, or pick another saved
- * connection — staying in the menu until they exit. Model changes are
- * written into the active connection when one is set, otherwise into
- * base settings.
+ * provider/connection/model summary and lets the user switch or manage
+ * providers — staying in the menu until they exit.
  */
 async function doModelSelector() {
   let running = true;
@@ -1178,10 +849,8 @@ async function doModelSelector() {
         name: "action",
         message: s.muted("What should I do?"),
         choices: [
-          menuItem("Change Model", "primary", "model"),
-          menuItem("Configure Provider Settings", "text", "configure"),
-          menuItem("Change Provider", "text", "provider"),
           menuItem("Switch Provider / Account", "text", "switch"),
+          menuItem("Manage Providers", "text", "manage"),
           sep(),
           backItem(),
         ],
@@ -1191,22 +860,11 @@ async function doModelSelector() {
 
     running = false;
 
-    if (action === "model") {
-      const provider = config.aiProvider || "lmstudio";
-      const result = await promptModelSearch(provider, {}, config);
-      saveProviderSettings(provider, result);
-      resetAIConnectionCache();
-      console.log(s.success("\n  ✓ Model updated!"));
-      await sleep(600);
-      running = true;
-    } else if (action === "configure") {
-      await configureProviderFlow(config);
-      running = true;
-    } else if (action === "provider") {
-      await changeProviderFlow(config);
-      running = true;
-    } else if (action === "switch") {
+    if (action === "switch") {
       await switchAIConnection(config);
+      running = true;
+    } else if (action === "manage") {
+      await manageProvidersMenu(config);
       running = true;
     }
   }
@@ -1214,13 +872,14 @@ async function doModelSelector() {
 
 /**
  * Interactive "add a saved connection" flow (used by `eckra provider add`).
- * Returns the new connection name, or null when nothing was saved.
+ * Delegates to the unified wizard so all provider/model handling stays in one
+ * place. Returns the new connection name, or null when nothing was saved.
  */
 async function addAIConnectionFlow({ name = "", provider = "" } = {}) {
   open("Add Provider Connection");
 
   let selected = String(provider || "").trim();
-  if (selected && !PROVIDER_CHOICES.some((c) => c.value === selected)) {
+  if (selected && !getProvider(selected)) {
     console.log(
       s.error(
         `  ✗ Unknown provider: "${selected}". Valid: ${PROVIDER_CHOICES.map((c) => c.value).join(", ")}`
@@ -1229,70 +888,10 @@ async function addAIConnectionFlow({ name = "", provider = "" } = {}) {
     return null;
   }
 
-  if (!selected) {
-    const answer = await prompt([
-      {
-        type: "autocomplete",
-        name: "provider",
-        message: s.muted("Which AI provider? (type to search):"),
-        source: (_answers, input) => {
-          if (!input) return PROVIDER_CHOICES;
-          const term = input.toLowerCase();
-          return PROVIDER_CHOICES.filter(
-            (c) =>
-              c.name.toLowerCase().includes(term) ||
-              c.value.toLowerCase().includes(term)
-          );
-        },
-        pageSize: 15,
-      },
-    ]);
-    selected = answer.provider;
-  }
-
-  console.log();
-  const answers = await askProviderConfig(selected, getConfig());
-
-  let connName = String(name || "").trim();
-  if (!connName) {
-    const suggested = suggestConnectionName(selected, listAIConnections());
-    const answer = await prompt([
-      {
-        type: "input",
-        name: "connName",
-        message: s.muted("Connection name:"),
-        default: suggested,
-        validate: (v) =>
-          (v && v.trim().length > 0) || "Please enter a connection name",
-      },
-    ]);
-    connName = String(answer.connName).trim();
-  }
-
-  try {
-    saveAIConnection(connName, { provider: selected, ...answers });
-  } catch (err) {
-    console.log(s.error(`\n  ✗ ${err.message}`));
-    return null;
-  }
-  console.log(s.success(`\n  ✓ Saved connection "${connName}"`));
-
-  const { activateNow } = await prompt([
-    {
-      type: "confirm",
-      name: "activateNow",
-      message: s.muted("Switch to this connection now?"),
-      default: true,
-    },
-  ]);
-  if (activateNow) {
-    setActiveAIConnection(connName);
-    resetAIConnectionCache();
-    console.log(s.success(`  ✓ "${connName}" is now the active connection.`));
-  }
-
-  await sleep(600);
-  return connName;
+  return connectionWizard({
+    providerHint: selected || null,
+    nameHint: String(name || "").trim() || null,
+  });
 }
 
 module.exports = {
@@ -1300,4 +899,10 @@ module.exports = {
   promptModelSearch,
   doModelSelector,
   addAIConnectionFlow,
+  // New unified helpers (also kept as manageAIConnections for backward compat)
+  manageProvidersMenu,
+  manageAIConnections: manageProvidersMenu,
+  connectionWizard,
+  changeModelForConnection,
+  showAISettingsSummary,
 };

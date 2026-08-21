@@ -184,9 +184,7 @@ program
 program
   .command("model")
   .alias("m")
-  .description(
-    "Show current AI settings and change the model/provider/connection"
-  )
+  .description("Show current AI settings and switch/manage providers")
   .action(async () => {
     if (!(await app().ensureOnboarding())) return;
     await require("./ui/modules/settings").doModelSelector();
@@ -373,7 +371,7 @@ function describeConnection(conn) {
 function providerUsage() {
   console.log(
     s.muted(
-      "Usage: eckra provider <list|use|add|remove|rename|show> [name...] [--local] [--show-secrets]"
+      "Usage: eckra provider <list|use|add|edit|remove|rename|show> [name...] [--local] [--show-secrets]"
     )
   );
 }
@@ -529,6 +527,25 @@ async function runProviderCommand(action, args, options) {
     return;
   }
 
+  if (action === "edit") {
+    const name = names[0];
+    if (!name) {
+      providerUsage();
+      process.exitCode = 1;
+      return;
+    }
+    if (!getAIConnection(name)) {
+      console.log(s.error(`  ✗ No saved connection named "${name}"`));
+      process.exitCode = 1;
+      return;
+    }
+    if (!(await app().ensureOnboarding())) return;
+    await require("./ui/modules/settings").connectionWizard({
+      existingName: name,
+    });
+    return;
+  }
+
   if (action === "remove") {
     const name = names[0];
     if (!name) {
@@ -599,7 +616,7 @@ program
   .description(
     "Manage saved AI provider connections (multiple accounts/providers)"
   )
-  .argument("[action]", "list, use, add, remove, rename, show")
+  .argument("[action]", "list, use, add, edit, remove, rename, show")
   .argument("[args...]", "Connection name(s) or key=value pair(s)")
   .option(
     "--local",
