@@ -295,6 +295,8 @@ describe("Settings provider flow", () => {
       expect(output).toContain("gpt-4o");
       expect(output).toContain("API Key:");
       expect(output).not.toContain("sk-secret-1234");
+      expect(output).toContain("Config file:");
+      expect(output).toContain("config.json");
     } finally {
       logSpy.mockRestore();
     }

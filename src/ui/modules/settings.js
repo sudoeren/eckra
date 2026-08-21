@@ -7,6 +7,8 @@ const {
   resetConfig,
   DEFAULT_CONFIG,
   maskSecret,
+  getConfigPath,
+  findLocalConfig,
   listAIConnections,
   getAIConnection,
   saveAIConnection,
@@ -821,6 +823,12 @@ function showAISettingsSummary(config) {
   } else {
     console.log(s.muted("  LM Studio URL: ") + s.text(config.lmStudioUrl));
     console.log(s.muted("  Model: ") + s.text(config.model));
+  }
+
+  console.log(s.muted("  Config file: ") + s.text(getConfigPath()));
+  const localPath = findLocalConfig();
+  if (localPath) {
+    console.log(s.muted("  Local overrides: ") + s.text(localPath));
   }
 }
 
