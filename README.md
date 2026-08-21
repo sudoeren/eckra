@@ -77,7 +77,7 @@ Or jump straight into action:
 | `eckra doctor`  | `dr`  | Health check                  |
 | `eckra suggest` | `sg`  | Print an AI commit message    |
 | `eckra setup`   |       | Run the setup/onboarding wizard |
-| `eckra model`   |       | Interactively pick the AI model |
+| `eckra model`   | `m`   | Show current AI settings & change model/provider/connection |
 
 > [!TIP]
 > `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
@@ -190,7 +190,7 @@ ollama pull qwen3.5:2b
 | `Amazon Bedrock`          | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-haiku-4-5` |
 | `Amazon Bedrock Mantle`   | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-haiku-4-5` |
 
-Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you — switch models anytime with `eckra model` or from Settings.
+Providers are configured via the settings menu (`More > Settings`) or `~/.eckra/config.json`. eckra fetches the available models for you — run `eckra model` to see your current AI settings (provider, connection, model, masked API key) and where they're stored, then change the model, re-configure the provider, or switch saved connections from the same menu. The same actions live in Settings.
 
 ### Saved connections (multiple providers & accounts)
 
