@@ -24,7 +24,7 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
   <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/eckra.gif" alt="eckra demo" width="800">
 </p>
 <p align="center">
-  <em>Interactive dashboard in action: staging, AI commit generation and Git Graph without leaving the terminal.</em>
+  <em>Interactive dashboard in action</em>
 </p>
 
 ## Features
