@@ -20,6 +20,13 @@
 
 eckra is an interactive, AI-powered Git management tool. It writes context-aware commit messages, turns your commit history into readable project stories, and brings staging, branches, stashes, and remotes into one dashboard. No config required to get started.
 
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/sudoeren/eckra@master/eckra.gif" alt="eckra demo" width="800">
+</p>
+<p align="center">
+  <em>Interactive dashboard in action: staging, AI commit generation and Git Graph without leaving the terminal.</em>
+</p>
+
 ## Features
 
 - **Works out of the box with [Ollama](https://ollama.com)**: no API key needed to start, cloud providers are optional
