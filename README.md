@@ -34,7 +34,7 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 - **AI commit messages** based on your actual diff, with 11 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Amazon Bedrock, OpenCode Go, and more; see the [provider table](#ai-configuration))
 - **Multiple providers & accounts**: save several provider configurations side by side (e.g. two OpenAI accounts plus OpenRouter) and switch anytime from Settings or `eckra provider use`
 - **Select & edit** any suggestion before committing
-- **Choose your commit format**: `plain`, `conventional`, `conventional+body`, `gitmoji`, or `subject+body` — picked during setup, changeable in Settings or per-commit with `--type`
+- **Choose your commit format**: `plain`, `conventional`, `conventional+body`, `gitmoji`, or `subject+body` (picked during setup, changeable in Settings or per-commit with `--type`)
 - **Staged diff review** with syntax highlighting
 - **Git Graph**: VS Code-style commit graph across all branches, with per-lane colors, pagination, and commit inspection
 - **Project story**: AI timeline of your commit history
@@ -197,13 +197,13 @@ ollama pull qwen3.5:2b
 | `Amazon Bedrock`          | Bedrock API key + AWS Region (`bedrock-runtime` endpoint)    | `us.anthropic.claude-haiku-4-5` |
 | `Amazon Bedrock Mantle`   | Bedrock API key + AWS Region (`bedrock-mantle` endpoint)     | `us.anthropic.claude-haiku-4-5` |
 
-Providers are configured during setup and stored as **named connections** in `~/.eckra/config.json`. The configuration you pick during `eckra setup` becomes your `default` connection. eckra fetches the available models for you — run `eckra model` to see your current AI settings (provider, connection, model, masked API key) and where they're stored, then switch or manage providers from the same menu.
+Providers are configured during setup and stored as **named connections** in `~/.eckra/config.json`. The configuration you pick during `eckra setup` becomes your `default` connection. eckra fetches the available models for you. Run `eckra model` to see your current AI settings (provider, connection, model, masked API key) and where they are stored, then switch or manage providers from the same menu.
 
 ### Saved connections (multiple providers & accounts)
 
-eckra stores several provider configurations side by side — different providers and/or multiple accounts for the same provider (e.g. a work and a personal OpenAI key). One connection is active at a time and every AI call uses it. With no explicit choice, eckra falls back to the `default` connection.
+eckra stores several provider configurations side by side, including different providers and/or multiple accounts for the same provider (e.g. a work and a personal OpenAI key). One connection is active at a time and every AI call uses it. With no explicit choice, eckra falls back to the `default` connection.
 
-The AI surfaces expose exactly two actions — **Switch Provider / Account** (pick an existing connection) and **Manage Providers** (everything else: add, edit credentials/model per connection, rename, delete). They live in the Settings menu and behind `eckra model`:
+The AI surfaces expose exactly two actions: **Switch Provider / Account** (pick an existing connection) and **Manage Providers** (everything else: add, edit credentials/model per connection, rename, delete). They live in the Settings menu and behind `eckra model`:
 
 ```bash
 eckra provider list              # All saved connections, active marked with ✓
@@ -219,7 +219,7 @@ eckra provider remove work -y    # Delete
 ```
 
 > [!NOTE]
-> Upgrading from an older eckra? Your existing flat settings are migrated automatically into a `default` connection on first run — nothing to do. The old keys stay in the file for downgrade safety but are no longer used.
+> Upgrading from an older eckra? Your existing flat settings are migrated automatically into a `default` connection on first run, so nothing to do. The old keys stay in the file for downgrade safety but are no longer used.
 
 > [!NOTE]
 > The active connection can also be set per environment with `ECKRA_ACTIVE_AI_CONNECTION`, or per repository via `.eckrarc` (`eckra config set activeAiConnection <name> --local`).
@@ -243,7 +243,7 @@ eckra config path               # Config file path
 > [!NOTE]
 > Add `--local` to target the project's `.eckrarc` instead.
 
-A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections — manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance).
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance).
 
 ### Health check
 
