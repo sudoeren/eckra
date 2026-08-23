@@ -201,7 +201,7 @@ Providers are configured during setup and stored as **named connections** in `~/
 
 ### Saved connections (multiple providers & accounts)
 
-eckra stores several provider configurations side by side, including different providers and/or multiple accounts for the same provider (e.g. a work and a personal OpenAI key). One connection is active at a time and every AI call uses it. With no explicit choice, eckra falls back to the `default` connection.
+eckra stores several provider configurations side by side, including different providers and/or multiple accounts for the same provider (e.g. a work and a personal OpenAI key). One connection is active at a time and every AI call uses it. With no explicit choice, eckra falls back to the `default` connection. You can override this per run with `ECKRA_ACTIVE_AI_CONNECTION` or pin a connection to a single repository with `eckra provider use <name> --local`, which is saved in `.eckrarc`.
 
 The AI surfaces expose exactly two actions: **Switch Provider / Account** (pick an existing connection) and **Manage Providers** (everything else: add, edit credentials/model per connection, rename, delete). They live in the Settings menu and behind `eckra model`:
 
@@ -218,15 +218,6 @@ eckra provider rename work is    # Rename (stays active if it was)
 eckra provider remove work -y    # Delete
 ```
 
-> [!NOTE]
-> Upgrading from an older eckra? Your existing flat settings are migrated automatically into a `default` connection on first run, so nothing to do. The old keys stay in the file for downgrade safety but are no longer used.
-
-> [!NOTE]
-> The active connection can also be set per environment with `ECKRA_ACTIVE_AI_CONNECTION`, or per repository via `.eckrarc` (`eckra config set activeAiConnection <name> --local`).
-
-> [!NOTE]
-> Per-repository overrides go in `.eckrarc` (gitignored, as it can hold API keys).
-
 ### Config CLI
 
 ```bash
@@ -241,9 +232,9 @@ eckra config path               # Config file path
 ```
 
 > [!NOTE]
-> Add `--local` to target the project's `.eckrarc` instead.
+> Add `--local` to target the project's `.eckrarc` instead. This file is gitignored as it can hold API keys.
 
-A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance).
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
 
 ### Health check
 
