@@ -45,7 +45,7 @@
     "commander": "15.0.0",
     "diff": "^7.0.0",
     "eastasianwidth": "^0.3.0",
-    "inquirer": "^8.2.6",
+    "inquirer": "^14.1.0",
     "inquirer-autocomplete-prompt": "^2.0.1",
     "ora": "^9.4.1",
     "simple-git": "^3.36.0"
