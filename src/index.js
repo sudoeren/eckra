@@ -3,7 +3,7 @@
 const { Command } = require("commander");
 const { getGitStatus } = require("./helpers/git");
 const { version } = require("../package.json");
-const { s } = require("./ui/common");
+const { s, runInteractive } = require("./ui/common");
 const {
   getConfig,
   getConfigPath,
@@ -31,6 +31,35 @@ async function checkGitRepo() {
   }
 }
 
+/**
+ * Onboarding + dashboard inside the alternate screen buffer, so leaving
+ * eckra restores the terminal exactly as it was.
+ */
+async function startInteractive() {
+  let ran = false;
+  let missingRepo = false;
+
+  await runInteractive(async () => {
+    if (!(await app().ensureOnboarding())) return;
+    try {
+      await getGitStatus();
+    } catch {
+      missingRepo = true;
+      return;
+    }
+    ran = true;
+    await app().startApp();
+  });
+
+  // Printed on the main screen, after the alternate buffer is restored.
+  if (missingRepo) {
+    console.log(s.error("\n  This folder is not a Git repository!\n"));
+    console.log(s.muted("  Solution: Run git init command\n"));
+  } else if (ran) {
+    console.log(s.muted("\n  👋 Goodbye!\n"));
+  }
+}
+
 program
   .name("eckra")
   .description("AI-powered Git management CLI")
@@ -51,12 +80,7 @@ program
   .command("start")
   .alias("s")
   .description("Start interactive interface")
-  .action(async () => {
-    if (!(await app().ensureOnboarding())) return;
-    if (await checkGitRepo()) {
-      await app().startApp();
-    }
-  });
+  .action(startInteractive);
 
 program
   .command("status")
@@ -902,11 +926,6 @@ program
   .action(runLazygitCommand);
 
 // Default - start interactive
-program.action(async () => {
-  if (!(await app().ensureOnboarding())) return;
-  if (await checkGitRepo()) {
-    await app().startApp();
-  }
-});
+program.action(startInteractive);
 
 program.parse(process.argv);
