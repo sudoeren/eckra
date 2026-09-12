@@ -1,6 +1,9 @@
 const {
   getClipboardCommand,
   copyToClipboard,
+  canUseOsc52,
+  osc52,
+  OSC52_MAX_BYTES,
 } = require("../src/helpers/clipboard");
 const { spawn } = require("child_process");
 
@@ -68,9 +71,82 @@ describe("Clipboard Helper", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
     mockSpawnStreams({ onError: true });
 
-    const ok = await copyToClipboard("hello");
+    const ok = await copyToClipboard("hello", { isTTY: false });
 
     expect(ok).toBe(false);
+  });
+
+  test("falls back to OSC 52 when the command is missing and stdout is a TTY", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockSpawnStreams({ onError: true });
+    const write = jest.fn();
+
+    const ok = await copyToClipboard("hello", { isTTY: true, write });
+
+    expect(ok).toBe(true);
+    expect(write).toHaveBeenCalledWith("\u001b]52;c;aGVsbG8=\u001b\\");
+  });
+
+  test("does not use OSC 52 when stdout is not a TTY", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockSpawnStreams({ onError: true });
+    const write = jest.fn();
+
+    const ok = await copyToClipboard("hello", { isTTY: false, write });
+
+    expect(ok).toBe(false);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  test("ECKRA_CLIPBOARD=osc52 forces the terminal clipboard", async () => {
+    const write = jest.fn();
+
+    const ok = await copyToClipboard("hello", {
+      env: { ECKRA_CLIPBOARD: "osc52" },
+      write,
+    });
+
+    expect(ok).toBe(true);
+    expect(spawn).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledWith("\u001b]52;c;aGVsbG8=\u001b\\");
+  });
+
+  test("ECKRA_CLIPBOARD=system disables the OSC 52 fallback", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockSpawnStreams({ onError: true });
+    const write = jest.fn();
+
+    const ok = await copyToClipboard("hello", {
+      env: { ECKRA_CLIPBOARD: "system" },
+      isTTY: true,
+      write,
+    });
+
+    expect(ok).toBe(false);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  test("osc52 encodes UTF-8 and refuses oversized payloads", () => {
+    const write = jest.fn();
+
+    expect(osc52("héllo", { write })).toBe(true);
+    expect(write).toHaveBeenCalledWith("\u001b]52;c;aMOpbGxv\u001b\\");
+
+    write.mockClear();
+    const huge = "x".repeat(OSC52_MAX_BYTES + 1);
+    expect(osc52(huge, { write })).toBe(false);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  test("canUseOsc52 reflects preference and TTY state", () => {
+    expect(canUseOsc52({ env: {}, isTTY: true })).toBe(true);
+    expect(canUseOsc52({ env: {}, isTTY: false })).toBe(false);
+    expect(
+      canUseOsc52({ env: { ECKRA_CLIPBOARD: "osc52" }, isTTY: false })
+    ).toBe(true);
+    expect(
+      canUseOsc52({ env: { ECKRA_CLIPBOARD: "system" }, isTTY: true })
+    ).toBe(false);
   });
 
   test("getClipboardCommand picks clip on win32", () => {

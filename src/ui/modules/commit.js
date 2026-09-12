@@ -165,7 +165,7 @@ async function doCommit(info, opts = {}) {
     } else {
       console.log(
         s.warning(
-          "\n  ⚠ Could not copy to clipboard (no pbcopy/xclip/wl-copy found)."
+          "\n  ⚠ Could not copy to clipboard (no pbcopy/xclip/wl-copy, and the terminal rejected OSC 52)."
         )
       );
     }
