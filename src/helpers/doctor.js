@@ -11,7 +11,24 @@ const {
 } = require("./config");
 const { VALID_THEMES, getThemeInfo } = require("./theme");
 
-const MIN_NODE_MAJOR = 20;
+// Minimum Node.js version (require(esm) is needed by commander/ora).
+const MIN_NODE_VERSION = [22, 12, 0];
+const MIN_NODE_LABEL = "22.12";
+
+/**
+ * Whether a "major.minor.patch" version string meets the minimum.
+ */
+function meetsMinNode(version) {
+  const parts = String(version)
+    .split(".")
+    .map((n) => parseInt(n, 10));
+  for (let i = 0; i < MIN_NODE_VERSION.length; i++) {
+    const current = parts[i] || 0;
+    if (current > MIN_NODE_VERSION[i]) return true;
+    if (current < MIN_NODE_VERSION[i]) return false;
+  }
+  return true;
+}
 
 const PROVIDER_KEY_FIELDS = {
   openai: "openaiApiKey",
@@ -56,13 +73,12 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
   const config = getConfig();
 
   // ── Runtime ──────────────────────────────────────────────────
-  const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
   checks.push(
     checkResult(
       "Runtime",
       "Node.js version",
-      nodeMajor >= MIN_NODE_MAJOR ? "pass" : "fail",
-      `v${process.versions.node} (required >= ${MIN_NODE_MAJOR})`
+      meetsMinNode(process.versions.node) ? "pass" : "fail",
+      `v${process.versions.node} (required >= ${MIN_NODE_LABEL})`
     )
   );
 
@@ -385,4 +401,4 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
   };
 }
 
-module.exports = { runDoctorCheck };
+module.exports = { runDoctorCheck, meetsMinNode };

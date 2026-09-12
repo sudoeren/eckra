@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { runDoctorCheck } = require("../src/helpers/doctor");
+const { runDoctorCheck, meetsMinNode } = require("../src/helpers/doctor");
 const git = require("../src/helpers/git");
 const ai = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
@@ -262,5 +262,18 @@ describe("Doctor Helper", () => {
     expect(ai.checkAIConnection).not.toHaveBeenCalled();
     const conn = report.checks.find((c) => c.label === "Connection");
     expect(conn.status).toBe("skip");
+  });
+
+  describe("meetsMinNode", () => {
+    test("accepts Node >= 22.12 and rejects older versions", () => {
+      expect(meetsMinNode("22.12.0")).toBe(true);
+      expect(meetsMinNode("22.13.1")).toBe(true);
+      expect(meetsMinNode("23.0.0")).toBe(true);
+      expect(meetsMinNode("24.20.0")).toBe(true);
+
+      expect(meetsMinNode("22.11.0")).toBe(false);
+      expect(meetsMinNode("20.19.0")).toBe(false);
+      expect(meetsMinNode("18.20.0")).toBe(false);
+    });
   });
 });
