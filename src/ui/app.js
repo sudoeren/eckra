@@ -161,9 +161,6 @@ async function startApp() {
         break;
     }
   }
-
-  clear();
-  console.log(s.muted("\n  👋 Goodbye!\n"));
 }
 
 // ═══════════════════════════════════════════════════════════════

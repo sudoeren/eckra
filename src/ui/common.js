@@ -51,6 +51,81 @@ const s = new Proxy(
 );
 
 // ═══════════════════════════════════════════════════════════════
+// SCREEN LIFECYCLE
+// ═══════════════════════════════════════════════════════════════
+
+// Switch the terminal to its alternate screen buffer so the eckra UI never
+// leaks into the user's scrollback: on exit the previous screen (prompt and
+// history) is restored exactly as it was.
+const ALT_SCREEN_ON = "\u001b[?1049h\u001b[H";
+const ALT_SCREEN_OFF = "\u001b[?1049l";
+
+function isInteractiveTTY(stdout, env) {
+  return Boolean(stdout && stdout.isTTY) && (env.TERM || "") !== "dumb";
+}
+
+function enterInteractiveScreen(options = {}) {
+  const stdout = options.stdout || process.stdout;
+  const env = options.env || process.env;
+  if (!isInteractiveTTY(stdout, env)) return false;
+  stdout.write(ALT_SCREEN_ON);
+  return true;
+}
+
+function leaveInteractiveScreen(options = {}) {
+  const stdout = options.stdout || process.stdout;
+  const env = options.env || process.env;
+  if (!isInteractiveTTY(stdout, env)) return false;
+  stdout.write(ALT_SCREEN_OFF);
+  return true;
+}
+
+/**
+ * Run an interactive flow inside the alternate screen buffer. Ctrl+C,
+ * SIGTERM and uncaught errors are handled so the terminal is always
+ * restored to its previous state before the process exits.
+ */
+async function runInteractive(fn, options = {}) {
+  const proc = options.process || process;
+  enterInteractiveScreen(options);
+
+  const leave = () => leaveInteractiveScreen(options);
+  const exitWith = (code) => {
+    leave();
+    proc.exit(code);
+  };
+  const onSigint = () => exitWith(130);
+  const onSigterm = () => exitWith(143);
+  const onUncaught = (err) => {
+    leave();
+    console.error(err);
+    proc.exit(1);
+  };
+  const onUnhandled = (reason) => {
+    leave();
+    console.error(reason);
+    proc.exit(1);
+  };
+
+  proc.once("exit", leave);
+  proc.once("SIGINT", onSigint);
+  proc.once("SIGTERM", onSigterm);
+  proc.once("uncaughtException", onUncaught);
+  proc.once("unhandledRejection", onUnhandled);
+
+  try {
+    return await fn();
+  } finally {
+    proc.removeListener("exit", leave);
+    proc.removeListener("SIGINT", onSigint);
+    proc.removeListener("SIGTERM", onSigterm);
+    proc.removeListener("uncaughtException", onUncaught);
+    proc.removeListener("unhandledRejection", onUnhandled);
+    leave();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════════
 
@@ -111,4 +186,9 @@ module.exports = {
   pause,
   link,
   resetThemeCache,
+  ALT_SCREEN_ON,
+  ALT_SCREEN_OFF,
+  enterInteractiveScreen,
+  leaveInteractiveScreen,
+  runInteractive,
 };
