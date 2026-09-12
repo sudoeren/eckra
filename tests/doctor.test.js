@@ -3,11 +3,16 @@ const { runDoctorCheck } = require("../src/helpers/doctor");
 const git = require("../src/helpers/git");
 const ai = require("../src/helpers/ai");
 const configHelper = require("../src/helpers/config");
+const theme = require("../src/helpers/theme");
 
 jest.mock("fs");
 jest.mock("../src/helpers/git");
 jest.mock("../src/helpers/ai");
 jest.mock("../src/helpers/config");
+jest.mock("../src/helpers/theme", () => ({
+  VALID_THEMES: ["auto", "dark", "light"],
+  getThemeInfo: jest.fn(),
+}));
 
 describe("Doctor Helper", () => {
   const CONFIG_PATH = "/mock/.eckra/config.json";
@@ -71,6 +76,13 @@ describe("Doctor Helper", () => {
     fs.existsSync.mockReturnValue(false);
     fs.readFileSync.mockReturnValue("{}");
     fs.statSync.mockReturnValue({ mode: 0o600 });
+
+    theme.getThemeInfo.mockReturnValue({
+      selected: "auto",
+      effective: "dark",
+      source: "OSC 11",
+      background: "#101010",
+    });
   });
 
   test("reports a passing health check in a healthy repo", async () => {
@@ -208,6 +220,38 @@ describe("Doctor Helper", () => {
       (c) => c.label === "Model configured"
     );
     expect(modelCheck.status).toBe("warn");
+  });
+
+  test("reports the detected theme for auto mode", async () => {
+    configHelper.getConfig.mockReturnValue({
+      ...configHelper.getConfig(),
+      theme: "auto",
+    });
+    git.getGitStatus.mockRejectedValue(new Error("not a repo"));
+    ai.checkAIConnection.mockResolvedValue({ connected: true });
+
+    const report = await runDoctorCheck();
+
+    const themeCheck = report.checks.find((c) => c.label === "Theme");
+    expect(themeCheck.status).toBe("pass");
+    expect(themeCheck.detail).toContain("auto → dark");
+    expect(themeCheck.detail).toContain("OSC 11");
+    expect(themeCheck.detail).toContain("#101010");
+  });
+
+  test("warns on an invalid theme", async () => {
+    configHelper.getConfig.mockReturnValue({
+      ...configHelper.getConfig(),
+      theme: "blue",
+    });
+    git.getGitStatus.mockRejectedValue(new Error("not a repo"));
+    ai.checkAIConnection.mockResolvedValue({ connected: true });
+
+    const report = await runDoctorCheck();
+
+    const themeCheck = report.checks.find((c) => c.label === "Theme");
+    expect(themeCheck.status).toBe("warn");
+    expect(themeCheck.detail).toContain("not a valid theme");
   });
 
   test("skips the provider network check with skipProvider", async () => {
