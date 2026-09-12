@@ -76,6 +76,21 @@ jobs:
       - name: Generate checksums
         run: cd dist && sha256sum eckra-linux-x64 eckra-linux-arm64 eckra-win-x64.exe > SHA256SUMS
 
+      - name: Update Scoop manifest
+        run: node scripts/update-scoop.mjs
+
+      - name: Commit packaging manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/
+          if git diff --cached --quiet; then
+            echo "No packaging changes to commit"
+          else
+            git commit -m "chore: update packaging manifests for ${{ github.ref_name }}"
+            git push origin HEAD:master
+          fi
+
       - name: Generate release notes
         id: notes
         run: |

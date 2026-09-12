@@ -59,6 +59,12 @@ brew install eckra
 > The formula pins the published npm tarball version and checksum, so it is
 > bumped alongside each release.
 
+Or with Scoop on Windows (installs the standalone binary):
+
+```powershell
+scoop install https://raw.githubusercontent.com/sudoeren/eckra/master/packaging/scoop/eckra.json
+```
+
 eckra can bind directly to [lazygit](https://github.com/jesseduffield/lazygit) right after installing:
 
 ```bash
