@@ -80,6 +80,7 @@ Or jump straight into action:
 | `eckra start`   | `s`   | Interactive dashboard         |
 | `eckra lazygit` | `lg`  | Lazygit AI-commit integration |
 | `eckra config`  | `cfg` | View or edit config           |
+| `eckra theme`   | `th`  | Show or set the UI theme      |
 | `eckra provider`| `pv`  | Manage saved AI provider connections |
 | `eckra doctor`  | `dr`  | Health check                  |
 | `eckra suggest` | `sg`  | Print an AI commit message    |
@@ -235,6 +236,22 @@ eckra config path               # Config file path
 > Add `--local` to target the project's `.eckrarc` instead. This file is gitignored as it can hold API keys.
 
 A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
+
+### Theme
+
+`theme` can be `auto` (default), `dark`, or `light`. Auto mode is **terminal-first**: it asks the terminal for its actual background color (OSC 11), then reads your terminal config, and only falls back to the desktop theme (GNOME/KDE/GTK) last — so a dark terminal on a light desktop is detected correctly.
+
+Alacritty is fully supported: all config locations are checked (`$XDG_CONFIG_HOME/alacritty/alacritty.toml`, `~/.config/alacritty/alacritty.toml`, `~/.alacritty.toml`, `/etc/alacritty/...`, plus legacy `.yml`), including `[general] import = [...]` with globs, relative and nested imports (later files override earlier ones).
+
+```bash
+eckra theme             # Show the selected theme and what auto detected
+eckra theme detect      # Re-run detection now, ignoring the cache
+eckra theme dark        # Set an explicit theme
+eckra theme auto        # Back to auto detection
+```
+
+> [!TIP]
+> Detection results are cached for a few minutes and refresh automatically when `TERM` changes. Force a refresh with `eckra theme detect`. Set `ECKRA_THEME_NO_QUERY=1` to skip the live terminal query (e.g. on terminals that block on it).
 
 ### Health check
 
