@@ -48,6 +48,21 @@ Install eckra globally with npm:
 npm install -g eckra
 ```
 
+Or download a standalone binary (no Node.js required):
+
+```bash
+# Linux (x64/arm64)
+curl -fsSL https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.sh | sh
+```
+
+```powershell
+# Windows (x64)
+irm https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.ps1 | iex
+```
+
+Set `ECKRA_VERSION` (or `-Version`) to pin a version, and `ECKRA_INSTALL_DIR`
+(or `-InstallDir`) to change the install directory.
+
 Or with Homebrew (the formula lives in this repository, so tap it by URL):
 
 ```bash
