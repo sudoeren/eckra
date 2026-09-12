@@ -42,11 +42,22 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 
 ## Installation
 
-Install eckra globally:
+Install eckra globally with npm:
 
 ```bash
 npm install -g eckra
 ```
+
+Or with Homebrew (the formula lives in this repository, so tap it by URL):
+
+```bash
+brew tap sudoeren/eckra https://github.com/sudoeren/eckra
+brew install eckra
+```
+
+> [!NOTE]
+> The formula pins the published npm tarball version and checksum, so it is
+> bumped alongside each release.
 
 eckra can bind directly to [lazygit](https://github.com/jesseduffield/lazygit) right after installing:
 
