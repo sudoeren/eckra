@@ -1,6 +1,6 @@
 # AGENTS.md
 
-AI-powered Git management CLI (Node.js, CommonJS). Zero config required: run `eckra` in any git repo for the interactive dashboard. Node >= 20.
+AI-powered Git management CLI (Node.js, CommonJS). Zero config required: run `eckra` in any git repo for the interactive dashboard. Node >= 22.12.
 
 ## Commands
 
@@ -14,7 +14,7 @@ Verification order: `npm run lint` then `npm test`.
 
 ## Release flow
 
-`npm run release:patch|minor|major` runs `npm version <x> && git push --follow-tags`. Do **not** add `npm publish` to release scripts — a regression test (`tests/project.test.js`) fails if present, and publishing happens automatically via `.github/workflows/publish.yml` on a pushed `v*` tag (npm + GitHub Packages + GitHub release). CI (`ci.yml`) runs tests on Node 20, 22 and 24; `publish.yml` uses Node 22.
+`npm run release:patch|minor|major` runs `npm version <x> && git push --follow-tags`. Do **not** add `npm publish` to release scripts — a regression test (`tests/project.test.js`) fails if present, and publishing happens automatically via `.github/workflows/publish.yml` on a pushed `v*` tag (npm + GitHub Packages + GitHub release). CI (`ci.yml`) runs tests on Node 22 and 24; `publish.yml` uses Node 22.
 
 ## Architecture
 

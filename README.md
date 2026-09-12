@@ -42,6 +42,8 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 
 ## Installation
 
+Requires Node.js 22.12 or newer (commander/ora are ESM-only and need `require(esm)`).
+
 Install eckra globally with npm:
 
 ```bash
