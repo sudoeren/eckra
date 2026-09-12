@@ -8,6 +8,8 @@
   },
   "scripts": {
     "start": "node src/index.js",
+    "build:bundle": "node scripts/build-bundle.mjs",
+    "build:binaries": "node scripts/build-binaries.mjs",
     "test": "jest",
     "lint": "eslint src tests && prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
     "lint:fix": "eslint src tests --fix && prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
@@ -59,6 +61,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@yao-pkg/pkg": "^6.22.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
