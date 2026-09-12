@@ -42,30 +42,19 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 
 ## Installation
 
-Requires Node.js 22.12 or newer (commander/ora are ESM-only and need `require(esm)`).
+> npm and Homebrew need Node.js 22.12 or newer (commander/ora are ESM-only and
+> need `require(esm)`). The standalone binaries bundle their own runtime.
 
-Install eckra globally with npm:
+### npm (any OS)
 
 ```bash
 npm install -g eckra
 ```
 
-Or download a standalone binary (no Node.js required):
+### macOS
 
-```bash
-# Linux (x64/arm64)
-curl -fsSL https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.sh | sh
-```
-
-```powershell
-# Windows (x64)
-irm https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.ps1 | iex
-```
-
-Set `ECKRA_VERSION` (or `-Version`) to pin a version, and `ECKRA_INSTALL_DIR`
-(or `-InstallDir`) to change the install directory.
-
-Or with Homebrew (the formula lives in this repository, so tap it by URL):
+Install with [Homebrew](https://brew.sh). The formula lives in this repository,
+so it is tapped by URL:
 
 ```bash
 brew tap sudoeren/eckra https://github.com/sudoeren/eckra
@@ -73,14 +62,39 @@ brew install eckra
 ```
 
 > [!NOTE]
-> The formula pins the published npm tarball version and checksum, and the
-> release workflow updates it automatically.
+> The formula installs from the published npm tarball and is updated
+> automatically on release. There is no standalone macOS binary yet, so use
+> Homebrew or npm on macOS.
 
-Or with Scoop on Windows (installs the standalone binary):
+### Linux
+
+Standalone binary (x64/arm64, no Node.js required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.sh | sh
+```
+
+Homebrew also works on Linux after tapping as shown above.
+
+### Windows
+
+Standalone binary (x64, no Node.js required):
+
+```powershell
+irm https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.ps1 | iex
+```
+
+Or with Scoop (installs the standalone binary):
 
 ```powershell
 scoop install https://raw.githubusercontent.com/sudoeren/eckra/master/packaging/scoop/eckra.json
 ```
+
+### Pinning a version / custom directory
+
+For the standalone installers, set `ECKRA_VERSION` (or `-Version`) to pin a
+version, and `ECKRA_INSTALL_DIR` (or `-InstallDir`) to change the install
+directory.
 
 eckra can bind directly to [lazygit](https://github.com/jesseduffield/lazygit) right after installing:
 
