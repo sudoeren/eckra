@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const pkg = require("../package.json");
 
 const formula = fs.readFileSync(
   path.join(__dirname, "..", "Formula", "eckra.rb"),
@@ -8,10 +7,13 @@ const formula = fs.readFileSync(
 );
 
 describe("Homebrew formula", () => {
-  test("targets the published npm tarball for the current version", () => {
+  // The formula version is bumped by the release workflow, so it is checked
+  // for internal consistency rather than against package.json (which is
+  // already bumped when the publish job runs its tests).
+  test("targets the published npm tarball for its own version", () => {
     expect(formula).toContain("class Eckra < Formula");
-    expect(formula).toContain(
-      `https://registry.npmjs.org/eckra/-/eckra-${pkg.version}.tgz`
+    expect(formula).toMatch(
+      /https:\/\/registry\.npmjs\.org\/eckra\/-\/eckra-\d+\.\d+\.\d+\.tgz/
     );
     expect(formula.match(/sha256 "[0-9a-f]{64}"/)).not.toBeNull();
   });

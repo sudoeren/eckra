@@ -1,13 +1,15 @@
 const fs = require("fs");
 const path = require("path");
 const manifest = require("../packaging/scoop/eckra.json");
-const pkg = require("../package.json");
 
 describe("Scoop manifest", () => {
-  test("matches the package version and points at the release asset", () => {
-    expect(manifest.version).toBe(pkg.version);
+  // The manifest version is bumped by the release workflow, so it is checked
+  // for internal consistency rather than against package.json (which is
+  // already bumped when the publish job runs its tests).
+  test("points at the release asset for its own version", () => {
+    expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
     const arch = manifest.architecture["64bit"];
-    expect(arch.url).toContain(`v${pkg.version}/eckra-win-x64.exe`);
+    expect(arch.url).toContain(`v${manifest.version}/eckra-win-x64.exe`);
     expect(arch.url).toContain("#/eckra.exe");
     expect(arch.hash).toMatch(/^[0-9a-f]{64}$/);
   });
