@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 // Build standalone executables with @yao-pkg/pkg. pkg cross-compiles, so a
-// single Linux runner can produce the Windows and arm64 binaries too.
+// single runner can produce binaries for other platforms; macOS targets are
+// ad-hoc signed by pkg (run them on macOS for a working signature).
+//
+// Usage: node scripts/build-binaries.mjs [group ...]
+//   groups: linux, win, macos, all   (default: linux win)
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import targets from "./targets.js";
+
+const { selectTargets } = targets;
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = path.join(root, "dist", "eckra.cjs");
 
-const TARGETS = [
-  { target: "node22-linux-x64", output: "eckra-linux-x64" },
-  { target: "node22-linux-arm64", output: "eckra-linux-arm64" },
-  { target: "node22-win-x64", output: "eckra-win-x64.exe" },
-];
+const selected = selectTargets(process.argv.slice(2));
 
 const pkgBin = path.join(
   root,
@@ -26,7 +29,7 @@ execFileSync(process.execPath, [path.join(root, "scripts", "build-bundle.mjs")],
   stdio: "inherit",
 });
 
-for (const { target, output } of TARGETS) {
+for (const { target, output } of selected) {
   console.log(`\n▶ Building ${output} (${target})...`);
   execFileSync(
     pkgBin,
