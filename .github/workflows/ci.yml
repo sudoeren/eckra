@@ -24,3 +24,49 @@ jobs:
       - run: npm test
       - run: npm run build:bundle
       - run: node dist/eckra.cjs --version
+
+  binaries:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Cache pkg base binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.pkg-cache
+          key: pkg-cache-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build:bundle
+      - name: Build native binary
+        shell: bash
+        run: |
+          case "${RUNNER_OS}" in
+            Windows) group=win ;;
+            macOS) group=macos ;;
+            *) group=linux ;;
+          esac
+          node scripts/build-binaries.mjs "$group"
+      - name: Smoke test binary
+        shell: bash
+        run: |
+          case "${RUNNER_OS}" in
+            Windows) bin="dist/eckra-win-x64.exe" ;;
+            macOS)
+              if [ "${RUNNER_ARCH}" = "ARM64" ]; then bin="dist/eckra-macos-arm64"; else bin="dist/eckra-macos-x64"; fi
+              ;;
+            *)
+              if [ "${RUNNER_ARCH}" = "ARM64" ]; then bin="dist/eckra-linux-arm64"; else bin="dist/eckra-linux-x64"; fi
+              ;;
+          esac
+          node scripts/smoke-binary.mjs "$bin"
+          # Apple Silicon requires a valid (ad-hoc) signature to run.
+          if [ "${RUNNER_OS}" = "macOS" ]; then codesign -dv --verbose=2 "$bin"; fi

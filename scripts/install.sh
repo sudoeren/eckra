@@ -1,16 +1,15 @@
 #!/bin/sh
-# Install eckra from GitHub releases on Linux (no Node.js required).
+# Install eckra from GitHub releases on Linux and macOS (no Node.js required).
 #
 #   curl -fsSL https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.sh | sh
 #
 # Environment overrides:
 #   ECKRA_VERSION      install a specific version (e.g. 1.5.4)
-#   ECKRA_INSTALL_DIR  install directory (default: ~/.local/bin)
+#   ECKRA_INSTALL_DIR  install directory (default: /usr/local/bin on macOS, ~/.local/bin elsewhere)
 set -eu
 
 REPO="sudoeren/eckra"
 BIN="eckra"
-INSTALL_DIR="${ECKRA_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${ECKRA_VERSION:-}"
 
 err() {
@@ -21,13 +20,27 @@ err() {
 os="$(uname -s)"
 arch="$(uname -m)"
 
-[ "$os" = "Linux" ] || err "unsupported OS: $os (use 'npm install -g eckra')"
+case "$os" in
+  Linux) os_key="linux" ;;
+  Darwin) os_key="macos" ;;
+  *) err "unsupported OS: $os (use 'npm install -g eckra')" ;;
+esac
 
 case "$arch" in
-  x86_64 | amd64) asset="eckra-linux-x64" ;;
-  aarch64 | arm64) asset="eckra-linux-arm64" ;;
+  x86_64 | amd64) arch_key="x64" ;;
+  aarch64 | arm64) arch_key="arm64" ;;
   *) err "unsupported architecture: $arch" ;;
 esac
+
+asset="eckra-${os_key}-${arch_key}"
+
+if [ -n "${ECKRA_INSTALL_DIR:-}" ]; then
+  INSTALL_DIR="$ECKRA_INSTALL_DIR"
+elif [ "$os" = "Darwin" ]; then
+  INSTALL_DIR="/usr/local/bin"
+else
+  INSTALL_DIR="$HOME/.local/bin"
+fi
 
 command -v curl >/dev/null 2>&1 || err "curl is required"
 if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
@@ -61,7 +74,17 @@ else
 fi
 [ "$expected" = "$actual" ] || err "checksum mismatch for $asset"
 
-mkdir -p "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR" 2>/dev/null || true
+if [ ! -d "$INSTALL_DIR" ] || [ ! -w "$INSTALL_DIR" ]; then
+  if [ -z "${ECKRA_INSTALL_DIR:-}" ] && [ "$os" = "Darwin" ]; then
+    printf 'warning: %s is not writable; falling back to %s\n' \
+      "$INSTALL_DIR" "$HOME/.local/bin" >&2
+    INSTALL_DIR="$HOME/.local/bin"
+    mkdir -p "$INSTALL_DIR"
+  else
+    err "cannot write to $INSTALL_DIR (set ECKRA_INSTALL_DIR or re-run with sudo)"
+  fi
+fi
 cp "$tmp/$asset" "$INSTALL_DIR/$BIN"
 chmod 755 "$INSTALL_DIR/$BIN"
 

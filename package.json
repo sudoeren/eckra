@@ -10,6 +10,7 @@
     "start": "node src/index.js",
     "build:bundle": "node scripts/build-bundle.mjs",
     "build:binaries": "node scripts/build-binaries.mjs",
+    "build:binaries:all": "node scripts/build-binaries.mjs all",
     "test": "jest",
     "lint": "eslint src tests && prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
     "lint:fix": "eslint src tests --fix && prettier --write \"src/**/*.js\" \"tests/**/*.js\"",

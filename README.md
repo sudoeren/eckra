@@ -53,8 +53,14 @@ npm install -g eckra
 
 ### macOS
 
-Install with [Homebrew](https://brew.sh). The formula lives in this repository,
-so it is tapped by URL:
+Standalone binary (x64/arm64, no Node.js required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sudoeren/eckra/master/scripts/install.sh | sh
+```
+
+Or with [Homebrew](https://brew.sh). The formula lives in this repository, so it
+is tapped by URL:
 
 ```bash
 brew tap sudoeren/eckra https://github.com/sudoeren/eckra
@@ -62,9 +68,9 @@ brew install eckra
 ```
 
 > [!NOTE]
-> The formula installs from the published npm tarball and is updated
-> automatically on release. There is no standalone macOS binary yet, so use
-> Homebrew or npm on macOS.
+> The Homebrew formula installs from the published npm tarball and is updated
+> automatically on release. The standalone installer puts `eckra` in
+> `/usr/local/bin` (override with `ECKRA_INSTALL_DIR`).
 
 ### Linux
 

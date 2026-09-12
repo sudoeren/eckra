@@ -70,30 +70,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build standalone binaries
-        run: npm run build:binaries
-
-      - name: Generate checksums
-        run: cd dist && sha256sum eckra-linux-x64 eckra-linux-arm64 eckra-win-x64.exe > SHA256SUMS
-
-      - name: Update Scoop manifest
-        run: node scripts/update-scoop.mjs
-
-      - name: Update Homebrew formula
-        run: node scripts/update-homebrew.mjs
-
-      - name: Commit packaging manifests
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packaging/ Formula/
-          if git diff --cached --quiet; then
-            echo "No packaging changes to commit"
-          else
-            git commit -m "chore: update packaging manifests for ${{ github.ref_name }}"
-            git push origin HEAD:master
-          fi
-
       - name: Generate release notes
         id: notes
         run: |
@@ -105,11 +81,6 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           body: ${{ steps.notes.outputs.body }}
-          files: |
-            dist/eckra-linux-x64
-            dist/eckra-linux-arm64
-            dist/eckra-win-x64.exe
-            dist/SHA256SUMS
 
       - name: Set Deployment Status (success)
         if: success()
@@ -140,3 +111,57 @@ jobs:
               environment_url: "https://www.npmjs.com/package/eckra",
               description: "Publish failed",
             });
+
+  # Built on macOS, where pkg can ad-hoc sign the Apple Silicon binaries
+  # (unsigned arm64 binaries are killed by the kernel). pkg cross-compiles
+  # the Linux/Windows targets too, so a single job produces every asset.
+  binaries:
+    needs: publish
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Cache pkg base binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.pkg-cache
+          key: pkg-cache-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - name: Build standalone binaries
+        run: npm run build:binaries:all
+      - name: Generate checksums
+        run: cd dist && shasum -a 256 eckra-linux-x64 eckra-linux-arm64 eckra-win-x64.exe eckra-macos-x64 eckra-macos-arm64 > SHA256SUMS
+      - name: Update Scoop manifest
+        run: node scripts/update-scoop.mjs
+      - name: Update Homebrew formula
+        run: node scripts/update-homebrew.mjs
+      - name: Commit packaging manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/ Formula/
+          if git diff --cached --quiet; then
+            echo "No packaging changes to commit"
+          else
+            git commit -m "chore: update packaging manifests for ${{ github.ref_name }}"
+            git push origin HEAD:master
+          fi
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            dist/eckra-linux-x64 \
+            dist/eckra-linux-arm64 \
+            dist/eckra-win-x64.exe \
+            dist/eckra-macos-x64 \
+            dist/eckra-macos-arm64 \
+            dist/SHA256SUMS \
+            --clobber
