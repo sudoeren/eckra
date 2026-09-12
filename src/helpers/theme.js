@@ -373,12 +373,13 @@ function expandGlob(pattern) {
 }
 
 /**
- * Resolve a config and its imports recursively. Imports come first, in the
- * order they are listed, and the importing file is loaded last so that its
- * values override the imports (Alacritty semantics).
+ * Resolve a config and its includes recursively. Includes come first, in
+ * the order they are listed, and the importing file is loaded last so that
+ * its values override the includes (Alacritty import semantics).
  */
-function collectAlacrittyConfigs(
+function collectConfigs(
   file,
+  readImports,
   options = {},
   visited = new Set(),
   depth = 0
@@ -403,19 +404,28 @@ function collectAlacrittyConfigs(
   const home = options.home || os.homedir();
   const configs = [];
 
-  for (const spec of readConfigImports(content)) {
+  for (const spec of readImports(content)) {
     const expanded = expandImportPath(spec, baseDir, home);
     if (!expanded) continue;
     for (const resolved of expandGlob(expanded)) {
       if (!fs.existsSync(resolved)) continue;
       configs.push(
-        ...collectAlacrittyConfigs(resolved, options, visited, depth + 1)
+        ...collectConfigs(resolved, readImports, options, visited, depth + 1)
       );
     }
   }
 
   configs.push({ path: file, content });
   return configs;
+}
+
+function collectAlacrittyConfigs(
+  file,
+  options = {},
+  visited = new Set(),
+  depth = 0
+) {
+  return collectConfigs(file, readConfigImports, options, visited, depth);
 }
 
 function extractYamlPrimaryBackground(content) {
@@ -536,6 +546,118 @@ function detectAlacrittyDark(options = {}) {
     background: rgbToHex(background),
     configPath: mainFile,
   };
+}
+
+// ── Other terminal configs (kitty, Ghostty) ───────────────────
+
+const KITTY_INCLUDE_RE = /^[ \t]*include[ \t]+(.+?)[ \t]*$/gm;
+const GHOSTTY_INCLUDE_RE = /^[ \t]*config-file[ \t]*=[ \t]*(.+?)[ \t]*$/gm;
+const KITTY_BACKGROUND_RE =
+  /^[ \t]*background[ \t]+["']?((?:#|0x)?[0-9a-fA-F]{6})["']?[ \t]*$/gm;
+const GHOSTTY_BACKGROUND_RE =
+  /^[ \t]*background[ \t]*=[ \t]*["']?((?:#|0x)?[0-9a-fA-F]{6})["']?[ \t]*$/gm;
+
+function readAssignedPaths(content, regex) {
+  const specs = [];
+  let match;
+  regex.lastIndex = 0;
+  while ((match = regex.exec(content)) !== null) {
+    let spec = match[1].trim();
+    const quote = spec[0];
+    if ((quote === '"' || quote === "'") && spec.endsWith(quote)) {
+      spec = spec.slice(1, -1);
+    }
+    if (spec) specs.push(spec);
+  }
+  return specs;
+}
+
+function extractHexValues(content, regex) {
+  const values = [];
+  let match;
+  regex.lastIndex = 0;
+  while ((match = regex.exec(content)) !== null) {
+    const raw = match[1];
+    values.push(raw.startsWith("#") || raw.startsWith("0x") ? raw : `#${raw}`);
+  }
+  return values;
+}
+
+function getTerminalConfigCandidates(env, home) {
+  const xdg = env.XDG_CONFIG_HOME || path.join(home, ".config");
+  const seen = new Set();
+  const add = (list, file) => {
+    if (file && !seen.has(file)) {
+      seen.add(file);
+      list.push(file);
+    }
+  };
+  const kitty = [];
+  const ghostty = [];
+  add(kitty, path.join(xdg, "kitty", "kitty.conf"));
+  add(kitty, path.join(home, ".config", "kitty", "kitty.conf"));
+  add(ghostty, path.join(xdg, "ghostty", "config"));
+  add(ghostty, path.join(home, ".config", "ghostty", "config"));
+  return { kitty, ghostty };
+}
+
+/**
+ * Read the effective background from kitty/Ghostty configs when the live
+ * OSC 11 query is unavailable (non-TTY, piped output). Includes
+ * (`include` / `config-file`) are inlined with the same override order as
+ * Alacritty imports.
+ */
+function detectOtherTerminalDark(options = {}) {
+  const env = options.env || process.env;
+  const home = options.home || os.homedir();
+  const candidates = getTerminalConfigCandidates(env, home);
+
+  const terminals = [
+    {
+      name: "kitty",
+      files: candidates.kitty,
+      readImports: (content) => readAssignedPaths(content, KITTY_INCLUDE_RE),
+      extract: (content) => extractHexValues(content, KITTY_BACKGROUND_RE),
+    },
+    {
+      name: "ghostty",
+      files: candidates.ghostty,
+      readImports: (content) => readAssignedPaths(content, GHOSTTY_INCLUDE_RE),
+      extract: (content) => extractHexValues(content, GHOSTTY_BACKGROUND_RE),
+    },
+  ];
+
+  for (const terminal of terminals) {
+    let mainFile = null;
+    for (const file of terminal.files) {
+      try {
+        if (fs.existsSync(file)) {
+          mainFile = file;
+          break;
+        }
+      } catch {}
+    }
+    if (!mainFile) continue;
+
+    const configs = collectConfigs(mainFile, terminal.readImports, { home });
+    let background = null;
+    for (const config of configs) {
+      const values = terminal.extract(config.content);
+      if (values.length) {
+        const rgb = parseColor(values[values.length - 1]);
+        if (rgb) background = rgb;
+      }
+    }
+    if (!background) continue;
+
+    return {
+      isDark: isDarkLuminance(background),
+      background: rgbToHex(background),
+      configPath: mainFile,
+      source: `${terminal.name} config`,
+    };
+  }
+  return null;
 }
 
 // ── Desktop / OS detection ────────────────────────────────────
@@ -726,6 +848,16 @@ function detectThemeInfo(options = {}) {
     };
   }
 
+  const otherTerminal = detectOtherTerminalDark(options);
+  if (otherTerminal) {
+    return {
+      isDark: otherTerminal.isDark,
+      source: otherTerminal.source,
+      background: otherTerminal.background,
+      configPath: otherTerminal.configPath,
+    };
+  }
+
   const osInfo = detectOsDark(options);
   if (osInfo) return osInfo;
 
@@ -827,6 +959,7 @@ module.exports = {
   // exported for tests
   detectThemeInfo,
   detectAlacrittyDark,
+  detectOtherTerminalDark,
   detectOsDark,
   detectEnvDark,
   detectTerminalName,
