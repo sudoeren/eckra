@@ -249,6 +249,89 @@ describe("Theme helper", () => {
     });
   });
 
+  describe("other terminal configs", () => {
+    const KITTY = `${HOME}/.config/kitty/kitty.conf`;
+    const GHOSTTY = `${HOME}/.config/ghostty/config`;
+
+    test("detects kitty and ghostty backgrounds", () => {
+      fs.existsSync.mockImplementation((p) => p === KITTY);
+      fs.readFileSync.mockImplementation((p) =>
+        p === KITTY ? "background #101010\n" : ""
+      );
+      const kitty = theme.detectOtherTerminalDark({ env: {}, home: HOME });
+      expect(kitty.source).toBe("kitty config");
+      expect(kitty.isDark).toBe(true);
+      expect(kitty.background).toBe("#101010");
+
+      fs.existsSync.mockImplementation((p) => p === GHOSTTY);
+      fs.readFileSync.mockImplementation((p) =>
+        p === GHOSTTY ? "background = #eeeeee\n" : ""
+      );
+      const ghostty = theme.detectOtherTerminalDark({ env: {}, home: HOME });
+      expect(ghostty.source).toBe("ghostty config");
+      expect(ghostty.isDark).toBe(false);
+      expect(ghostty.background).toBe("#eeeeee");
+    });
+
+    test("supports bare hex and 0x values", () => {
+      fs.existsSync.mockImplementation((p) => p === GHOSTTY);
+      fs.readFileSync.mockImplementation((p) =>
+        p === GHOSTTY ? "background = 101010\n" : ""
+      );
+      expect(
+        theme.detectOtherTerminalDark({ env: {}, home: HOME }).background
+      ).toBe("#101010");
+    });
+
+    test("inlines kitty includes and lets the main file win", () => {
+      const include = `${HOME}/.config/kitty/theme.conf`;
+      fs.existsSync.mockImplementation((p) => p === KITTY || p === include);
+      fs.readFileSync.mockImplementation((p) => {
+        if (p === KITTY) return "include theme.conf\nbackground #eeeeee\n";
+        if (p === include) return "background #101010\n";
+        return "";
+      });
+      const result = theme.detectOtherTerminalDark({ env: {}, home: HOME });
+      expect(result.background).toBe("#eeeeee");
+      expect(result.isDark).toBe(false);
+    });
+
+    test("honors XDG_CONFIG_HOME", () => {
+      const xdgKitty = "/xdg/kitty/kitty.conf";
+      fs.existsSync.mockImplementation((p) => p === xdgKitty);
+      fs.readFileSync.mockImplementation((p) =>
+        p === xdgKitty ? "background #101010\n" : ""
+      );
+      const result = theme.detectOtherTerminalDark({
+        env: { XDG_CONFIG_HOME: "/xdg" },
+        home: HOME,
+      });
+      expect(result.configPath).toBe(xdgKitty);
+    });
+
+    test("returns null without a kitty/ghostty config", () => {
+      fs.existsSync.mockReturnValue(false);
+      expect(theme.detectOtherTerminalDark({ env: {}, home: HOME })).toBeNull();
+    });
+
+    test("terminal config wins over the desktop theme", () => {
+      fs.existsSync.mockImplementation((p) => p === KITTY);
+      fs.readFileSync.mockImplementation((p) =>
+        p === KITTY ? "background #101010\n" : ""
+      );
+      execSync.mockImplementation(() => Buffer.from("'prefer-light'\n"));
+
+      const info = theme.detectThemeInfo({
+        skipQuery: true,
+        env: {},
+        platform: "linux",
+        home: HOME,
+      });
+      expect(info.source).toBe("kitty config");
+      expect(info.isDark).toBe(true);
+    });
+  });
+
   describe("detection priority", () => {
     test("live OSC query wins over Alacritty and the OS", () => {
       const info = theme.detectThemeInfo({
