@@ -692,6 +692,23 @@ program
   .option("--no-provider", "Skip the live AI provider connection check")
   .action(runDoctorCommand);
 
+// ─── eckra theme ───────────────────────────────────────────────
+// Inspect or change the UI theme. Auto mode detects the terminal
+// background (OSC 11) and Alacritty config, then falls back to the OS.
+
+async function runThemeCommand(mode, options) {
+  const { doThemeCommand } = require("./ui/modules/theme");
+  await doThemeCommand(mode, options);
+}
+
+program
+  .command("theme")
+  .alias("th")
+  .description("Show or set the UI theme (auto, dark, light)")
+  .argument("[mode]", "auto, dark, light or detect")
+  .option("--detect", "Re-run auto detection and ignore the cache")
+  .action(runThemeCommand);
+
 // ─── eckra update ──────────────────────────────────────────────
 // Check for new versions and upgrade the global package.
 // Works outside git repos, no onboarding required.
