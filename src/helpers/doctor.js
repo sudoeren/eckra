@@ -9,9 +9,9 @@ const {
   listAIConnections,
   MANAGED_CONFIG_KEYS,
 } = require("./config");
+const { VALID_THEMES, getThemeInfo } = require("./theme");
 
 const MIN_NODE_MAJOR = 20;
-const VALID_THEMES = ["auto", "dark", "light"];
 
 const PROVIDER_KEY_FIELDS = {
   openai: "openaiApiKey",
@@ -305,6 +305,19 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
         `"${config.theme}" is not a valid theme (auto, dark, light)`
       )
     );
+  } else {
+    let detail = config.theme;
+    if (config.theme === "auto") {
+      try {
+        const info = getThemeInfo();
+        detail = `auto → ${info.effective} (source: ${info.source}${
+          info.background ? `, ${info.background}` : ""
+        })`;
+      } catch {
+        detail = "auto (detection unavailable)";
+      }
+    }
+    checks.push(checkResult("Config", "Theme", "pass", detail));
   }
 
   const legacyKeys = Object.keys(config).filter(
