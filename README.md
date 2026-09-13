@@ -176,7 +176,7 @@ Manage the integration:
 ```bash
 eckra lazygit            # Status + YAML snippet
 eckra lazygit install    # Add the custom command
-eckra lazygit remove     # Remove it
+eckra lazygit remove     # Remove it (alias: uninstall)
 ```
 
 ### CLI options

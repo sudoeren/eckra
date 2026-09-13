@@ -894,7 +894,7 @@ async function runLazygitCommand(action) {
     return;
   }
 
-  if (action === "remove") {
+  if (action === "remove" || action === "uninstall") {
     try {
       const result = removeLazygitCommand();
       if (result.changed) {
@@ -912,7 +912,9 @@ async function runLazygitCommand(action) {
   }
 
   console.log(s.error(`  ✗ Unknown lazygit action: "${action}"`));
-  console.log(s.muted("  Usage: eckra lazygit [status|install|remove]"));
+  console.log(
+    s.muted("  Usage: eckra lazygit [status|install|remove|uninstall]")
+  );
   process.exitCode = 1;
 }
 
@@ -922,7 +924,7 @@ program
   .description(
     "Manage the lazygit integration (AI commit via configurable key)"
   )
-  .argument("[action]", "status, install, remove")
+  .argument("[action]", "status, install, remove (alias: uninstall)")
   .action(runLazygitCommand);
 
 // Default - start interactive
