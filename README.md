@@ -160,6 +160,9 @@ eckra lazygit install
 
 eckra opens full-screen, writes the message, and commits once you approve.
 
+> [!NOTE]
+> The generated shortcut uses lazygit's `output: terminal` and runs eckra with `ECKRA_THEME_NO_QUERY=1`. lazygit keeps reading the terminal while eckra runs, so the live OSC 11 background-color query is skipped there to avoid the reply leaking into lazygit as literal `11;rgb:...` text. If you installed the integration before this change, re-run `eckra lazygit install` to upgrade the managed block.
+
 #### Change the shortcut key
 
 The key defaults to `C` (uppercase). If it collides with a lazygit shortcut you already use, pick another letter:
@@ -305,7 +308,7 @@ eckra theme auto        # Back to auto detection
 ```
 
 > [!TIP]
-> Detection results are cached for a few minutes and refresh automatically when `TERM` changes. Force a refresh with `eckra theme detect`. Set `ECKRA_THEME_NO_QUERY=1` to skip the live terminal query (e.g. on terminals that block on it).
+> Detection results are cached for a few minutes and refresh automatically when `TERM` changes. Force a refresh with `eckra theme detect`. Set `ECKRA_THEME_NO_QUERY=1` to skip the live terminal query (e.g. on terminals that block on it); the query is also skipped automatically when eckra runs under lazygit.
 
 ### Health check
 
