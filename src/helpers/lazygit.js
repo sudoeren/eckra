@@ -104,6 +104,18 @@ const CONFLICTING_KEYS = new Set([
 ]);
 
 /**
+ * The command lazygit runs for the eckra shortcut. On POSIX the live OSC 11
+ * terminal-color query is disabled: lazygit keeps a reader on the terminal
+ * while eckra runs, so the query reply can leak into lazygit as literal
+ * `11;rgb:...` text. Windows never runs the query.
+ */
+function getLazygitCommand(platform = process.platform) {
+  return platform === "win32"
+    ? "eckra commit"
+    : "ECKRA_THEME_NO_QUERY=1 eckra commit";
+}
+
+/**
  * The customCommands YAML block injected into the lazygit config.
  * Defaults to the configured `lazygitKey` (uppercase C unless changed).
  */
@@ -114,8 +126,8 @@ function getLazygitBlock(key) {
     `  - key: '${k}'`,
     "    context: 'files'",
     "    description: 'AI commit with eckra'",
-    "    command: 'eckra commit'",
-    "    subprocess: true",
+    `    command: '${getLazygitCommand()}'`,
+    "    output: terminal",
     `  ${END_MARKER}`,
   ].join("\n");
 }
@@ -182,8 +194,9 @@ function getLazygitConfigPath() {
 
 /**
  * Ensure the eckra custom commands are present in the lazygit config.
- * Replaces the existing block when the configured key differs.
- * Returns { path, changed } where changed is false when nothing was written.
+ * Replaces the existing block when the configured key differs or the managed
+ * block predates the current command/output form. Returns { path, changed }
+ * where changed is false when nothing was written.
  */
 function ensureLazygitCommand() {
   const file = getLazygitConfigPath();
@@ -204,7 +217,11 @@ function ensureLazygitCommand() {
       const end = content.indexOf("\n", endLineStart);
       const endPos = end === -1 ? content.length : end + 1;
       const existing = content.slice(start, endPos);
-      if (existing.includes(`- key: '${getLazygitKey()}'`)) {
+      const upToDate =
+        existing.includes(`- key: '${getLazygitKey()}'`) &&
+        existing.includes("output: terminal") &&
+        existing.includes(getLazygitCommand());
+      if (upToDate) {
         return { path: file, changed: false };
       }
       const updated =
@@ -259,6 +276,7 @@ function removeLazygitCommand() {
 
 module.exports = {
   getLazygitBlock,
+  getLazygitCommand,
   getLazygitKey,
   getLazygitConfigPath,
   getLazygitKeyConflictWarning,

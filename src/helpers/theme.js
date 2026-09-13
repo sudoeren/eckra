@@ -147,6 +147,89 @@ function sleepSync(ms) {
   }
 }
 
+// ── Lazygit detection ─────────────────────────────────────────
+// When eckra runs as a lazygit custom command, lazygit suspends and hands
+// over the real terminal. lazygit keeps a reader on that terminal, so the
+// reply to an OSC 11 query can be stolen and echoed as literal text
+// (`11;rgb:...`) once eckra gives up waiting. Skip the live query there and
+// fall back to the config/OS signals.
+
+const MAX_ANCESTOR_DEPTH = 10;
+
+/**
+ * Read a process' name and parent pid. Linux reads /proc directly; other
+ * POSIX platforms shell out to `ps`. Returns null when the info is
+ * unavailable. Injectable for tests.
+ */
+function readProcessInfo(pid, platform) {
+  const procPid = pid;
+  if (platform === "linux") {
+    try {
+      const stat = fs.readFileSync(`/proc/${procPid}/stat`, "utf8");
+      const open = stat.indexOf("(");
+      const close = stat.lastIndexOf(")");
+      if (open === -1 || close <= open) return null;
+      const name = stat.slice(open + 1, close);
+      const rest = stat
+        .slice(close + 2)
+        .trim()
+        .split(/\s+/);
+      const ppid = parseInt(rest[1], 10);
+      return { name, ppid: Number.isNaN(ppid) ? 0 : ppid };
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const { execSync } = require("child_process");
+    const name = execSync(`ps -o comm= -p ${procPid}`, {
+      stdio: ["pipe", "pipe", "ignore"],
+      timeout: 1000,
+    })
+      .toString()
+      .trim();
+    if (!name) return null;
+    const ppidOut = execSync(`ps -o ppid= -p ${procPid}`, {
+      stdio: ["pipe", "pipe", "ignore"],
+      timeout: 1000,
+    })
+      .toString()
+      .trim();
+    const ppid = parseInt(ppidOut, 10);
+    return { name, ppid: Number.isNaN(ppid) ? 0 : ppid };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Walk the ancestor process tree looking for lazygit. Windows never runs
+ * the live query, so it always reports false.
+ */
+function isRunningUnderLazygit(options = {}) {
+  const platform = options.platform || process.platform;
+  if (platform === "win32") return false;
+
+  const readProc =
+    options.readProc || ((pid) => readProcessInfo(pid, platform));
+  let pid = options.ppid !== undefined ? options.ppid : process.ppid;
+  const seen = new Set();
+
+  for (let i = 0; i < MAX_ANCESTOR_DEPTH && pid && pid > 0; i++) {
+    if (seen.has(pid)) break;
+    seen.add(pid);
+
+    const info = readProc(pid);
+    if (!info || !info.name) break;
+    const base = String(info.name).split(/[\\/]/).pop() || "";
+    if (base.toLowerCase().includes("lazygit")) return true;
+    pid = info.ppid;
+  }
+
+  return false;
+}
+
 /**
  * Query the terminal for its actual background color via OSC 11. This is
  * the most reliable signal because it reflects dynamic themes (pywal and
@@ -165,6 +248,12 @@ function queryTerminalBackground(options = {}) {
 
   if (!isTTY || platform === "win32") return null;
   if (env.ECKRA_THEME_NO_QUERY) return null;
+
+  const underLazygit =
+    options.isLazygit !== undefined
+      ? options.isLazygit
+      : isRunningUnderLazygit({ platform });
+  if (underLazygit) return null;
 
   const timeout =
     options.timeout !== undefined ? options.timeout : TERMINAL_QUERY_TIMEOUT;
@@ -965,6 +1054,8 @@ module.exports = {
   detectTerminalName,
   detectKdeDarkFromKdeglobals,
   queryTerminalBackground,
+  isRunningUnderLazygit,
+  readProcessInfo,
   parseOscColorResponse,
   parseColor,
   hexToRgb,

@@ -100,6 +100,75 @@ describe("Theme helper", () => {
         background: "#000000",
       });
     });
+
+    test("skips without writing when running under lazygit", () => {
+      const write = jest.fn();
+      const result = theme.queryTerminalBackground({
+        isTTY: true,
+        platform: "linux",
+        env: {},
+        isLazygit: true,
+        write,
+      });
+      expect(result).toBeNull();
+      expect(write).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("lazygit detection", () => {
+    test("detects a lazygit ancestor", () => {
+      const proc = {
+        10: { name: "node", ppid: 20 },
+        20: { name: "/usr/local/bin/lazygit", ppid: 1 },
+        1: { name: "init", ppid: 0 },
+      };
+      expect(
+        theme.isRunningUnderLazygit({
+          platform: "linux",
+          ppid: 10,
+          readProc: (pid) => proc[pid] || null,
+        })
+      ).toBe(true);
+    });
+
+    test("returns false when no lazygit ancestor", () => {
+      const proc = {
+        10: { name: "node", ppid: 20 },
+        20: { name: "zsh", ppid: 1 },
+        1: { name: "init", ppid: 0 },
+      };
+      expect(
+        theme.isRunningUnderLazygit({
+          platform: "linux",
+          ppid: 10,
+          readProc: (pid) => proc[pid] || null,
+        })
+      ).toBe(false);
+    });
+
+    test("always false on Windows", () => {
+      expect(theme.isRunningUnderLazygit({ platform: "win32", ppid: 10 })).toBe(
+        false
+      );
+    });
+
+    test("stops on a cycle or missing process info", () => {
+      const proc = { 10: { name: "node", ppid: 10 } };
+      expect(
+        theme.isRunningUnderLazygit({
+          platform: "linux",
+          ppid: 10,
+          readProc: (pid) => proc[pid] || null,
+        })
+      ).toBe(false);
+      expect(
+        theme.isRunningUnderLazygit({
+          platform: "linux",
+          ppid: 10,
+          readProc: () => null,
+        })
+      ).toBe(false);
+    });
   });
 
   describe("alacritty config locations", () => {

@@ -4,6 +4,7 @@ const path = require("path");
 const {
   getLazygitConfigPath,
   getLazygitBlock,
+  getLazygitCommand,
   getLazygitKey,
   getLazygitKeyConflictWarning,
   normalizeLazygitKey,
@@ -92,11 +93,25 @@ describe("Lazygit Helper", () => {
   test("block installs a single C shortcut to the interactive commit flow", () => {
     const block = getLazygitBlock();
     expect(block).toContain("- key: 'C'");
-    expect(block).toContain("command: 'eckra commit'");
-    expect(block).toContain("subprocess: true");
+    expect(block).toContain("command: 'ECKRA_THEME_NO_QUERY=1 eckra commit'");
+    expect(block).toContain("output: terminal");
+    expect(block).not.toContain("subprocess");
     expect(block).not.toContain("<c-g>");
     expect(block).not.toContain("<c-h>");
     expect(block).not.toMatch(/',$/m);
+  });
+
+  test("POSIX command disables the live terminal query", () => {
+    expect(getLazygitCommand("linux")).toBe(
+      "ECKRA_THEME_NO_QUERY=1 eckra commit"
+    );
+    expect(getLazygitCommand("darwin")).toBe(
+      "ECKRA_THEME_NO_QUERY=1 eckra commit"
+    );
+  });
+
+  test("Windows command stays plain because the query is disabled there", () => {
+    expect(getLazygitCommand("win32")).toBe("eckra commit");
   });
 
   test("getLazygitKey defaults to uppercase C from config", () => {
@@ -144,8 +159,7 @@ describe("Lazygit Helper", () => {
   });
 
   test("install is idempotent when markers exist", () => {
-    const content =
-      "customCommands:\n  # --- begin eckra (managed by eckra) ---\n  - key: 'C'\n  # --- end eckra ---\n";
+    const content = `customCommands:\n${getLazygitBlock()}\n`;
     fs.existsSync.mockReturnValue(true);
     fs.readFileSync.mockReturnValue(content);
 
@@ -153,6 +167,21 @@ describe("Lazygit Helper", () => {
 
     expect(result.changed).toBe(false);
     expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  test("install upgrades a legacy subprocess block in place", () => {
+    const content =
+      "customCommands:\n  # --- begin eckra (managed by eckra) ---\n  - key: 'C'\n    context: 'files'\n    description: 'AI commit with eckra'\n    command: 'eckra commit'\n    subprocess: true\n  # --- end eckra ---\n";
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue(content);
+
+    const result = ensureLazygitCommand();
+
+    expect(result.changed).toBe(true);
+    const [, written] = fs.writeFileSync.mock.calls[0];
+    expect(written).toContain("output: terminal");
+    expect(written).toContain("ECKRA_THEME_NO_QUERY=1 eckra commit");
+    expect(written).not.toContain("subprocess");
   });
 
   test("install rewrites the block when the key changed", () => {
