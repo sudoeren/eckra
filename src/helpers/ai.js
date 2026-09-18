@@ -194,7 +194,7 @@ async function callProvider(
       headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.openrouterApiKey}`,
-        "HTTP-Referer": "https://github.com/eckra/eckra",
+        "HTTP-Referer": "https://github.com/sudoeren/eckra",
         "X-Title": "Eckra",
       };
       body = {

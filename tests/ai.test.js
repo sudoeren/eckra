@@ -192,7 +192,7 @@ describe("AI Helper", () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer sk-or-test",
-          "HTTP-Referer": "https://github.com/eckra/eckra",
+          "HTTP-Referer": "https://github.com/sudoeren/eckra",
           "X-Title": "Eckra",
         }),
       })
