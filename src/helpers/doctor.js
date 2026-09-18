@@ -8,6 +8,7 @@ const {
   listAIConnections,
   DEFAULT_CONFIG,
 } = require("./config");
+const { getProvider } = require("./providers");
 const { VALID_THEMES, getThemeInfo } = require("./theme");
 
 // Minimum Node.js version (require(esm) is needed by commander/ora).
@@ -28,32 +29,6 @@ function meetsMinNode(version) {
   }
   return true;
 }
-
-const PROVIDER_KEY_FIELDS = {
-  openai: "openaiApiKey",
-  anthropic: "anthropicApiKey",
-  openrouter: "openrouterApiKey",
-  gemini: "geminiApiKey",
-  opencodego: "opencodeGoApiKey",
-  deepseek: "deepseekApiKey",
-  bedrock: "bedrockApiKey",
-  bedrockmantle: "bedrockMantleApiKey",
-  ollamacloud: "ollamaCloudApiKey",
-};
-
-const PROVIDER_MODEL_KEYS = {
-  openai: "openaiModel",
-  anthropic: "anthropicModel",
-  openrouter: "openrouterModel",
-  gemini: "geminiModel",
-  ollama: "ollamaModel",
-  lmstudio: "model",
-  opencodego: "opencodeGoModel",
-  deepseek: "deepseekModel",
-  bedrock: "bedrockModel",
-  bedrockmantle: "bedrockMantleModel",
-  ollamacloud: "ollamaCloudModel",
-};
 
 function checkResult(category, label, status, detail) {
   return { category, label, status, detail };
@@ -276,7 +251,7 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
     )
   );
 
-  const keyField = PROVIDER_KEY_FIELDS[provider];
+  const keyField = getProvider(provider)?.apiKeyField;
   if (!keyField) {
     checks.push(
       checkResult(
@@ -300,7 +275,7 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
     );
   }
 
-  const modelKey = PROVIDER_MODEL_KEYS[provider] || "model";
+  const modelKey = getProvider(provider)?.modelKey || "model";
   const model = config[modelKey];
   checks.push(
     checkResult(

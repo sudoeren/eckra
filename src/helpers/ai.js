@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
+const { MODEL_KEY_BY_PROVIDER } = require("./providers");
 
 const MAX_DIFF_CHARS = 2000;
 
@@ -370,19 +371,10 @@ async function callProvider(
       }
     } else {
       if (!response.data.choices || response.data.choices.length === 0) {
-        const modelLabels = {
-          openai: config.openaiModel,
-          openrouter: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
-          opencodego: config.opencodeGoModel || DEFAULT_CONFIG.opencodeGoModel,
-          deepseek: config.deepseekModel || DEFAULT_CONFIG.deepseekModel,
-          bedrock: config.bedrockModel || DEFAULT_CONFIG.bedrockModel,
-          bedrockmantle:
-            config.bedrockMantleModel || DEFAULT_CONFIG.bedrockMantleModel,
-          ollamacloud:
-            config.ollamaCloudModel || DEFAULT_CONFIG.ollamaCloudModel,
-        };
+        const modelKey = MODEL_KEY_BY_PROVIDER[provider];
+        const modelName = modelKey ? config[modelKey] : undefined;
         throw new Error(
-          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelLabels[provider] || "unknown"}), insufficient credits, or safety filters.`
+          `AI Provider (${provider}) returned no choices. This might be due to an invalid model name (${modelName || "unknown"}), insufficient credits, or safety filters.`
         );
       }
       content = response.data.choices[0].message.content;
