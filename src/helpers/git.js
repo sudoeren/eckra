@@ -203,8 +203,13 @@ async function undoLastCommit() {
  * Get last commit info
  */
 async function getLastCommit() {
-  const log = await getGit().log(["-1"]);
-  return log.latest;
+  try {
+    const log = await getGit().log(["-1"]);
+    return log.latest || null;
+  } catch {
+    // Repositories without a HEAD (no commits yet) have nothing to return.
+    return null;
+  }
 }
 
 /**

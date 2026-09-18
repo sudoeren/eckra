@@ -32,9 +32,14 @@ async function doLog() {
 }
 
 async function showStandardLog() {
-  const log = await getCommitLog(20);
+  let log;
+  try {
+    log = await getCommitLog(20);
+  } catch {
+    log = { all: [] };
+  }
 
-  if (log.all.length === 0) {
+  if (!log.all || log.all.length === 0) {
     console.log(s.muted("  No commits yet.\n"));
     await pause();
     return;
