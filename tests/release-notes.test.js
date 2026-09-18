@@ -1,4 +1,4 @@
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 const {
   parseCommitSubject,
   groupCommits,
@@ -137,12 +137,12 @@ describe("Release Notes Helper", () => {
 
   describe("git helpers", () => {
     test("getPreviousTag returns the last tag", () => {
-      execSync.mockReturnValue("v1.4.9\n");
+      execFileSync.mockReturnValue("v1.4.9\n");
       expect(getPreviousTag()).toBe("v1.4.9");
     });
 
     test("getPreviousTag returns null when there is no previous tag", () => {
-      execSync.mockImplementation(() => {
+      execFileSync.mockImplementation(() => {
         throw new Error("no tags");
       });
       expect(getPreviousTag()).toBeNull();
@@ -155,14 +155,15 @@ describe("Release Notes Helper", () => {
         ["ccc333", "v1.4.10", ""],
         ["ddd444", "Merge branch 'main'", ""],
       ];
-      execSync.mockReturnValue(
+      execFileSync.mockReturnValue(
         records.map(([h, s, b]) => `${h}\x1f${s}\x1f${b}\x1e`).join("")
       );
 
       const log = getCommitLog("v1.4.9");
 
-      expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining("v1.4.9..HEAD"),
+      expect(execFileSync).toHaveBeenCalledWith(
+        "git",
+        expect.arrayContaining([expect.stringContaining("v1.4.9..HEAD")]),
         expect.any(Object)
       );
       expect(log).toEqual([
@@ -172,12 +173,13 @@ describe("Release Notes Helper", () => {
     });
 
     test("getCommitLog uses full history without a previous tag", () => {
-      execSync.mockReturnValue("");
+      execFileSync.mockReturnValue("");
 
       getCommitLog(null);
 
-      expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining("git log"),
+      expect(execFileSync).toHaveBeenCalledWith(
+        "git",
+        expect.arrayContaining(["log"]),
         expect.any(Object)
       );
     });

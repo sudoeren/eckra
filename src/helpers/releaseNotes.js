@@ -1,4 +1,4 @@
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 
 const GITHUB_REPO = "sudoeren/eckra";
 
@@ -130,10 +130,14 @@ function isVersionBump(subject) {
  */
 function getPreviousTag() {
   try {
-    const tag = execSync("git describe --tags --abbrev=0 HEAD^", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    const tag = execFileSync(
+      "git",
+      ["describe", "--tags", "--abbrev=0", "HEAD^"],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }
+    ).trim();
     return tag || null;
   } catch {
     return null;
@@ -146,10 +150,14 @@ function getPreviousTag() {
  */
 function getCommitLog(previousTag) {
   const range = previousTag ? `${previousTag}..HEAD` : "HEAD";
-  const raw = execSync(`git log --format=%H%x1f%s%x1f%b%x1e ${range}`, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  const raw = execFileSync(
+    "git",
+    ["log", "--format=%H%x1f%s%x1f%b%x1e", range],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }
+  );
 
   return raw
     .split("\x1e")
