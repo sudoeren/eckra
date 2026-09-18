@@ -3,7 +3,6 @@
 const { Command } = require("commander");
 const { getGitStatus } = require("./helpers/git");
 const { version } = require("../package.json");
-const { s, runInteractive } = require("./ui/common");
 const {
   getConfig,
   getConfigPath,
@@ -14,6 +13,17 @@ const {
   isValidConfigKey,
   maskSecret,
 } = require("./helpers/config");
+
+// UI is loaded on first use so non-interactive commands (--version, config
+// list, ...) don't pay for chalk/inquirer/theme at startup.
+let _uiCommon = null;
+const uiCommon = () => _uiCommon || (_uiCommon = require("./ui/common"));
+const s = new Proxy(
+  {},
+  {
+    get: (_target, prop) => uiCommon().s[prop],
+  }
+);
 
 // Lazy load app functions
 const app = () => require("./ui/app");
@@ -39,7 +49,7 @@ async function startInteractive() {
   let ran = false;
   let missingRepo = false;
 
-  await runInteractive(async () => {
+  await uiCommon().runInteractive(async () => {
     if (!(await app().ensureOnboarding())) return;
     try {
       await getGitStatus();
@@ -674,13 +684,16 @@ const DOCTOR_STATUS_ICONS = {
   info: "•",
 };
 
-const DOCTOR_STATUS_TONE = {
-  pass: s.success,
-  warn: s.warning,
-  fail: s.error,
-  skip: s.muted,
-  info: s.muted,
-};
+function doctorStatusTone(status) {
+  const tones = {
+    pass: s.success,
+    warn: s.warning,
+    fail: s.error,
+    skip: s.muted,
+    info: s.muted,
+  };
+  return tones[status] || s.text;
+}
 
 async function runDoctorCommand(options) {
   const { runDoctorCheck } = require("./helpers/doctor");
@@ -699,7 +712,7 @@ async function runDoctorCommand(options) {
         lastCategory = check.category;
       }
       const icon = DOCTOR_STATUS_ICONS[check.status] || "•";
-      const tone = DOCTOR_STATUS_TONE[check.status] || s.text;
+      const tone = doctorStatusTone(check.status);
       console.log(
         `  ${tone(icon)} ${s.text(check.label)} — ${s.muted(check.detail)}`
       );
