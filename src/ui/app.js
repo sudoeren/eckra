@@ -5,11 +5,20 @@ const {
   createCommit,
 } = require("../helpers/git");
 const { generateCommitMessage } = require("../helpers/ai");
+const { copyToClipboard } = require("../helpers/clipboard");
 
 const configHelper = require("../helpers/config");
 
 const { s, clear, header } = require("./common");
-const { menuItem, sep, prompt, spinner, done, fail } = require("./screen");
+const {
+  menuItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+  pause,
+} = require("./screen");
 
 // Lazy load modules
 const status = () => require("./modules/status");
@@ -173,6 +182,23 @@ async function quickStatus() {
 
 async function quickCommit(message, opts = {}) {
   if (message) {
+    if (opts.noCommit) {
+      console.log(s.muted("\n  Commit message:\n"));
+      message.split("\n").forEach((line) => console.log(s.text("    " + line)));
+      console.log(s.muted("\n  (--no-commit: nothing committed)"));
+      await pause();
+      return;
+    }
+    if (opts.clipboard) {
+      const copied = await copyToClipboard(message);
+      console.log(
+        copied
+          ? s.success("\n  ✓ Copied to clipboard.")
+          : s.warning("\n  ⚠ Could not copy to clipboard.")
+      );
+      await pause();
+      return;
+    }
     try {
       const statusResult = await getGitStatus();
       if (statusResult.staged.length === 0) await stageAll();
