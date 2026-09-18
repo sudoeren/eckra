@@ -4,10 +4,9 @@ const { checkAIConnection, resetAIConnectionCache } = require("./ai");
 const {
   getConfig,
   getConfigPath,
-  isValidConfigKey,
   findLocalConfig,
   listAIConnections,
-  MANAGED_CONFIG_KEYS,
+  DEFAULT_CONFIG,
 } = require("./config");
 const { VALID_THEMES, getThemeInfo } = require("./theme");
 
@@ -337,7 +336,7 @@ async function runDoctorCheck({ skipProvider = false } = {}) {
   }
 
   const legacyKeys = Object.keys(config).filter(
-    (k) => !isValidConfigKey(k) && !MANAGED_CONFIG_KEYS.includes(k)
+    (k) => !Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, k)
   );
   if (legacyKeys.length > 0) {
     checks.push(
