@@ -120,7 +120,6 @@ async function resolveFile(file) {
           `  Resolve the conflicts in ${file} manually, then run: git add ${file}`
         )
       );
-      await stageFiles([file]);
       return;
     }
 
