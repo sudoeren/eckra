@@ -137,7 +137,7 @@ async function getCommitLog(count = 10) {
  * Get commit history for AI analysis - structured data with details
  */
 async function getCommitHistory(count = 50) {
-  return await getGit().log(["-n", count.toString()]);
+  return await getCommitLog(count);
 }
 
 /**
@@ -217,13 +217,6 @@ async function getLastCommit() {
  */
 async function amendCommit(message) {
   return await getGit().commit(message, ["--amend"]);
-}
-
-/**
- * List all tags
- */
-async function listTags() {
-  return await getGit().tags();
 }
 
 /**
@@ -712,7 +705,6 @@ module.exports = {
   undoLastCommit,
   getLastCommit,
   amendCommit,
-  listTags,
   listTagDetails,
   createTag,
   deleteTag,
