@@ -18,6 +18,31 @@ Paginator.prototype.paginate = function (output, active, pageSize) {
   return result;
 };
 
+// Finalize each inquirer re-render inside a DEC 2026 "synchronized update"
+// block. Every keystroke makes inquirer erase and rewrite the whole list,
+// which flickers while moving the selection; terminals that support the mode
+// apply the frame atomically, and terminals that don't simply ignore the
+// private-mode sequences.
+const ScreenManager = require("inquirer/lib/utils/screen-manager");
+const _render = ScreenManager.prototype.render;
+ScreenManager.prototype.render = function (...args) {
+  const output = this.rl && this.rl.output;
+  if (!output || typeof output.write !== "function") {
+    return _render.apply(this, args);
+  }
+  // The output is a MuteStream; unmute so the begin/end markers themselves
+  // are not swallowed, then restore the muted state render() leaves behind.
+  if (typeof output.unmute === "function") output.unmute();
+  output.write("\u001b[?2026h");
+  try {
+    return _render.apply(this, args);
+  } finally {
+    if (typeof output.unmute === "function") output.unmute();
+    output.write("\u001b[?2026l");
+    if (typeof output.mute === "function") output.mute();
+  }
+};
+
 // ═══════════════════════════════════════════════════════════════
 // SCREEN ANATOMY
 // Every screen follows the same skeleton:
@@ -45,16 +70,34 @@ function tone(name) {
 const ruleWidth = () => Math.min(cols() - 4, 60);
 
 /**
+ * Wrap a synchronous frame redraw in a DEC 2026 synchronized update so
+ * terminals that support it render the whole frame atomically instead of
+ * flashing. Terminals that don't simply ignore the private-mode sequences.
+ */
+function withSyncUpdate(fn) {
+  const out = process.stdout;
+  const sync = out && out.isTTY && typeof out.write === "function";
+  if (sync) out.write("\u001b[?2026h");
+  try {
+    return fn();
+  } finally {
+    if (sync) out.write("\u001b[?2026l");
+  }
+}
+
+/**
  * Screen opener: clears, draws the brand header, the screen title,
  * an optional subtitle and a rule line.
  */
 function open(title, subtitle) {
-  clear();
-  header();
-  console.log(s.bold("  " + title));
-  if (subtitle) console.log(s.muted("  " + subtitle));
-  console.log(s.dim("  " + "-".repeat(ruleWidth())));
-  console.log();
+  withSyncUpdate(() => {
+    clear();
+    header();
+    console.log(s.bold("  " + title));
+    if (subtitle) console.log(s.muted("  " + subtitle));
+    console.log(s.dim("  " + "-".repeat(ruleWidth())));
+    console.log();
+  });
 }
 
 /**
@@ -189,6 +232,7 @@ module.exports = {
   done,
   fail,
   confirmAction,
+  withSyncUpdate,
   tone,
   strWidth,
   s,

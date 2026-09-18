@@ -18,6 +18,7 @@ const {
   done,
   fail,
   pause,
+  withSyncUpdate,
 } = require("./screen");
 
 // Lazy load modules
@@ -55,73 +56,82 @@ async function startApp() {
   let running = true;
 
   while (running) {
-    clear();
-    header();
-
     const info = await status().getStatusInfo();
 
+    let choices = [];
+    withSyncUpdate(() => {
+      clear();
+      header();
+
+      if (!info) {
+        console.log(s.error("  ✗ not a git repository\n"));
+        console.log(
+          s.muted("  Navigate to a git project or run 'git init'.\n")
+        );
+        return;
+      }
+
+      console.log(status().statusLine(info));
+
+      // Smart menu - options based on current state
+      choices = [];
+
+      // Conflict priority
+      if (info.conflicts > 0) {
+        choices.push(menuItem("Resolve Conflict", "danger", "conflict"));
+        choices.push(sep());
+      }
+
+      // Main actions
+      if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
+        choices.push(
+          menuItem(
+            "Stage" +
+              s.muted(
+                ` (${info.modified + info.untracked + info.deleted} files)`
+              ),
+            "success",
+            "stage"
+          )
+        );
+      }
+
+      if (
+        info.staged > 0 ||
+        info.modified > 0 ||
+        info.untracked > 0 ||
+        info.deleted > 0
+      ) {
+        choices.push(
+          menuItem(
+            "Commit" +
+              (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
+            "primary",
+            "commit"
+          )
+        );
+      }
+
+      choices.push(menuItem("Push", "primary", "push"));
+      choices.push(menuItem("Pull", "primary", "pull"));
+
+      choices.push(sep());
+
+      choices.push(menuItem("Status", "text", "status"));
+      choices.push(menuItem("Branch", "text", "branch"));
+      choices.push(menuItem("Log", "text", "log"));
+      choices.push(menuItem("More", "text", "more"));
+
+      choices.push(sep());
+      choices.push(menuItem("Exit", "muted", "exit"));
+    });
+
     if (!info) {
-      console.log(s.error("  ✗ not a git repository\n"));
-      console.log(s.muted("  Navigate to a git project or run 'git init'.\n"));
       await prompt([
         { type: "input", name: "x", message: s.muted("Press Enter...") },
       ]);
       return;
     }
-
-    console.log(status().statusLine(info));
-
-    // Smart menu - options based on current state
-    const choices = [];
-
-    // Conflict priority
-    if (info.conflicts > 0) {
-      choices.push(menuItem("Resolve Conflict", "danger", "conflict"));
-      choices.push(sep());
-    }
-
-    // Main actions
-    if (info.modified > 0 || info.untracked > 0 || info.deleted > 0) {
-      choices.push(
-        menuItem(
-          "Stage" +
-            s.muted(
-              ` (${info.modified + info.untracked + info.deleted} files)`
-            ),
-          "success",
-          "stage"
-        )
-      );
-    }
-
-    if (
-      info.staged > 0 ||
-      info.modified > 0 ||
-      info.untracked > 0 ||
-      info.deleted > 0
-    ) {
-      choices.push(
-        menuItem(
-          "Commit" +
-            (info.staged > 0 ? s.muted(` (${info.staged} staged)`) : ""),
-          "primary",
-          "commit"
-        )
-      );
-    }
-
-    choices.push(menuItem("Push", "primary", "push"));
-    choices.push(menuItem("Pull", "primary", "pull"));
-
-    choices.push(sep());
-
-    choices.push(menuItem("Status", "text", "status"));
-    choices.push(menuItem("Branch", "text", "branch"));
-    choices.push(menuItem("Log", "text", "log"));
-    choices.push(menuItem("More", "text", "more"));
-
-    choices.push(sep());
-    choices.push(menuItem("Exit", "muted", "exit"));
 
     const { action } = await prompt([
       {

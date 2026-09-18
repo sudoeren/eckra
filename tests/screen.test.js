@@ -6,6 +6,7 @@ const {
   tone,
   strWidth,
   confirmAction,
+  withSyncUpdate,
 } = require("../src/ui/screen");
 
 jest.mock("inquirer", () => ({ prompt: jest.fn() }));
@@ -82,5 +83,30 @@ describe("Screen helpers", () => {
     const result = await confirmAction("Are you sure?");
 
     expect(result).toBe(false);
+  });
+
+  test("withSyncUpdate brackets a frame with DEC 2026 markers on a TTY", () => {
+    const originalIsTTY = process.stdout.isTTY;
+    const write = jest
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      const result = withSyncUpdate(() => 42);
+
+      expect(result).toBe(42);
+      const written = write.mock.calls.map((call) => call[0]);
+      expect(written[0]).toBe("\u001b[?2026h");
+      expect(written[written.length - 1]).toBe("\u001b[?2026l");
+    } finally {
+      write.mockRestore();
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
+    }
   });
 });
