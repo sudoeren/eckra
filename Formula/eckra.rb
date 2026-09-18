@@ -1,8 +1,8 @@
 class Eckra < Formula
   desc "AI-powered Git management CLI"
   homepage "https://github.com/sudoeren/eckra"
-  url "https://registry.npmjs.org/eckra/-/eckra-1.5.6.tgz"
-  sha256 "728cbe18722c02b780ffc1f2013308db9b8656c64066b48b5bf540cef5b488be"
+  url "https://registry.npmjs.org/eckra/-/eckra-1.5.7.tgz"
+  sha256 "c3ee7cc4ff2facd2dafb11ab920fade3d205007680b11c6141f0cd702db01ee3"
   license "MIT"
   head "https://github.com/sudoeren/eckra.git", branch: "master"
 
