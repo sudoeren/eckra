@@ -356,7 +356,7 @@ function resetConfig({ local = false } = {}) {
 
   ensureConfigDir();
   writeConfigFile(JSON.stringify(DEFAULT_CONFIG, null, 2));
-  _cachedConfig = { ...DEFAULT_CONFIG }; // Update cache
+  _cachedConfig = null; // Invalidate cache; getConfig() re-applies local overrides
   return DEFAULT_CONFIG;
 }
 
