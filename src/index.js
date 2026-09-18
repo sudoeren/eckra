@@ -220,7 +220,15 @@ program
 const SECRET_KEY_RE = /api[_-]?key|token|secret/i;
 
 function maskForDisplay(key, value, showSecrets) {
-  if (value == null || value === "") return "(not set)";
+  if (value == null) return "(not set)";
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = maskForDisplay(k, v, showSecrets);
+    }
+    return out;
+  }
+  if (value === "") return "(not set)";
   if (showSecrets) return value;
   if (SECRET_KEY_RE.test(key)) return maskSecret(value);
   return value;
