@@ -200,7 +200,9 @@ async function callProvider(
         model: config.openrouterModel || DEFAULT_CONFIG.openrouterModel,
         messages,
         temperature,
-        max_tokens,
+        max_tokens: Math.max(max_tokens, 600),
+        reasoning: { effort: "low", exclude: true },
+        provider: { sort: "throughput" },
       };
       break;
 
