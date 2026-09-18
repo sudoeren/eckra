@@ -495,7 +495,10 @@ async function connectionWizard({ existingName, providerHint, nameHint } = {}) {
 
   if (existingName) {
     try {
-      saveAIConnection(existingName, sanitized, { activate: true });
+      const activeName = getConfig().activeAiConnection || "";
+      saveAIConnection(existingName, sanitized, {
+        activate: existingName === activeName,
+      });
       resetAIConnectionCache();
       console.log(s.success(`  ✓ Updated connection "${existingName}"`));
       await sleep(600);
@@ -570,7 +573,9 @@ async function changeModelForConnection(name) {
     }
   }
   try {
-    saveAIConnection(name, sanitized, { activate: true });
+    saveAIConnection(name, sanitized, {
+      activate: name === (cfg.activeAiConnection || ""),
+    });
     resetAIConnectionCache();
     console.log(s.success(`\n  ✓ Model updated for "${name}"`));
     await sleep(600);

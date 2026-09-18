@@ -412,6 +412,33 @@ describe("Settings provider flow", () => {
     expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
       "work",
       { provider: "openai", openaiApiKey: "sk-fixed", openaiModel: "gpt-4o" },
+      { activate: false }
+    );
+  });
+
+  test("connectionWizard keeps an active edited connection active", async () => {
+    const configHelper = require("../src/helpers/config");
+    configHelper.getAIConnection.mockReturnValue({
+      name: "work",
+      provider: "openai",
+      openaiApiKey: "sk-old",
+    });
+    configHelper.getConfig.mockReturnValue({
+      aiProvider: "openai",
+      activeAiConnection: "work",
+    });
+    ai.fetchOpenAIModels.mockResolvedValue([{ id: "gpt-4o", name: "GPT-4o" }]);
+    ai.testProviderConnection.mockResolvedValue({ connected: true });
+    screen.prompt
+      .mockResolvedValueOnce({ openaiApiKey: "sk-fixed" }) // credentials
+      .mockResolvedValueOnce({ openaiModel: "gpt-4o" }); // model
+
+    const result = await connectionWizard({ existingName: "work" });
+
+    expect(result).toBe("work");
+    expect(configHelper.saveAIConnection).toHaveBeenCalledWith(
+      "work",
+      { provider: "openai", openaiApiKey: "sk-fixed", openaiModel: "gpt-4o" },
       { activate: true }
     );
   });
