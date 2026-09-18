@@ -171,8 +171,8 @@ async function doBranch() {
 
         if (remoteAction === "checkout") {
           try {
-            // Extract branch name (e.g., origin/feature -> feature)
-            const localName = remoteBranch.split("/").slice(1).join("/");
+            // Extract branch name (remotes/origin/feature -> feature)
+            const localName = remoteBranch.replace(/^remotes\/[^/]+\//, "");
             await switchBranch(localName); // simple-git smart checkout usually handles remote tracking
             console.log(s.success(`\n  ✓ Checked out ${localName}!`));
             await sleep(600);
