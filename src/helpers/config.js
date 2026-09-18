@@ -122,21 +122,11 @@ let _cachedConfig = null;
  * 2. If that name is missing/empty and a `default` connection exists, use it
  * 3. Otherwise the first connection sorted alphabetically (if any)
  */
-function resolveActiveConnectionName(
-  rawActiveName,
-  connections,
-  localRaw,
-  envOverrides,
-  globalRaw
-) {
+function resolveActiveConnectionName(rawActiveName, connections) {
   if (typeof rawActiveName === "string" && rawActiveName.trim()) {
     return rawActiveName.trim();
   }
-  const map =
-    connections ||
-    (globalRaw.aiConnections && typeof globalRaw.aiConnections === "object"
-      ? globalRaw.aiConnections
-      : {});
+  const map = connections && typeof connections === "object" ? connections : {};
   const names = Object.keys(map);
   if (names.includes("default")) return "default";
   if (names.length > 0)
@@ -291,10 +281,7 @@ function getConfig() {
       : {};
   const activeName = resolveActiveConnectionName(
     rawActiveName,
-    _connectionsForActive,
-    localRaw,
-    envOverrides,
-    globalRaw
+    _connectionsForActive
   );
   if (typeof activeName === "string" && activeName) {
     const connections = _connectionsForActive;
@@ -660,11 +647,8 @@ module.exports = {
   PROVIDER_FIELDS,
   AI_PROVIDERS,
   MANAGED_CONFIG_KEYS,
-  PROVIDER_MANAGED_KEYS,
-  isProviderManagedKey,
   resolveActiveConnectionName,
   migrateLegacyToDefaultIfNeeded,
   normalizeUrl,
   envVarName,
-  getEnvConfig,
 };

@@ -68,10 +68,7 @@ function runGlobalUpgrade() {
 }
 
 module.exports = {
-  PACKAGE_NAME,
-  REGISTRY_URL,
   UPGRADE_COMMAND,
-  getInstalledVersion,
   fetchLatestVersion,
   isVersionNewer,
   checkForUpdates,

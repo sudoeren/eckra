@@ -904,9 +904,7 @@ module.exports = {
   promptModelSearch,
   doModelSelector,
   addAIConnectionFlow,
-  // New unified helpers (also kept as manageAIConnections for backward compat)
   manageProvidersMenu,
-  manageAIConnections: manageProvidersMenu,
   connectionWizard,
   changeModelForConnection,
   showAISettingsSummary,
