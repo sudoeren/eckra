@@ -40,7 +40,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Cache pkg base binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.pkg-cache
           key: pkg-cache-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
