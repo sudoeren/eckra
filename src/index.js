@@ -156,7 +156,7 @@ program
         noCommit: options.commit === false,
         type: options.type,
         clipboard: options.clipboard,
-        noVerify: options.noVerify,
+        noVerify: options.verify === false,
         exclude: options.exclude,
         maxLength: options.maxLength,
       });
