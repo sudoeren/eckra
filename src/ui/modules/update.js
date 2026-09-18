@@ -78,10 +78,6 @@ async function doUpdate({
     return { outdated: true, updated: false };
   }
 
-  const spinUp = spinner("Updating eckra...");
-  spinUp.start();
-  console.log();
-  spinUp.stop();
   let updated = false;
   try {
     runGlobalUpgrade();
