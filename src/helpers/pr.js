@@ -129,6 +129,47 @@ function buildCompareUrl(remote, base, head, { title = "", body = "" } = {}) {
 }
 
 /**
+ * The issue number a branch name refers to ("fix/123-crash", "issue-45",
+ * "gh-7-typo", "123-foo"), or null. Only a standalone number counts, so
+ * "feat/v2-api" has none. Callers confirm the issue exists before using it.
+ */
+function extractIssueNumber(branch) {
+  const m = String(branch || "").match(
+    /(?:^|[/_-])(?:issues?[-_]?|gh[-_]?)?(\d{1,6})(?=[-_/]|$)/i
+  );
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Make sure the body links the issue so merging closes it: fill in an
+ * empty "Closes #" placeholder (as PR templates often have), otherwise
+ * append the line. A body that already mentions the issue is left alone.
+ */
+function ensureIssueReference(body, issue) {
+  const text = body || "";
+  if (!issue) return text;
+  if (new RegExp(`#${issue.number}(?!\\d)`).test(text)) return text;
+
+  const placeholder =
+    /(?<![a-z])(clos(?:e[sd]?|ing)|fix(?:e[sd])?|resolve[sd]?) #(?!\d)/i;
+  if (placeholder.test(text)) {
+    return text.replace(placeholder, `$1 #${issue.number}`);
+  }
+  return `${text.trimEnd()}${text.trim() ? "\n\n" : ""}Closes #${issue.number}`;
+}
+
+/**
+ * Split a "a, b c" style list of users or labels into clean names.
+ */
+function parseList(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim().replace(/^@/, ""))
+    .filter(Boolean);
+}
+
+/**
  * Title/body used when the AI is skipped or fails: the template as-is when
  * the repo has one, otherwise a bullet list of the commits.
  */
@@ -358,6 +399,44 @@ async function findExistingPr() {
 }
 
 /**
+ * The open issue with this number, as { number, title }, or null when it
+ * doesn't exist, is closed, or gh can't tell.
+ */
+async function getOpenIssue(number) {
+  if (!number) return null;
+  try {
+    const issue = JSON.parse(
+      await runGh([
+        "issue",
+        "view",
+        String(number),
+        "--json",
+        "number,title,state",
+      ])
+    );
+    return issue && issue.state === "OPEN"
+      ? { number: issue.number, title: issue.title }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Names of the repository's labels (empty when gh can't list them).
+ */
+async function listLabels() {
+  try {
+    const labels = JSON.parse(
+      await runGh(["label", "list", "--json", "name", "--limit", "100"])
+    );
+    return labels.map((label) => label.name).sort();
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Run a gh command whose body comes from a temp file, so its size and
  * content never hit command-line limits or quoting issues. `buildArgs`
  * receives the file path and returns the gh arguments.
@@ -393,29 +472,43 @@ function lastUrl(stdout) {
 /**
  * Create the pull request with the GitHub CLI and return its URL.
  */
-async function createPullRequest({ title, body, base, draft = false }) {
+async function createPullRequest({
+  title,
+  body,
+  base,
+  draft = false,
+  reviewers = [],
+  labels = [],
+}) {
   const stdout = await runGhWithBody(body, (bodyFile) => {
     const args = ["pr", "create", "--title", title, "--body-file", bodyFile];
     if (base) args.push("--base", base);
     if (draft) args.push("--draft");
+    for (const reviewer of reviewers) args.push("--reviewer", reviewer);
+    for (const label of labels) args.push("--label", label);
     return args;
   });
   return lastUrl(stdout);
 }
 
 /**
- * Replace the title and body of an open pull request; returns its URL.
+ * Replace the title and body of an open pull request, adding any given
+ * reviewers and labels to the ones it already has; returns its URL.
  */
-async function updatePullRequest({ number, title, body }) {
-  const stdout = await runGhWithBody(body, (bodyFile) => [
-    "pr",
-    "edit",
-    String(number),
-    "--title",
-    title,
-    "--body-file",
-    bodyFile,
-  ]);
+async function updatePullRequest({
+  number,
+  title,
+  body,
+  reviewers = [],
+  labels = [],
+}) {
+  const stdout = await runGhWithBody(body, (bodyFile) => {
+    const args = ["pr", "edit", String(number)];
+    args.push("--title", title, "--body-file", bodyFile);
+    for (const reviewer of reviewers) args.push("--add-reviewer", reviewer);
+    for (const label of labels) args.push("--add-label", label);
+    return args;
+  });
   return lastUrl(stdout);
 }
 
@@ -424,6 +517,11 @@ module.exports = {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  extractIssueNumber,
+  ensureIssueReference,
+  parseList,
+  getOpenIssue,
+  listLabels,
   suggestBranchName,
   branchExists,
   isValidBranchName,

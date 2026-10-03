@@ -69,6 +69,14 @@ describe("Pull request flow", () => {
     pr.findExistingPr.mockResolvedValue(null);
     pr.getPushState.mockResolvedValue({ upstream: "origin/x", unpushed: 0 });
     pr.createPullRequest.mockResolvedValue("https://github.com/o/r/pull/1");
+    pr.extractIssueNumber.mockReturnValue(null);
+    pr.getOpenIssue.mockResolvedValue(null);
+    pr.ensureIssueReference.mockImplementation((body, issue) =>
+      issue ? `${body}\n\nCloses #${issue.number}` : body
+    );
+    pr.parseList.mockImplementation((value) =>
+      value ? String(value).split(",") : []
+    );
 
     ai.generatePullRequest.mockResolvedValue({
       title: "feat: add pr command",
@@ -95,12 +103,15 @@ describe("Pull request flow", () => {
       base: "master",
       template: template.content,
       instruction: null,
+      issue: null,
     });
     expect(pr.createPullRequest).toHaveBeenCalledWith({
       title: "feat: add pr command",
       body: "## Description\n\nAdds `eckra pr`.",
       base: "master",
       draft: false,
+      reviewers: [],
+      labels: [],
     });
   });
 
@@ -130,6 +141,63 @@ describe("Pull request flow", () => {
 
     expect(ai.generatePullRequest).toHaveBeenCalledWith(
       expect.objectContaining({ template: "B" })
+    );
+  });
+
+  test("links the open issue named in the branch", async () => {
+    git.getCurrentBranch.mockResolvedValue("fix/12-crash");
+    pr.extractIssueNumber.mockReturnValue(12);
+    pr.getOpenIssue.mockResolvedValue({ number: 12, title: "Crash" });
+    screen.prompt.mockResolvedValueOnce({ action: "create" });
+
+    await doPullRequest(null);
+
+    expect(pr.getOpenIssue).toHaveBeenCalledWith(12);
+    expect(ai.generatePullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ issue: { number: 12, title: "Crash" } })
+    );
+    expect(pr.createPullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: "## Description\n\nAdds `eckra pr`.\n\nCloses #12",
+      })
+    );
+  });
+
+  test("reviewers and labels from flags and the review menu are sent", async () => {
+    pr.listLabels.mockResolvedValue(["bug", "ui"]);
+    screen.prompt
+      .mockResolvedValueOnce({ action: "reviewers" })
+      .mockResolvedValueOnce({ reviewers: "alice,bob" })
+      .mockResolvedValueOnce({ action: "labels" })
+      .mockResolvedValueOnce({ labels: ["ui"] })
+      .mockResolvedValueOnce({ action: "create" });
+
+    await doPullRequest(null, { reviewers: "carol", labels: "bug" });
+
+    const labelPrompt = screen.prompt.mock.calls[3][0][0];
+    expect(labelPrompt.type).toBe("checkbox");
+    expect(labelPrompt.choices).toEqual([
+      { name: "bug", value: "bug", checked: true },
+      { name: "ui", value: "ui", checked: false },
+    ]);
+    expect(screen.prompt.mock.calls[1][0][0].default).toBe("carol");
+    expect(pr.createPullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewers: ["alice", "bob"], labels: ["ui"] })
+    );
+  });
+
+  test("labels are typed when the repository's list is unavailable", async () => {
+    pr.listLabels.mockResolvedValue([]);
+    screen.prompt
+      .mockResolvedValueOnce({ action: "labels" })
+      .mockResolvedValueOnce({ labels: "bug,ui" })
+      .mockResolvedValueOnce({ action: "create" });
+
+    await doPullRequest(null);
+
+    expect(screen.prompt.mock.calls[1][0][0].type).toBe("input");
+    expect(pr.createPullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ labels: ["bug", "ui"] })
     );
   });
 
@@ -302,6 +370,8 @@ describe("Pull request flow", () => {
         number: 9,
         title: "feat: add pr command",
         body: "## Description\n\nAdds `eckra pr`.",
+        reviewers: [],
+        labels: [],
       });
       expect(pr.createPullRequest).not.toHaveBeenCalled();
 

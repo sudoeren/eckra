@@ -1227,7 +1227,7 @@ function getPrBodyBlock(template) {
 - Replace placeholder text (italic prompts, "...", example lines) with real content based on the changes.
 - HTML comments are instructions for the author: follow them, then leave them out of the body.
 - Tick a checkbox ("- [x]") only when the changes clearly show it applies (e.g. the type of change). Leave checkboxes unticked when they claim something you cannot verify from the diff (tests passing, manual testing, reviews).
-- Never invent issue numbers, links or test results. When a section has nothing to report, write "N/A".
+- Never invent issue numbers, links or test results; only reference issues named in this prompt or in the commits. When a section has nothing to report, write "N/A".
 
 Template:
 """
@@ -1282,9 +1282,13 @@ async function generatePullRequest({
   base = "",
   template = null,
   instruction = null,
+  issue = null,
 } = {}) {
   const config = getConfig();
   const activeInstruction = instruction || config.aiInstruction;
+  const issueText = issue
+    ? `\nThis branch addresses issue #${issue.number}: "${issue.title}". Link it with "Closes #${issue.number}"${template ? " where the template asks for a related issue" : " on its own line at the end of the body"}.\n`
+    : "";
   const instructionText = activeInstruction
     ? `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`
     : "";
@@ -1296,7 +1300,7 @@ async function generatePullRequest({
   const commitLines = commits.map((c) => `- ${c.message.split("\n")[0]}`);
 
   const prompt = `You are writing a pull request that merges the branch "${branch}" into "${base}".
-${instructionText}${localeText}
+${instructionText}${localeText}${issueText}
 Commits (newest first):
 ${commitLines.join("\n")}
 

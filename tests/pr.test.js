@@ -10,6 +10,11 @@ const {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  extractIssueNumber,
+  ensureIssueReference,
+  parseList,
+  getOpenIssue,
+  listLabels,
   suggestBranchName,
   createPullRequest,
   updatePullRequest,
@@ -158,6 +163,60 @@ describe("fallbackPrContent", () => {
   });
 });
 
+describe("issue linking", () => {
+  test.each([
+    ["fix/123-crash", 123],
+    ["123-foo", 123],
+    ["feature/issue-45", 45],
+    ["gh-7-typo", 7],
+    ["user/fix_88_bug", 88],
+    ["feat/v2-api", null],
+    ["feat/pull-request", null],
+    ["fix/1234567-too-long", null],
+  ])("extractIssueNumber(%s) -> %s", (branch, expected) => {
+    expect(extractIssueNumber(branch)).toBe(expected);
+  });
+
+  test("fills in a template's empty Closes placeholder", () => {
+    expect(
+      ensureIssueReference("## Related Issue\n\n_Closes #_\n", { number: 12 })
+    ).toBe("## Related Issue\n\n_Closes #12_\n");
+  });
+
+  test("appends the reference when there is no placeholder", () => {
+    expect(ensureIssueReference("body\n", { number: 12 })).toBe(
+      "body\n\nCloses #12"
+    );
+    expect(ensureIssueReference("", { number: 12 })).toBe("Closes #12");
+  });
+
+  test("leaves a body that already links the issue alone", () => {
+    expect(ensureIssueReference("Fixes #12.", { number: 12 })).toBe(
+      "Fixes #12."
+    );
+    // #123 is a different issue
+    expect(ensureIssueReference("see #123", { number: 12 })).toBe(
+      "see #123\n\nCloses #12"
+    );
+  });
+
+  test("does nothing without an issue", () => {
+    expect(ensureIssueReference("_Closes #_", null)).toBe("_Closes #_");
+  });
+});
+
+describe("parseList", () => {
+  test("splits comma-separated names and drops @ and blanks", () => {
+    expect(parseList("@alice, bob ,,org/team")).toEqual([
+      "alice",
+      "bob",
+      "org/team",
+    ]);
+    expect(parseList(null)).toEqual([]);
+    expect(parseList(["x"])).toEqual(["x"]);
+  });
+});
+
 describe("suggestBranchName", () => {
   test("turns a conventional subject into type/slug", () => {
     expect(suggestBranchName([{ message: "feat(pr): add PR command" }])).toBe(
@@ -276,6 +335,67 @@ describe("GitHub CLI calls", () => {
       "--title",
       "feat: y",
     ]);
+  });
+
+  test("reviewers and labels are passed to create and added on update", async () => {
+    mockGh(() => "https://github.com/o/r/pull/7\n");
+
+    await createPullRequest({
+      title: "t",
+      body: "b",
+      reviewers: ["alice", "org/team"],
+      labels: ["bug"],
+    });
+    await updatePullRequest({
+      number: 7,
+      title: "t",
+      body: "b",
+      reviewers: ["alice"],
+      labels: ["bug", "ui"],
+    });
+
+    const [create, update] = childProcess.execFile.mock.calls.map((c) => c[1]);
+    expect(create.slice(6)).toEqual([
+      "--reviewer",
+      "alice",
+      "--reviewer",
+      "org/team",
+      "--label",
+      "bug",
+    ]);
+    expect(update.slice(7)).toEqual([
+      "--add-reviewer",
+      "alice",
+      "--add-label",
+      "bug",
+      "--add-label",
+      "ui",
+    ]);
+  });
+
+  test("getOpenIssue only returns issues that exist and are open", async () => {
+    mockGh(() => JSON.stringify({ number: 12, title: "Crash", state: "OPEN" }));
+    expect(await getOpenIssue(12)).toEqual({ number: 12, title: "Crash" });
+
+    mockGh(() =>
+      JSON.stringify({ number: 12, title: "Crash", state: "CLOSED" })
+    );
+    expect(await getOpenIssue(12)).toBeNull();
+
+    mockGh(() => new Error("not found"));
+    expect(await getOpenIssue(12)).toBeNull();
+
+    childProcess.execFile.mockClear();
+    expect(await getOpenIssue(null)).toBeNull();
+    expect(childProcess.execFile).not.toHaveBeenCalled();
+  });
+
+  test("listLabels returns sorted names, or nothing on failure", async () => {
+    mockGh(() => JSON.stringify([{ name: "ui" }, { name: "bug" }]));
+    expect(await listLabels()).toEqual(["bug", "ui"]);
+
+    mockGh(() => new Error("boom"));
+    expect(await listLabels()).toEqual([]);
   });
 
   test("createPullRequest surfaces gh's stderr", async () => {

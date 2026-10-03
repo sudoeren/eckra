@@ -198,6 +198,8 @@ program
     "-u, --update",
     "Rewrite the title and description of the branch's open pull request"
   )
+  .option("-r, --reviewer <users>", "Request reviews (comma-separated logins)")
+  .option("-l, --label <labels>", "Apply labels (comma-separated)")
   .option("--no-ai", "Skip the AI; use the template or commit list as the body")
   .option("--instruction <text>", "Optional instruction for the AI")
   .action(async (options) => {
@@ -209,6 +211,8 @@ program
         draft: options.draft,
         yes: options.yes,
         update: options.update,
+        reviewers: options.reviewer,
+        labels: options.label,
         noAi: options.ai === false,
         instruction: options.instruction,
       });

@@ -6,6 +6,11 @@ const {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  extractIssueNumber,
+  ensureIssueReference,
+  parseList,
+  getOpenIssue,
+  listLabels,
   suggestBranchName,
   branchExists,
   isValidBranchName,
@@ -61,9 +66,17 @@ async function pickTemplate(templates) {
   return selected === "back" ? undefined : selected;
 }
 
-function showPreview({ title, body }, { base, branch, template }) {
+function showPreview(
+  { title, body, reviewers = [], labels = [] },
+  { base, branch, template, issue }
+) {
   console.log(s.muted(`\n  ${branch} → ${base}`));
   if (template) console.log(s.dim(`  Template: ${template.name}`));
+  if (issue) console.log(s.dim(`  Issue: #${issue.number} ${issue.title}`));
+  if (reviewers.length) {
+    console.log(s.dim(`  Reviewers: ${reviewers.join(", ")}`));
+  }
+  if (labels.length) console.log(s.dim(`  Labels: ${labels.join(", ")}`));
   console.log(s.muted("\n  Title:\n"));
   console.log(s.text("    " + title));
   console.log(s.muted("\n  Body:\n"));
@@ -132,6 +145,56 @@ async function moveOffBaseBranch({ commits, base, baseRef, yes }) {
     await pause();
     return null;
   }
+}
+
+async function askReviewers(current) {
+  const { reviewers } = await prompt([
+    {
+      type: "input",
+      name: "reviewers",
+      message: s.muted("Reviewers (comma-separated logins, empty for none):"),
+      default: current.join(", "),
+    },
+  ]);
+  return parseList(reviewers);
+}
+
+/**
+ * Pick labels from the repository's own list; when it can't be fetched,
+ * fall back to typing them.
+ */
+async function askLabels(current) {
+  const spin = spinner("Loading labels...");
+  spin.start();
+  const available = await listLabels();
+  spin.stop();
+
+  if (available.length === 0) {
+    const { labels } = await prompt([
+      {
+        type: "input",
+        name: "labels",
+        message: s.muted("Labels (comma-separated, empty for none):"),
+        default: current.join(", "),
+      },
+    ]);
+    return parseList(labels);
+  }
+
+  const { labels } = await prompt([
+    {
+      type: "checkbox",
+      name: "labels",
+      message: s.muted("Labels (space to select, enter to confirm):"),
+      choices: available.map((name) => ({
+        name,
+        value: name,
+        checked: current.includes(name),
+      })),
+      pageSize: 15,
+    },
+  ]);
+  return labels;
 }
 
 /**
@@ -213,6 +276,7 @@ async function showBrowserFallback(content, { remote, base, branch }) {
  * - noAi: don't call the AI; use the template / commit list as the body
  * - instruction: optional direction for the AI
  * - update: rewrite the branch's open pull request without asking
+ * - reviewers / labels: comma-separated lists (or arrays) to request/apply
  */
 async function doPullRequest(_info, opts = {}) {
   const {
@@ -223,6 +287,8 @@ async function doPullRequest(_info, opts = {}) {
     noAi = false,
     instruction = null,
     update = false,
+    reviewers: reviewersOpt = null,
+    labels: labelsOpt = null,
   } = opts;
 
   open("Pull Request");
@@ -297,10 +363,20 @@ async function doPullRequest(_info, opts = {}) {
 
   const template = await pickTemplate(findPrTemplates(await getRepoRoot()));
   if (template === undefined) return;
-  const context = { base, branch, template, remote };
+
+  // A number in the branch name only counts when it is a real open issue.
+  const issue = hasGh ? await getOpenIssue(extractIssueNumber(branch)) : null;
+  const context = { base, branch, template, remote, issue };
+
+  const withIssue = (generated) => ({
+    ...generated,
+    body: ensureIssueReference(generated.body, issue),
+  });
 
   const generate = async () => {
-    const fallback = fallbackPrContent(commits, branch, template?.content);
+    const fallback = withIssue(
+      fallbackPrContent(commits, branch, template?.content)
+    );
     if (noAi) return fallback;
 
     const spin = spinner(
@@ -319,16 +395,21 @@ async function doPullRequest(_info, opts = {}) {
         base,
         template: template?.content,
         instruction,
+        issue,
       });
       spin.stop();
-      return generated;
+      return withIssue(generated);
     } catch (err) {
       fail(spin, `AI error: ${err.message}`);
       return fallback;
     }
   };
 
-  const content = await generate();
+  const content = {
+    ...(await generate()),
+    reviewers: parseList(reviewersOpt),
+    labels: parseList(labelsOpt),
+  };
   if (titleOpt) content.title = titleOpt;
 
   let asDraft = draft;
@@ -357,6 +438,16 @@ async function doPullRequest(_info, opts = {}) {
           sep(),
           menuItem("Edit title", "text", "title"),
           menuItem("Edit body (opens your editor)", "text", "body"),
+          ...(hasGh
+            ? [
+                menuItem(
+                  existing ? "Add reviewers" : "Reviewers",
+                  "text",
+                  "reviewers"
+                ),
+                menuItem(existing ? "Add labels" : "Labels", "text", "labels"),
+              ]
+            : []),
           ...(noAi ? [] : [menuItem("Regenerate", "ai", "regenerate")]),
           backItem("Cancel"),
         ],
@@ -390,6 +481,10 @@ async function doPullRequest(_info, opts = {}) {
         },
       ]);
       content.body = body.trim();
+    } else if (action === "reviewers") {
+      content.reviewers = await askReviewers(content.reviewers);
+    } else if (action === "labels") {
+      content.labels = await askLabels(content.labels);
     } else if (action === "regenerate") {
       Object.assign(content, await generate());
     }
@@ -419,6 +514,8 @@ async function doPullRequest(_info, opts = {}) {
         number: existing.number,
         title: content.title,
         body: content.body,
+        reviewers: content.reviewers,
+        labels: content.labels,
       });
       done(spinUpdate, "Pull request updated!");
       console.log("\n  " + s.primary(link(url || existing.url)) + "\n");
@@ -437,6 +534,8 @@ async function doPullRequest(_info, opts = {}) {
       body: content.body,
       base,
       draft: asDraft,
+      reviewers: content.reviewers,
+      labels: content.labels,
     });
     done(
       spin,
