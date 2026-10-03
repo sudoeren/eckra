@@ -23,7 +23,10 @@ jest.mock("../src/ui/screen", () => ({
     name: label,
     value: value === undefined ? label : value,
   })),
-  backItem: jest.fn(() => ({ name: "Back", value: "back" })),
+  backItem: jest.fn((label = "Back", value = "back") => ({
+    name: label,
+    value,
+  })),
   sep: jest.fn(() => ({ type: "separator" })),
   rule: jest.fn(),
   prompt: jest.fn(),
@@ -51,6 +54,46 @@ describe("Branch UI module", () => {
 
     expect(git.createBranch).toHaveBeenCalledWith("feature");
   });
+
+  test("New Branch flow is cancelled by an empty name", async () => {
+    screen.prompt
+      .mockResolvedValueOnce({ action: "new" })
+      .mockResolvedValueOnce({ name: "" });
+
+    await doBranch();
+
+    expect(git.createBranch).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["switch", "target", "switchBranch"],
+    ["compare", "target", "compareBranches"],
+    ["remote", "remoteBranch", "switchBranch"],
+    ["merge", "source", "mergeBranch"],
+    ["delete", "toDelete", "deleteBranch"],
+  ])(
+    "%s picker offers Back and does nothing on it",
+    async (action, key, fn) => {
+      git.getBranches.mockResolvedValue({
+        current: "main",
+        // A real branch named "back" must stay selectable.
+        all: ["main", "back", "remotes/origin/dev"],
+      });
+      screen.prompt
+        .mockResolvedValueOnce({ action })
+        .mockResolvedValueOnce({ [key]: null });
+
+      await doBranch();
+
+      const { choices } = screen.prompt.mock.calls[1][0][0];
+      expect(choices[choices.length - 1]).toEqual({
+        name: "Back",
+        value: null,
+      });
+      expect(screen.prompt).toHaveBeenCalledTimes(2);
+      expect(git[fn]).not.toHaveBeenCalled();
+    }
+  );
 
   test("Switch Branch flow switches to the target", async () => {
     git.getBranches.mockResolvedValue({

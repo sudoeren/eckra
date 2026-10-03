@@ -36,6 +36,10 @@ const {
 
 const REMOTE = "origin";
 
+/**
+ * The template to fill in: the only one, the picked one, or null for none.
+ * Returns undefined when the user backs out of the picker.
+ */
 async function pickTemplate(templates) {
   if (templates.length <= 1) return templates[0] || null;
 
@@ -47,11 +51,13 @@ async function pickTemplate(templates) {
       choices: [
         ...templates.map((tpl) => menuItem(tpl.name, "text", tpl)),
         menuItem("No template", "muted", null),
+        sep(),
+        backItem(),
       ],
       pageSize: 15,
     },
   ]);
-  return selected;
+  return selected === "back" ? undefined : selected;
 }
 
 function showPreview({ title, body }, { base, branch, template }) {
@@ -268,6 +274,7 @@ async function doPullRequest(_info, opts = {}) {
   }
 
   const template = await pickTemplate(findPrTemplates(await getRepoRoot()));
+  if (template === undefined) return;
   const context = { base, branch, template, remote };
 
   const generate = async () => {

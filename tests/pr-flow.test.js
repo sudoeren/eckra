@@ -133,6 +133,30 @@ describe("Pull request flow", () => {
     );
   });
 
+  test("backing out of the template picker stops the flow", async () => {
+    pr.findPrTemplates.mockReturnValue([template, { name: "b", content: "B" }]);
+    screen.prompt.mockResolvedValueOnce({ selected: "back" });
+
+    await doPullRequest(null);
+
+    expect(ai.generatePullRequest).not.toHaveBeenCalled();
+    expect(pr.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  test("'No template' still generates a pull request", async () => {
+    pr.findPrTemplates.mockReturnValue([template, { name: "b", content: "B" }]);
+    screen.prompt
+      .mockResolvedValueOnce({ selected: null })
+      .mockResolvedValueOnce({ action: "create" });
+
+    await doPullRequest(null);
+
+    expect(ai.generatePullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ template: undefined })
+    );
+    expect(pr.createPullRequest).toHaveBeenCalled();
+  });
+
   test("--yes skips the review menu; --draft and --title are honored", async () => {
     await doPullRequest(null, { yes: true, draft: true, title: "My title" });
 

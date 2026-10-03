@@ -1,6 +1,15 @@
 const { getTrackedFiles, getBlame } = require("../../helpers/git");
 const { s, pause, truncate, cols, rows } = require("../common");
-const { open, emptyState, prompt, spinner, fail, clear } = require("../screen");
+const {
+  open,
+  emptyState,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  fail,
+  clear,
+} = require("../screen");
 
 async function doBlame() {
   open("Blame", "Show who changed each line of a file");
@@ -18,10 +27,11 @@ async function doBlame() {
       type: "list",
       name: "file",
       message: s.muted("Select file:"),
-      choices: files.slice(0, 30),
+      choices: [...files.slice(0, 30), sep(), backItem("Back", null)],
       pageSize: 15,
     },
   ]);
+  if (!file) return;
 
   const spin = spinner("Loading...");
   spin.start();

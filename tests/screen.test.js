@@ -39,6 +39,7 @@ describe("Screen helpers", () => {
   test("backItem returns a back choice", () => {
     expect(backItem()).toEqual({ name: "  Back", value: "back" });
     expect(backItem("Go Back")).toEqual({ name: "  Go Back", value: "back" });
+    expect(backItem("Back", null)).toEqual({ name: "  Back", value: null });
   });
 
   test("sep returns an inquirer separator", () => {

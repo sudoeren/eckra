@@ -62,10 +62,11 @@ async function doBranch() {
         {
           type: "input",
           name: "name",
-          message: s.muted("Branch name:"),
-          validate: (v) => v.length > 0 && !v.includes(" "),
+          message: s.muted("Branch name (empty to cancel):"),
+          validate: (v) => !v.includes(" "),
         },
       ]);
+      if (!name) break;
       try {
         await createBranch(name);
         console.log(s.success(`\n  ✓ ${name} created and switched!`));
@@ -88,10 +89,11 @@ async function doBranch() {
             type: "list",
             name: "target",
             message: s.muted("Which branch to switch to?"),
-            choices: others,
+            choices: [...others, sep(), backItem("Back", null)],
             pageSize: 15,
           },
         ]);
+        if (!target) break;
         try {
           await switchBranch(target);
           console.log(s.success(`\n  ✓ Switched to ${target} branch!`));
@@ -115,10 +117,11 @@ async function doBranch() {
             type: "list",
             name: "target",
             message: s.muted("Compare with:"),
-            choices: compareTargets,
+            choices: [...compareTargets, sep(), backItem("Back", null)],
             pageSize: 15,
           },
         ]);
+        if (!target) break;
         try {
           const stats = await compareBranches(current, target);
           console.log(s.bold(`\n  Comparison: ${current} vs ${target}`));
@@ -151,10 +154,11 @@ async function doBranch() {
             type: "list",
             name: "remoteBranch",
             message: s.muted("Select remote branch:"),
-            choices: remotes,
+            choices: [...remotes, sep(), backItem("Back", null)],
             pageSize: 15,
           },
         ]);
+        if (!remoteBranch) break;
 
         const { remoteAction } = await prompt([
           {
@@ -195,10 +199,11 @@ async function doBranch() {
             type: "list",
             name: "source",
             message: s.muted("Which branch to merge?"),
-            choices: mergeable,
+            choices: [...mergeable, sep(), backItem("Back", null)],
             pageSize: 15,
           },
         ]);
+        if (!source) break;
         try {
           await mergeBranch(source);
           console.log(s.success(`\n  ✓ ${source} merged!`));
@@ -222,10 +227,11 @@ async function doBranch() {
             type: "list",
             name: "toDelete",
             message: s.muted("Which branch to delete?"),
-            choices: deletable,
+            choices: [...deletable, sep(), backItem("Back", null)],
             pageSize: 15,
           },
         ]);
+        if (!toDelete) break;
         const { confirm } = await prompt([
           {
             type: "confirm",

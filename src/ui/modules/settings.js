@@ -417,17 +417,22 @@ async function connectionWizard({ existingName, providerHint, nameHint } = {}) {
         name: "provider",
         message: s.muted("Which AI provider? (type to search):"),
         source: (_answers, input) => {
-          if (!input) return PROVIDER_CHOICES;
+          const back = backItem("Back", null);
+          if (!input) return [...PROVIDER_CHOICES, back];
           const term = input.toLowerCase();
-          return PROVIDER_CHOICES.filter(
-            (c) =>
-              c.name.toLowerCase().includes(term) ||
-              c.value.toLowerCase().includes(term)
-          );
+          return [
+            ...PROVIDER_CHOICES.filter(
+              (c) =>
+                c.name.toLowerCase().includes(term) ||
+                c.value.toLowerCase().includes(term)
+            ),
+            back,
+          ];
         },
         pageSize: 15,
       },
     ]);
+    if (!answer.provider) return null;
     provider = answer.provider;
   }
 
@@ -792,11 +797,13 @@ async function settingsMenu() {
           menuItem("Auto (Detect terminal theme)", "text", "auto"),
           menuItem("Dark", "text", "dark"),
           menuItem("Light", "text", "light"),
+          backItem(),
         ],
         default: config.theme || "auto",
         pageSize: 15,
       },
     ]);
+    if (theme === "back") return true;
     saveConfig({ theme });
     const { resetThemeCache } = require("../common");
     resetThemeCache();
@@ -818,14 +825,18 @@ async function settingsMenu() {
         type: "list",
         name: "commitType",
         message: s.muted("Select Commit Format:"),
-        choices: COMMIT_FORMATS.map((value) => ({
-          name: COMMIT_TYPE_LABELS[value] || value,
-          value,
-        })),
+        choices: [
+          ...COMMIT_FORMATS.map((value) => ({
+            name: COMMIT_TYPE_LABELS[value] || value,
+            value,
+          })),
+          backItem(),
+        ],
         default: config.commitType || DEFAULT_CONFIG.commitType,
         pageSize: 10,
       },
     ]);
+    if (commitType === "back") return true;
     saveConfig({ commitType });
     console.log(s.success("\n  ✓ Commit format changed to " + commitType));
     await sleep(600);

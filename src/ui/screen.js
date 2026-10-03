@@ -155,10 +155,12 @@ function menuItem(label, t = "text", value) {
 }
 
 /**
- * Standard back choice for menus.
+ * Standard back choice for menus. Lists whose values are user data
+ * (branches, files, ...) pass `null` as the value so a real entry named
+ * "back" can't be mistaken for it.
  */
-function backItem(label = "Back") {
-  return { name: s.muted("  " + label), value: "back" };
+function backItem(label = "Back", value = "back") {
+  return { name: s.muted("  " + label), value };
 }
 
 /**

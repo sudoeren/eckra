@@ -12,6 +12,7 @@ const {
   emptyState,
   menuItem,
   backItem,
+  sep,
   prompt,
   confirmAction,
 } = require("../screen");
@@ -85,13 +86,18 @@ async function doStash() {
       type: "list",
       name: "index",
       message: s.muted("Select stash:"),
-      choices: stashes.all.map((st, i) => ({
-        name: `${i}: ${st.message}`,
-        value: i,
-      })),
+      choices: [
+        ...stashes.all.map((st, i) => ({
+          name: `${i}: ${st.message}`,
+          value: i,
+        })),
+        sep(),
+        backItem("Back", null),
+      ],
       pageSize: 15,
     },
   ]);
+  if (index === null) return;
 
   try {
     if (action === "pop") {
