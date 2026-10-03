@@ -10,6 +10,7 @@ const {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  suggestBranchName,
   createPullRequest,
   findExistingPr,
   isGhAvailable,
@@ -153,6 +154,33 @@ describe("fallbackPrContent", () => {
     expect(
       fallbackPrContent([{ message: "feat: a" }], "x", "## Description\n").body
     ).toBe("## Description");
+  });
+});
+
+describe("suggestBranchName", () => {
+  test("turns a conventional subject into type/slug", () => {
+    expect(suggestBranchName([{ message: "feat(pr): add PR command" }])).toBe(
+      "feat/add-pr-command"
+    );
+  });
+
+  test("uses the oldest commit and strips accents", () => {
+    const commits = [
+      { message: "later tweak" },
+      { message: "fix: çökme düzeltildi, Menü!\n\nbody" },
+    ];
+
+    expect(suggestBranchName(commits)).toBe("fix/cokme-duzeltildi-menu");
+  });
+
+  test("falls back to feature/ and keeps the slug short", () => {
+    expect(suggestBranchName([{ message: "Update the readme" }])).toBe(
+      "feature/update-the-readme"
+    );
+    expect(suggestBranchName([{ message: "!!!" }])).toBe("feature/changes");
+    expect(
+      suggestBranchName([{ message: `feat: ${"word ".repeat(30)}` }]).length
+    ).toBeLessThanOrEqual(45);
   });
 });
 

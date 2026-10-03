@@ -6,6 +6,11 @@ const {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  suggestBranchName,
+  branchExists,
+  isValidBranchName,
+  availableBranchName,
+  moveCommitsToNewBranch,
   getRepoRoot,
   getDefaultBranch,
   resolveBaseRef,
@@ -59,6 +64,67 @@ function showPreview({ title, body }, { base, branch, template }) {
     .split("\n")
     .forEach((line) => console.log(s.text("    " + line)));
   console.log();
+}
+
+/**
+ * The user committed straight onto the base branch and forgot to branch
+ * off first. Offer to move those commits to a new branch (and put the local
+ * base branch back where the remote is) so a pull request can be opened.
+ * Returns the new branch name, or null when the user cancels or it fails.
+ */
+async function moveOffBaseBranch({ commits, base, baseRef, yes }) {
+  console.log(
+    s.warning(`  You committed on ${base} without creating a branch:\n`)
+  );
+  commits.slice(0, 5).forEach((c) => {
+    console.log(s.text(`    ${c.message.split("\n")[0]}`));
+  });
+  if (commits.length > 5) {
+    console.log(s.muted(`    … and ${commits.length - 5} more`));
+  }
+  console.log(
+    s.muted(
+      `\n  eckra can move ${commits.length === 1 ? "it" : "them"} to a new branch and put ${base} back to ${baseRef}.`
+    )
+  );
+  console.log(s.muted("  Uncommitted changes stay as they are.\n"));
+
+  const suggested = await availableBranchName(suggestBranchName(commits));
+  let name = suggested;
+  if (!yes) {
+    const answer = await prompt([
+      {
+        type: "input",
+        name: "name",
+        message: s.muted("New branch name (empty to cancel):"),
+        default: suggested,
+        validate: async (v) => {
+          const value = v.trim();
+          if (!value) return true;
+          if (!(await isValidBranchName(value))) return "Invalid branch name";
+          if (await branchExists(value)) return `${value} already exists`;
+          return true;
+        },
+      },
+    ]);
+    name = answer.name.trim();
+    if (!name) return null;
+  }
+
+  const spin = spinner(`Moving commits to ${name}...`);
+  spin.start();
+  try {
+    await moveCommitsToNewBranch(name, base, baseRef);
+    done(
+      spin,
+      `Moved ${commits.length} commit(s) to ${name}; ${base} is back at ${baseRef}`
+    );
+    return name;
+  } catch (err) {
+    fail(spin, `Could not move the commits: ${err.message}`);
+    await pause();
+    return null;
+  }
 }
 
 /**
@@ -162,7 +228,7 @@ async function doPullRequest(_info, opts = {}) {
   }
   const remote = parseRemoteUrl(origin.refs.push || origin.refs.fetch);
 
-  const branch = await getCurrentBranch();
+  let branch = await getCurrentBranch();
   if (!branch) return stop("Detached HEAD. Switch to a branch first.");
 
   const base = baseOpt || (await getDefaultBranch(REMOTE));
@@ -171,22 +237,26 @@ async function doPullRequest(_info, opts = {}) {
       "Could not detect the base branch. Pass it with --base <branch>."
     );
   }
-  if (base === branch) {
-    return stop(
-      `You are on ${branch}, the base branch. Switch to a feature branch first.`
-    );
-  }
-
   const baseRef = await resolveBaseRef(base, REMOTE);
   if (!baseRef) return stop(`Base branch "${base}" not found.`, "error");
 
   const commits = await getPrCommits(baseRef);
   if (commits.length === 0) {
-    return stop(`No commits on ${branch} that are not on ${base}.`);
+    return stop(
+      branch === base
+        ? `You are on ${branch}, the base branch, with nothing new to open a pull request for.`
+        : `No commits on ${branch} that are not on ${base}.`
+    );
+  }
+
+  const onBase = branch === base;
+  if (onBase) {
+    branch = await moveOffBaseBranch({ commits, base, baseRef, yes });
+    if (!branch) return;
   }
 
   const hasGh = await isGhAvailable();
-  if (hasGh) {
+  if (hasGh && !onBase) {
     const existing = await findExistingPr();
     if (existing) {
       console.log(s.muted(`  A pull request is already open for ${branch}:\n`));

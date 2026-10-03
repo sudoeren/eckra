@@ -147,6 +147,69 @@ function fallbackPrContent(commits, branch, template = null) {
   return { title, body };
 }
 
+/**
+ * Suggest a branch name from the commits that are about to be moved onto
+ * it: "feat: add PR command" -> "feat/add-pr-command". Uses the oldest
+ * commit, which is where the work started.
+ */
+function suggestBranchName(commits) {
+  const list = commits || [];
+  const oldest = list[list.length - 1];
+  const subject = oldest ? oldest.message.split("\n")[0] : "";
+  const conventional = subject.match(/^([a-z]+)(?:\([^)]*\))?!?:\s*(.+)$/i);
+  const prefix = conventional ? conventional[1].toLowerCase() : "feature";
+  const words = (conventional ? conventional[2] : subject)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  let slug = "";
+  for (const word of words) {
+    const next = slug ? `${slug}-${word}` : word;
+    if (next.length > 40) break;
+    slug = next;
+  }
+  return `${prefix}/${slug || "changes"}`;
+}
+
+async function branchExists(name) {
+  return await refExists(`refs/heads/${name}`);
+}
+
+async function isValidBranchName(name) {
+  try {
+    await getGit().raw(["check-ref-format", "--branch", name]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `name` itself when no local branch has it, otherwise the first free
+ * "name-2", "name-3", ...
+ */
+async function availableBranchName(name) {
+  let candidate = name;
+  for (let n = 2; await branchExists(candidate); n++) {
+    candidate = `${name}-${n}`;
+  }
+  return candidate;
+}
+
+/**
+ * Rescue commits made directly on the base branch: create `newBranch` at
+ * the current HEAD and switch to it, then point the local base branch back
+ * at `baseRef`. The commits stay on the new branch and uncommitted changes
+ * in the working tree are left untouched.
+ */
+async function moveCommitsToNewBranch(newBranch, base, baseRef) {
+  await getGit().raw(["checkout", "--no-track", "-b", newBranch]);
+  await getGit().raw(["branch", "-f", base, baseRef]);
+}
+
 async function getRepoRoot() {
   return (await getGit().revparse(["--show-toplevel"])).trim();
 }
@@ -327,6 +390,11 @@ module.exports = {
   parseRemoteUrl,
   buildCompareUrl,
   fallbackPrContent,
+  suggestBranchName,
+  branchExists,
+  isValidBranchName,
+  availableBranchName,
+  moveCommitsToNewBranch,
   getRepoRoot,
   getDefaultBranch,
   resolveBaseRef,

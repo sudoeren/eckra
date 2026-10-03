@@ -201,7 +201,7 @@ eckra lazygit remove     # Remove it (alias: uninstall)
 | `--instruction <text>` |       | Extra instruction for the AI           |
 | `--no-commit`          |       | Only generate and show the message     |
 
-`eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. Without `gh`, eckra prints a prefilled GitHub link instead.
+`eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. Without `gh`, eckra prints a prefilled GitHub link instead. Committed straight onto the base branch by mistake? `eckra pr` offers to move those commits to a new branch (suggested from the commit message) and puts the base branch back in line with the remote; uncommitted changes are left alone.
 
 | Flag | Description |
 | --- | --- |

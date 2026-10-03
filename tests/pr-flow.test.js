@@ -251,16 +251,91 @@ describe("Pull request flow", () => {
     expect(pr.createPullRequest).not.toHaveBeenCalled();
   });
 
-  test("stops on the base branch and when there are no commits", async () => {
-    git.getCurrentBranch.mockResolvedValue("master");
-    await doPullRequest(null);
-
-    git.getCurrentBranch.mockResolvedValue("feat/pr");
+  test("stops when there are no commits to open a pull request for", async () => {
     pr.getPrCommits.mockResolvedValue([]);
     await doPullRequest(null);
 
+    git.getCurrentBranch.mockResolvedValue("master");
+    await doPullRequest(null);
+
+    expect(pr.moveCommitsToNewBranch).not.toHaveBeenCalled();
     expect(ai.generatePullRequest).not.toHaveBeenCalled();
     expect(pr.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  describe("commits made directly on the base branch", () => {
+    beforeEach(() => {
+      git.getCurrentBranch.mockResolvedValue("master");
+      pr.suggestBranchName.mockReturnValue("feat/add-pr-command");
+      pr.availableBranchName.mockImplementation(async (name) => name);
+      pr.isValidBranchName.mockResolvedValue(true);
+      pr.branchExists.mockResolvedValue(false);
+      pr.getPushState.mockResolvedValue({ upstream: null, unpushed: null });
+    });
+
+    test("moves them to a new branch and opens the PR from it", async () => {
+      screen.prompt
+        .mockResolvedValueOnce({ name: " feat/my-branch " })
+        .mockResolvedValueOnce({ action: "create" })
+        .mockResolvedValueOnce({ push: true });
+
+      await doPullRequest(null);
+
+      expect(pr.moveCommitsToNewBranch).toHaveBeenCalledWith(
+        "feat/my-branch",
+        "master",
+        "origin/master"
+      );
+      expect(pr.findExistingPr).not.toHaveBeenCalled();
+      expect(ai.generatePullRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ branch: "feat/my-branch", base: "master" })
+      );
+      expect(pr.pushBranch).toHaveBeenCalledWith("feat/my-branch", "origin");
+      expect(pr.createPullRequest).toHaveBeenCalled();
+    });
+
+    test("an empty branch name cancels without touching anything", async () => {
+      screen.prompt.mockResolvedValueOnce({ name: "" });
+
+      await doPullRequest(null);
+
+      expect(pr.moveCommitsToNewBranch).not.toHaveBeenCalled();
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+    });
+
+    test("rejects invalid and existing branch names", async () => {
+      screen.prompt.mockResolvedValueOnce({ name: "" });
+
+      await doPullRequest(null);
+      const { validate } = screen.prompt.mock.calls[0][0][0];
+
+      pr.isValidBranchName.mockResolvedValueOnce(false);
+      expect(await validate("a..b")).toBe("Invalid branch name");
+      pr.branchExists.mockResolvedValueOnce(true);
+      expect(await validate("taken")).toBe("taken already exists");
+      expect(await validate("fine")).toBe(true);
+    });
+
+    test("--yes uses the suggested branch name", async () => {
+      await doPullRequest(null, { yes: true });
+
+      expect(screen.prompt).not.toHaveBeenCalled();
+      expect(pr.moveCommitsToNewBranch).toHaveBeenCalledWith(
+        "feat/add-pr-command",
+        "master",
+        "origin/master"
+      );
+      expect(pr.createPullRequest).toHaveBeenCalled();
+    });
+
+    test("stops when the commits cannot be moved", async () => {
+      pr.moveCommitsToNewBranch.mockRejectedValue(new Error("nope"));
+      screen.prompt.mockResolvedValueOnce({ name: "feat/x" });
+
+      await doPullRequest(null);
+
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+    });
   });
 
   test("prints a prefilled link when gh is not installed", async () => {
