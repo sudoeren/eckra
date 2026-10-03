@@ -186,6 +186,31 @@ program
   });
 
 program
+  .command("pr")
+  .description(
+    "Open a pull request with an AI-written title and body (uses the repo's PR template)"
+  )
+  .option("-b, --base <branch>", "Target branch (default: remote default)")
+  .option("-t, --title <title>", "Use this title instead of the AI one")
+  .option("-d, --draft", "Create the pull request as a draft")
+  .option("-y, --yes", "Skip the review menu and push confirmation")
+  .option("--no-ai", "Skip the AI; use the template or commit list as the body")
+  .option("--instruction <text>", "Optional instruction for the AI")
+  .action(async (options) => {
+    if (options.ai !== false && !(await app().ensureOnboarding())) return;
+    if (await checkGitRepo()) {
+      await app().quickPr({
+        base: options.base,
+        title: options.title,
+        draft: options.draft,
+        yes: options.yes,
+        noAi: options.ai === false,
+        instruction: options.instruction,
+      });
+    }
+  });
+
+program
   .command("story")
   .alias("t")
   .description("AI-generated project story from commit history")

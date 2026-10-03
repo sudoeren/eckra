@@ -31,6 +31,7 @@ const conflict = () => require("./modules/conflict");
 const branch = () => require("./modules/branch");
 const log = () => require("./modules/log");
 const graph = () => require("./modules/graph");
+const pr = () => require("./modules/pr");
 const onboarding = () => require("./modules/onboarding");
 
 // ═══════════════════════════════════════════════════════════════
@@ -114,6 +115,7 @@ async function startApp() {
 
       choices.push(menuItem("Push", "primary", "push"));
       choices.push(menuItem("Pull", "primary", "pull"));
+      choices.push(menuItem("Pull Request", "primary", "pr"));
 
       choices.push(sep());
 
@@ -156,6 +158,9 @@ async function startApp() {
         break;
       case "pull":
         await sync().doPull();
+        break;
+      case "pr":
+        await pr().doPullRequest(info);
         break;
       case "status":
         await status().doStatus();
@@ -225,6 +230,10 @@ async function quickCommit(message, opts = {}) {
 
 async function quickPush(yes) {
   await sync().doPush(false, { yes });
+}
+
+async function quickPr(opts) {
+  await pr().doPullRequest(null, opts);
 }
 
 async function quickGraph() {
@@ -379,6 +388,7 @@ module.exports = {
   quickStatus,
   quickCommit,
   quickPush,
+  quickPr,
   quickGraph,
   quickTimeline,
   easyWorkflow,

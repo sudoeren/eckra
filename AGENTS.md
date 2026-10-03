@@ -21,6 +21,7 @@ Verification order: `npm run lint` then `npm test`.
 - `src/index.js` — single entrypoint. `commander` CLI, defines subcommands + aliases (`c`=commit, `e`=easy, `st`=status, `p`=push, `t`=story, `s`=start, `pv`=provider, `m`=model). UI modules are **lazy-loaded** via `app()`/`require()` to keep startup fast — don't eagerly require UI modules at the top of index.js.
 - `src/helpers/` — pure logic: `git.js` (wraps `simple-git`), `ai.js` (provider HTTP via axios), `config.js` (config + saved AI connections + legacy migration), `providers.js` (single provider registry: labels, credential fields, model keys, defaults, model-fetch dispatch), `patch.js`.
 - `src/ui/` — all interaction: `app.js` (main menu loop), `common.js` (styles `s.*`, `clear`, `header`), `screen.js` (inquirer prompts, `spinner`/`done`/`fail`), `diff-view.js`.
+- Pull requests: `helpers/pr.js` (PR template discovery, base-branch/commit/diff lookups, `gh` CLI calls via `execFile`) + `generatePullRequest` in `helpers/ai.js` + `ui/modules/pr.js` (`eckra pr`, main menu "Pull Request"). `gh` is an optional runtime dependency; without it the flow falls back to a prefilled compare URL.
 - `src/ui/modules/` — one file per feature, each exporting `doXxx(info)` for the menu flow plus smaller helpers. Follow this pattern for new features; keep git/AI logic in `helpers/`.
 
 ## Gotchas

@@ -1204,7 +1204,130 @@ Write in a natural, narrative tone. Keep each section concise and scannable.`;
   return content;
 }
 
+const PR_DIFF_CHARS = 6000;
+
+function getPrBodyBlock(template) {
+  if (!template) {
+    return `Write the body in Markdown with these sections:
+## Summary
+1-3 sentences on what this pull request does and why.
+
+## Changes
+- Bullet points of the notable changes.`;
+  }
+
+  return `This repository has a pull request template. The body MUST be this template, filled in:
+- Keep every heading, the section order and every checklist item exactly as written.
+- Replace placeholder text (italic prompts, "...", example lines) with real content based on the changes.
+- HTML comments are instructions for the author: follow them, then leave them out of the body.
+- Tick a checkbox ("- [x]") only when the changes clearly show it applies (e.g. the type of change). Leave checkboxes unticked when they claim something you cannot verify from the diff (tests passing, manual testing, reviews).
+- Never invent issue numbers, links or test results. When a section has nothing to report, write "N/A".
+
+Template:
+"""
+${template.trim()}
+"""`;
+}
+
+/**
+ * Split an AI answer in the "TITLE: ... / BODY: ..." format into
+ * { title, body }. Tolerates code fences and answers without the markers.
+ */
+function parsePullRequestResponse(content) {
+  const unfence = (text) => {
+    const m = text.trim().match(/^```[a-z]*\n([\s\S]*?)\n?```$/i);
+    return m ? m[1].trim() : text.trim();
+  };
+
+  const text = unfence(String(content || ""));
+  const titleMatch = text.match(/^\s*TITLE:[ \t]*(.+)$/im);
+  const bodyMatch = text.match(/^\s*BODY:[ \t]*\n?([\s\S]*)$/im);
+
+  let title;
+  let body;
+  if (titleMatch) {
+    title = titleMatch[1];
+    body = bodyMatch ? bodyMatch[1] : "";
+  } else {
+    const lines = text.split("\n");
+    const first = lines.findIndex((line) => line.trim() !== "");
+    title = first === -1 ? "" : lines[first].replace(/^#+\s*/, "");
+    body = first === -1 ? "" : lines.slice(first + 1).join("\n");
+  }
+
+  title = title.trim().replace(/^["'`]+|["'`]+$/g, "");
+  if (!title) {
+    throw new Error("AI returned a pull request without a title.");
+  }
+
+  return { title, body: unfence(body) };
+}
+
+/**
+ * Generate a pull request title and body from the branch's commits and diff.
+ * When `template` (the repo's PR template text) is given, the body is that
+ * template filled in.
+ */
+async function generatePullRequest({
+  commits = [],
+  diff = "",
+  stat = "",
+  branch = "",
+  base = "",
+  template = null,
+  instruction = null,
+} = {}) {
+  const config = getConfig();
+  const activeInstruction = instruction || config.aiInstruction;
+  const instructionText = activeInstruction
+    ? `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`
+    : "";
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the title and the content you add in the "${config.locale}" language (keep template headings as they are).\n`
+      : "";
+
+  const commitLines = commits.map((c) => `- ${c.message.split("\n")[0]}`);
+
+  const prompt = `You are writing a pull request that merges the branch "${branch}" into "${base}".
+${instructionText}${localeText}
+Commits (newest first):
+${commitLines.join("\n")}
+
+Changed files:
+${stat}
+
+Diff:
+${formatDiffForPrompt(diff, PR_DIFF_CHARS)}
+
+Title: one line, max 72 characters, imperative mood, describing the whole pull request. If the commits follow the conventional commits style (feat:, fix:, ...), the title does too.
+
+${getPrBodyBlock(template)}
+
+Respond in exactly this format, with no explanations and no code fences:
+TITLE: <title>
+BODY:
+<body>`;
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a helpful assistant that writes clear, accurate pull request descriptions. Follow the requested format precisely.",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+
+  const content = await callProvider(config.aiProvider, messages, 0.3, 1500);
+  return parsePullRequestResponse(content);
+}
+
 module.exports = {
+  generatePullRequest,
+  parsePullRequestResponse,
   COMMIT_FORMATS,
   resolveCommitType,
   formatDiffForPrompt,

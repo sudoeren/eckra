@@ -128,6 +128,7 @@ Or jump straight into action:
 | `eckra commit`  | `c`   | AI-assisted commit flow       |
 | `eckra status`  | `st`  | Status and staged files       |
 | `eckra push`    | `p`   | Push to remote                |
+| `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template) |
 | `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
 | `eckra story`   | `t`   | AI project timeline           |
 | `eckra graph`   | `g`   | Interactive commit graph      |
@@ -199,6 +200,17 @@ eckra lazygit remove     # Remove it (alias: uninstall)
 | `--max-length <n>`     |       | Preferred max subject length (default 50) |
 | `--instruction <text>` |       | Extra instruction for the AI           |
 | `--no-commit`          |       | Only generate and show the message     |
+
+`eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. Without `gh`, eckra prints a prefilled GitHub link instead.
+
+| Flag | Description |
+| --- | --- |
+| `-b, --base <branch>` | Target branch (default: the remote's default branch) |
+| `-t, --title <title>` | Use this title instead of the AI one |
+| `-d, --draft` | Create the pull request as a draft |
+| `-y, --yes` | Skip the review menu and the push confirmation |
+| `--no-ai` | Skip the AI; use the template or the commit list as the body |
+| `--instruction <text>` | Optional instruction for the AI |
 
 #### Commit message formats
 
