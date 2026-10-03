@@ -1425,7 +1425,71 @@ One or two sentences per conflict on what you kept and why. Flag anything the us
   return parseConflictResponse(content, count);
 }
 
+/**
+ * Write release notes for a version from its commits ({ hash, subject,
+ * body }). Returns a Markdown body without a title, since the tag or the
+ * changelog heading is the title.
+ */
+async function generateReleaseNotes({
+  version,
+  commits = [],
+  previousTag = null,
+  instruction = null,
+} = {}) {
+  const config = getConfig();
+  const activeInstruction = instruction || config.aiInstruction;
+  const instructionText = activeInstruction
+    ? `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`
+    : "";
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the notes in the "${config.locale}" language (keep the section headings in English).\n`
+      : "";
+
+  const commitLines = commits.map((c) => {
+    const body = (c.body || "").trim().replace(/\s*\n\s*/g, " ");
+    return `- ${c.subject}${body ? ` — ${body.substring(0, 200)}` : ""}`;
+  });
+
+  const prompt = `You are writing the release notes for version ${version} of a software project${previousTag ? ` (the previous release was ${previousTag})` : ""}. They are for the people who use the project, not for its maintainers.
+${instructionText}${localeText}
+Commits in this release (newest first):
+${commitLines.join("\n")}
+
+Write the notes as Markdown in this shape:
+- One or two sentences summarizing what this release is about.
+- Then these sections, each only when it has something to list: "### Breaking Changes", "### Features", "### Fixes", "### Other Changes".
+- One "- " bullet per user-visible change, in plain language. Merge commits that belong to the same change into one bullet, and leave out changes users won't notice (refactors, tests, CI, dependency bumps) unless nothing else is left.
+
+Rules:
+- Only describe what the commits say; never invent features, numbers or links.
+- No title or version heading, no code fences, no closing remarks.`;
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a technical writer who turns commit histories into clear, accurate release notes. Follow the requested format precisely.",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+
+  const content = await callProvider(config.aiProvider, messages, 0.3, 1500);
+  const notes = String(content || "")
+    .trim()
+    .replace(/^```[a-z]*\n([\s\S]*?)\n?```$/i, "$1")
+    // A title slipped in anyway: the tag is the title.
+    .replace(/^#{1,2} .*\n+/, "")
+    .trim();
+  if (!notes) throw new Error("AI returned empty release notes.");
+  return notes;
+}
+
 module.exports = {
+  generateReleaseNotes,
   generateConflictResolution,
   parseConflictResponse,
   generatePullRequest,

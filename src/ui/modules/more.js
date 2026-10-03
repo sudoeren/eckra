@@ -42,6 +42,7 @@ async function moreMenu() {
         sep(),
         menuItem("Stash", "text", "stash"),
         menuItem("Tag", "text", "tag"),
+        menuItem("Release", "text", "release"),
         menuItem("Remote", "text", "remote"),
         sep(),
         menuItem("Statistics", "text", "stats"),
@@ -82,6 +83,9 @@ async function moreMenu() {
       break;
     case "tag":
       await doTag();
+      break;
+    case "release":
+      await require("./release").doRelease();
       break;
     case "remote":
       await doRemote();

@@ -130,6 +130,8 @@ Or jump straight into action:
 | `eckra push`    | `p`   | Push to remote                |
 | `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template); `eckra pr list` browses the open ones |
 | `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
+| `eckra release` | `rel` | Publish a release: notes, changelog, version bump, tag, push, GitHub release |
+| `eckra changelog` | `cl` | Print release notes since the last tag (non-interactive) |
 | `eckra story`   | `t`   | AI project timeline           |
 | `eckra graph`   | `g`   | Interactive commit graph      |
 | `eckra start`   | `s`   | Interactive dashboard         |
@@ -218,6 +220,27 @@ The branch is pushed to its configured push remote, falling back to `origin` (or
 | `-l, --label <labels>` | Apply labels (comma-separated) |
 | `--no-ai` | Skip the AI; use the template or the commit list as the body |
 | `--instruction <text>` | Optional instruction for the AI |
+
+`eckra release` (also under **More > Release**) publishes a release from the current branch. It collects the commits since the last tag, suggests the next version from them (breaking change → major, `feat` → minor, otherwise patch), and writes the notes — by AI, or grouped by commit type with `--no-ai`. You review everything first: edit or regenerate the notes, change the version, and choose whether to update `CHANGELOG.md` and the version in `package.json`. After a confirmation eckra commits those files as `chore(release): vX.Y.Z`, creates the tag, pushes the branch and tag, and publishes the GitHub release through `gh` (without `gh`, or on GitLab, it stops after the push and prints the link to the new-release page).
+
+| Flag | Description |
+| --- | --- |
+| `-b, --bump <kind>` | `patch`, `minor` or `major` instead of choosing in the menu |
+| `-r, --release <version>` | Exact version to release |
+| `-d, --draft` / `-p, --prerelease` | Publish the GitHub release as a draft / mark it as a pre-release |
+| `--no-changelog` | Don't write `CHANGELOG.md` |
+| `--no-bump` | Don't change the version in `package.json` |
+| `--no-ai` | Group commits by type instead of AI-written notes |
+| `-y, --yes` | Skip the review menu and the confirmation |
+
+`eckra changelog` only prints the notes, for scripts and CI:
+
+```bash
+eckra changelog                            # commits since the last tag, grouped by type
+eckra changelog --ai                       # AI-written notes
+eckra changelog --from v1.4.0 --to v1.5.0  # any range
+eckra changelog -r 1.6.0 --write           # add the section to CHANGELOG.md
+```
 
 #### Commit message formats
 

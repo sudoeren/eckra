@@ -887,6 +887,106 @@ program
   .option("--output <file>", "Write the message to a file instead of stdout")
   .action(runSuggestCommand);
 
+// ─── eckra changelog ───────────────────────────────────────────
+// Non-interactive release notes for scripts and CI.
+
+async function runChangelogCommand(options) {
+  if (!(await checkGitRepo())) {
+    process.exitCode = 1;
+    return;
+  }
+  if (options.ai && !(await app().ensureOnboarding())) return;
+  if (options.write && !options.release) {
+    console.error(
+      "✗ --write needs the version being released: --release <version>"
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const release = require("./helpers/release");
+  try {
+    const { notes } = await release.buildReleaseNotes({
+      from: options.from,
+      to: options.to,
+      version: options.release,
+      ai: options.ai,
+      instruction: options.instruction,
+    });
+
+    if (options.write) {
+      const file = await release.writeChangelog({
+        version: options.release,
+        body: notes,
+      });
+      console.log(`✓ ${file} updated with ${options.release}`);
+    } else if (options.output) {
+      require("fs").writeFileSync(options.output, notes + "\n");
+    } else {
+      process.stdout.write(notes + "\n");
+    }
+  } catch (err) {
+    console.error(`✗ ${err.message}`);
+    process.exitCode = 1;
+  }
+}
+
+program
+  .command("changelog")
+  .alias("cl")
+  .description(
+    "Print release notes for the commits since the last tag (non-interactive)"
+  )
+  .option("--from <ref>", "Start after this tag or commit (default: last tag)")
+  .option("--to <ref>", "End at this ref (default: HEAD)")
+  .option("-r, --release <version>", "Version being released, e.g. 1.6.0")
+  .option("--ai", "Let the AI write the notes instead of grouping commits")
+  .option("--instruction <text>", "Optional instruction for the AI")
+  .option("-w, --write", "Add the notes to CHANGELOG.md (needs --release)")
+  .option("--output <file>", "Write the notes to a file instead of stdout")
+  .action(runChangelogCommand);
+
+program
+  .command("release")
+  .alias("rel")
+  .description(
+    "Publish a release: notes, changelog, version bump, tag, push and GitHub release"
+  )
+  .option("-b, --bump <kind>", "Version bump: patch, minor or major")
+  .option("-r, --release <version>", "Exact version to release, e.g. 1.6.0")
+  .option("-d, --draft", "Publish the GitHub release as a draft")
+  .option("-p, --prerelease", "Mark the GitHub release as a pre-release")
+  .option("--no-changelog", "Don't write CHANGELOG.md")
+  .option("--no-bump", "Don't change the version in package.json")
+  .option("--no-ai", "Group commits by type instead of AI-written notes")
+  .option("--instruction <text>", "Optional instruction for the AI")
+  .option("-y, --yes", "Skip the review menu and the confirmation")
+  .action(async (options) => {
+    if (options.ai !== false && !(await app().ensureOnboarding())) return;
+    if (options.bump && !["patch", "minor", "major"].includes(options.bump)) {
+      console.log(
+        s.error(
+          `  ✗ Unknown bump: "${options.bump}". Valid: patch, minor, major`
+        )
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (await checkGitRepo()) {
+      await require("./ui/modules/release").doRelease(null, {
+        bump: options.bump || undefined,
+        version: options.release,
+        draft: options.draft,
+        prerelease: options.prerelease,
+        changelog: options.changelog === false ? false : undefined,
+        bumpPackage: options.bump === false ? false : undefined,
+        noAi: options.ai === false,
+        instruction: options.instruction,
+        yes: options.yes,
+      });
+    }
+  });
+
 // ─── eckra lazygit ─────────────────────────────────────────────
 // Lazygit custom-command integration management.
 
