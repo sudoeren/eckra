@@ -56,20 +56,48 @@ async function doStash() {
 
   if (action === "save") {
     const status = await getGitStatus();
-    if (status.modified.length === 0 && status.not_added.length === 0) {
+    // `git stash` takes every tracked change (staged or not, including
+    // deletions and renames); untracked files only go along when asked.
+    const untracked = status.not_added.length;
+    const tracked = status.files.length - untracked;
+    if (tracked === 0 && untracked === 0) {
       emptyState("No changes to stash.");
       await pause();
-    } else {
-      const { message } = await prompt([
+      return;
+    }
+
+    let includeUntracked = false;
+    if (untracked > 0) {
+      const answer = await prompt([
         {
-          type: "input",
-          name: "message",
-          message: s.muted("Stash message (optional):"),
+          type: "confirm",
+          name: "includeUntracked",
+          message: s.muted(`Include ${untracked} untracked file(s)?`),
+          default: true,
         },
       ]);
-      await stashChanges(message || null);
+      includeUntracked = answer.includeUntracked;
+      if (!includeUntracked && tracked === 0) {
+        emptyState("Nothing else to stash.");
+        await pause();
+        return;
+      }
+    }
+
+    const { message } = await prompt([
+      {
+        type: "input",
+        name: "message",
+        message: s.muted("Stash message (optional):"),
+      },
+    ]);
+    try {
+      await stashChanges(message || null, { includeUntracked });
       console.log(s.success("\n  ✓ Changes stashed!"));
       await sleep(600);
+    } catch (err) {
+      console.log(s.error(`\n  ✗ ${err.message}`));
+      await pause();
     }
     return;
   }

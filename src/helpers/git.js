@@ -148,13 +148,13 @@ async function getRemotes() {
 }
 
 /**
- * Stash changes
+ * Stash changes. Untracked files are only stashed with `includeUntracked`.
  */
-async function stashChanges(message = null) {
-  if (message) {
-    return await getGit().stash(["push", "-m", message]);
-  }
-  return await getGit().stash();
+async function stashChanges(message = null, { includeUntracked = false } = {}) {
+  const args = ["push"];
+  if (includeUntracked) args.push("--include-untracked");
+  if (message) args.push("-m", message);
+  return await getGit().stash(args);
 }
 
 /**
