@@ -1,5 +1,7 @@
-const chalk = require("chalk");
-const inquirer = require("inquirer");
+// chalk is ESM-only since v5: require() hands back the module namespace.
+const chalkModule = require("chalk");
+const chalk = chalkModule.default || chalkModule;
+const { ask } = require("./inquirer");
 const { getThemeName, resetThemeCache } = require("../helpers/theme");
 
 // ═══════════════════════════════════════════════════════════════
@@ -157,7 +159,7 @@ function header() {
 }
 
 async function pause() {
-  await inquirer.prompt([
+  await ask([
     {
       type: "input",
       name: "x",

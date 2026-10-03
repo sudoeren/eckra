@@ -1,5 +1,3 @@
-const inquirer = require("inquirer");
-const autocomplete = require("inquirer-autocomplete-prompt");
 const { getTrackedFiles, getBlame } = require("../../helpers/git");
 const { s, pause, truncate, cols, rows } = require("../common");
 const {
@@ -11,8 +9,6 @@ const {
   spinner,
   fail,
 } = require("../screen");
-
-inquirer.registerPrompt("autocomplete", autocomplete);
 
 // Header, title, rule and the action menu take the rest of the screen.
 const pageSize = () => Math.max(5, rows() - 14);

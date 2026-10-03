@@ -21,7 +21,14 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "verbose": true
+    "verbose": true,
+    "transform": {
+      "/node_modules/(chalk)/.+\\.js$": "<rootDir>/scripts/jest-esm-transform.js",
+      "\\.[jt]sx?$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(chalk)/)"
+    ]
   },
   "keywords": [
     "git",
@@ -44,17 +51,16 @@
   "dependencies": {
     "axios": "^1.7.9",
     "boxen": "^9.0.0",
-    "chalk": "^4.1.2",
+    "chalk": "^6.0.1",
     "commander": "15.0.0",
     "diff": "^7.0.0",
     "eastasianwidth": "^0.3.0",
-    "inquirer": "^8.2.6",
-    "inquirer-autocomplete-prompt": "^2.0.1",
+    "inquirer": "^13.4.3",
     "ora": "^9.4.1",
-    "simple-git": "^3.36.0"
+    "simple-git": "^4.0.2"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "repository": {
     "type": "git",
@@ -64,10 +70,10 @@
     "@eslint/js": "^10.0.1",
     "@yao-pkg/pkg": "^6.22.0",
     "esbuild": "^0.28.2",
-    "eslint": "^10.8.1",
+    "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
-    "jest": "^30.2.0",
-    "prettier": "^3.9.6"
+    "jest": "^30.5.2",
+    "prettier": "^3.9.9"
   }
 }

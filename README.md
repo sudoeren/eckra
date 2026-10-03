@@ -42,8 +42,8 @@ eckra is an interactive, AI-powered Git management tool. It writes context-aware
 
 ## Installation
 
-> npm and Homebrew need Node.js 22.12 or newer (commander/ora are ESM-only and
-> need `require(esm)`). The standalone binaries bundle their own runtime.
+> npm and Homebrew need Node.js 22.13 or newer (several dependencies are ESM-only
+> and need `require(esm)`). The standalone binaries bundle their own runtime.
 
 ### npm (any OS)
 

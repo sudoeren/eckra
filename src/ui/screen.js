@@ -1,47 +1,6 @@
-const inquirer = require("inquirer");
+const { ask } = require("./inquirer");
 const eaw = require("eastasianwidth");
 const { s, cols, rows, clear, header, pause } = require("./common");
-
-// inquirer's `loop` option couples two behaviors: the selection cursor
-// wrapping around (wanted) and the list text being duplicated into an
-// endless circular scroll (`[lines, lines, lines]` in Paginator). The
-// latter makes the menu texts appear to loop forever. Decouple them by
-// forcing finite pagination: the highlight may wrap, but the printed
-// texts stay fixed.
-const Paginator = require("inquirer/lib/utils/paginator");
-const _paginate = Paginator.prototype.paginate;
-Paginator.prototype.paginate = function (output, active, pageSize) {
-  const wasInfinite = this.isInfinite;
-  this.isInfinite = false;
-  const result = _paginate.call(this, output, active, pageSize);
-  this.isInfinite = wasInfinite;
-  return result;
-};
-
-// Finalize each inquirer re-render inside a DEC 2026 "synchronized update"
-// block. Every keystroke makes inquirer erase and rewrite the whole list,
-// which flickers while moving the selection; terminals that support the mode
-// apply the frame atomically, and terminals that don't simply ignore the
-// private-mode sequences.
-const ScreenManager = require("inquirer/lib/utils/screen-manager");
-const _render = ScreenManager.prototype.render;
-ScreenManager.prototype.render = function (...args) {
-  const output = this.rl && this.rl.output;
-  if (!output || typeof output.write !== "function") {
-    return _render.apply(this, args);
-  }
-  // The output is a MuteStream; unmute so the begin/end markers themselves
-  // are not swallowed, then restore the muted state render() leaves behind.
-  if (typeof output.unmute === "function") output.unmute();
-  output.write("\u001b[?2026h");
-  try {
-    return _render.apply(this, args);
-  } finally {
-    if (typeof output.unmute === "function") output.unmute();
-    output.write("\u001b[?2026l");
-    if (typeof output.mute === "function") output.mute();
-  }
-};
 
 // ═══════════════════════════════════════════════════════════════
 // SCREEN ANATOMY
@@ -178,7 +137,7 @@ function sep() {
  */
 async function prompt(questions, ...rest) {
   const qs = Array.isArray(questions) ? questions : [questions];
-  return inquirer.prompt(
+  return ask(
     qs.map((q) => ({
       ...q,
       prefix: q.prefix === null ? undefined : q.prefix || s.primary("?"),

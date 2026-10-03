@@ -1,5 +1,3 @@
-const inquirer = require("inquirer");
-const autocomplete = require("inquirer-autocomplete-prompt");
 const { execSync } = require("child_process");
 const {
   getConfig,
@@ -44,8 +42,6 @@ const {
   fail,
   confirmAction,
 } = require("../screen");
-
-inquirer.registerPrompt("autocomplete", autocomplete);
 
 /**
  * First free name for a new connection: "openai", "openai-2", ...

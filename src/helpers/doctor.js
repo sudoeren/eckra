@@ -11,9 +11,11 @@ const {
 const { getProvider } = require("./providers");
 const { VALID_THEMES, getThemeInfo } = require("./theme");
 
-// Minimum Node.js version (require(esm) is needed by commander/ora).
-const MIN_NODE_VERSION = [22, 12, 0];
-const MIN_NODE_LABEL = "22.12";
+// Minimum Node.js version: require(esm) is needed by the ESM-only
+// dependencies (commander, ora, chalk, boxen, inquirer), and inquirer
+// supports 22.13 and newer.
+const MIN_NODE_VERSION = [22, 13, 0];
+const MIN_NODE_LABEL = "22.13";
 
 /**
  * Whether a "major.minor.patch" version string meets the minimum.
