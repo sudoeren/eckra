@@ -9,7 +9,7 @@ const { copyToClipboard } = require("../helpers/clipboard");
 
 const configHelper = require("../helpers/config");
 
-const { s, clear, header } = require("./common");
+const { s, clear, header, pause } = require("./common");
 const {
   menuItem,
   sep,
@@ -17,7 +17,6 @@ const {
   spinner,
   done,
   fail,
-  pause,
   withSyncUpdate,
 } = require("./screen");
 
@@ -340,7 +339,6 @@ async function quickTimeline(count) {
   if (count) {
     const { getCommitHistory } = require("../helpers/git");
     const { generateTimeline } = require("../helpers/ai");
-    const { s, pause } = require("./common");
 
     const n = parseInt(count, 10);
     if (isNaN(n) || n < 1) {
