@@ -36,6 +36,18 @@ describe("AI Helper", () => {
     expect(formatted).toContain("Diff truncated: 3 characters omitted");
   });
 
+  test("should shorten diffs to the configured maxDiffChars", () => {
+    const diff = `diff --git a/a.js b/a.js\n${"+line\n".repeat(200)}`;
+
+    configHelper.getConfig.mockReturnValue({ maxDiffChars: "300" });
+    const formatted = formatDiffForPrompt(diff);
+    expect(formatted.length).toBeLessThan(400);
+    expect(formatted).toContain("more lines of this file omitted");
+
+    configHelper.getConfig.mockReturnValue({});
+    expect(formatDiffForPrompt(diff)).toBe(diff);
+  });
+
   test("should call OpenAI API correctly", async () => {
     configHelper.getConfig.mockReturnValue({
       aiProvider: "openai",

@@ -1,109 +1,60 @@
 const { getCommitHistory } = require("../../helpers/git");
 const { generateTimeline } = require("../../helpers/ai");
-const { s, pause, cols } = require("../common");
+const { s, pause } = require("../common");
 const {
   open,
-  rule,
   menuItem,
   backItem,
   prompt,
   spinner,
   fail,
-  tone,
+  showPages,
 } = require("../screen");
+const { renderMarkdown } = require("../markdown");
 
-function parseSections(text) {
-  const sections = [];
-  const parts = text.split(/\n(?=## )/);
-  for (const part of parts) {
-    const lines = part.trim().split("\n");
-    const headerMatch = lines[0]?.match(/^##\s*(.+)/);
-    if (headerMatch) {
-      sections.push({
-        title: headerMatch[1].trim(),
-        content: lines.slice(1).join("\n").trim(),
-      });
-    } else {
-      sections.push({
-        title: "Timeline",
-        content: part.trim(),
-      });
-    }
-  }
-  return sections;
-}
+const SECTION_TONES = {
+  timeline: "primary",
+  "key milestones": "success",
+  contributors: "ai",
+  "patterns & insights": "warning",
+  "patterns and insights": "warning",
+};
 
-function renderSection(title, content, t) {
-  console.log(tone(t)(`  ${title}`));
-  console.log(rule());
-  const lines = content.split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      console.log();
-    } else if (trimmed.startsWith("- ")) {
-      console.log(s.text("    " + trimmed));
-    } else {
-      const wrapped = wrapText(trimmed, cols() - 8);
-      for (const w of wrapped) {
-        console.log(s.text("    " + w));
-      }
-    }
-  }
-  console.log();
-}
+const formatDate = (date) =>
+  new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
-function wrapText(text, maxWidth) {
-  if (text.length <= maxWidth) return [text];
-  const result = [];
-  let remaining = text;
-  while (remaining.length > maxWidth) {
-    let breakAt = remaining.lastIndexOf(" ", maxWidth);
-    if (breakAt === -1 || breakAt === 0) breakAt = maxWidth;
-    result.push(remaining.substring(0, breakAt).trim());
-    remaining = remaining.substring(breakAt).trim();
-  }
-  if (remaining) result.push(remaining);
-  return result;
-}
-
-function renderStory(story, commitCount, commits) {
+/**
+ * "25 commits  ·  Sep 18, 2026 → Oct 3, 2026" for the analyzed range.
+ */
+function storySummary(commits) {
   const firstDate = commits[commits.length - 1]?.date;
   const lastDate = commits[0]?.date;
+  return firstDate && lastDate
+    ? `${commits.length} commits  ·  ${formatDate(firstDate)} → ${formatDate(lastDate)}`
+    : `${commits.length} commits analyzed`;
+}
 
-  open("Project Story");
+/**
+ * The story laid out for the terminal, one string per line.
+ */
+function storyLines(story) {
+  return renderMarkdown(story, {
+    headingTone: (title) => SECTION_TONES[title.toLowerCase()] || "primary",
+  });
+}
 
-  if (firstDate && lastDate) {
-    const from = new Date(firstDate).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-    const to = new Date(lastDate).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-    console.log(s.muted(`  ${commitCount} commits  ·  ${from} → ${to}\n`));
-  } else {
-    console.log(s.muted(`  ${commitCount} commits analyzed\n`));
-  }
-
-  const sections = parseSections(story);
-
-  const styleMap = {
-    timeline: "primary",
-    "key milestones": "success",
-    contributors: "ai",
-    "patterns & insights": "warning",
-    "patterns and insights": "warning",
-  };
-
-  for (const sec of sections) {
-    const key = sec.title.toLowerCase();
-    const t = styleMap[key] || "primary";
-    renderSection(sec.title, sec.content, t);
-  }
+/**
+ * Print the whole story at once (used by `eckra story --count`, where the
+ * terminal's own scrollback is available).
+ */
+function renderStory(story, _commitCount, commits) {
+  open("Project Story", storySummary(commits));
+  storyLines(story).forEach((line) => console.log(line));
+  console.log();
 }
 
 async function doTimeline() {
@@ -149,18 +100,21 @@ async function doTimeline() {
     return;
   }
 
+  let story;
   try {
-    const story = await generateTimeline(commits);
+    story = await generateTimeline(commits);
     spin.stop();
-    renderStory(story, commits.length, commits);
   } catch (err) {
     fail(spin, `AI Error: ${err.message}`);
     console.log(
       s.muted("\n  Check your AI provider configuration in Settings.")
     );
+    await pause();
+    return;
   }
 
-  await pause();
+  // Paged: the dashboard has no scrollback and a story rarely fits a screen.
+  await showPages("Project Story", storySummary(commits), storyLines(story));
 }
 
 module.exports = { doTimeline, renderStory };

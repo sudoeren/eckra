@@ -1,8 +1,7 @@
 const axios = require("axios");
 const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
 const { MODEL_KEY_BY_PROVIDER } = require("./providers");
-
-const MAX_DIFF_CHARS = 2000;
+const { compactDiff } = require("./patch");
 
 const COMMIT_FORMATS = [
   "plain",
@@ -111,11 +110,20 @@ feat: add autocomplete search for providers
   }
 }
 
-function formatDiffForPrompt(diff, maxChars = MAX_DIFF_CHARS) {
-  if (!diff || diff.length <= maxChars) return diff || "";
+/**
+ * The diff as it goes into a prompt, shortened to the `maxDiffChars`
+ * config value (or `maxChars`) when it is larger than that.
+ */
+function formatDiffForPrompt(diff, maxChars = null) {
+  if (maxChars) return compactDiff(diff, maxChars);
 
-  const omittedChars = diff.length - maxChars;
-  return `${diff.substring(0, maxChars)}\n\n[Diff truncated: ${omittedChars} characters omitted. Review the changed files list for the full scope.]`;
+  const configured = Number(getConfig().maxDiffChars);
+  return compactDiff(
+    diff,
+    Number.isFinite(configured) && configured > 0
+      ? configured
+      : DEFAULT_CONFIG.maxDiffChars
+  );
 }
 
 /**
@@ -1168,10 +1176,10 @@ async function generateTimeline(commits) {
 
   const prompt = `You are a software historian. Below is the git commit history of a project in chronological order (most recent first). Analyze these commits and craft an engaging, human-readable timeline that tells the story of this project.
 
-Format your response in these sections:
+Format your response in exactly these four sections, each starting with the "## " heading shown:
 
 ## Timeline
-A chronological narrative (oldest to newest) that groups related commits into logical phases or milestones. Tell the story naturally — as if explaining the project's evolution to a new team member. For example: "The project started with basic authentication and user management. Then, the team focused on fixing critical bugs in the login flow before shipping the CI/CD pipeline..."
+A chronological narrative (oldest to newest) that groups related commits into logical phases or milestones, one bullet per phase in the form "- **Phase name (date range)**: two or three sentences". Tell the story naturally — as if explaining the project's evolution to a new team member.
 
 ## Key Milestones
 - Brief bullet points of the most significant turning points
@@ -1186,7 +1194,11 @@ Commit history (${commits.length} commits):
 
 ${commitLines.join("\n")}
 
-Write in a natural, narrative tone. Keep each section concise and scannable.`;
+Write in a natural, narrative tone. Keep each section concise and scannable.
+
+Rules:
+- Only use dates that appear in the commit list above; never guess at earlier history that is not shown.
+- Plain Markdown only: "## " headings exactly as above (not bold), "- " bullets, no horizontal rules, no tables, no code blocks.`;
 
   const messages = [
     {
@@ -1204,8 +1216,6 @@ Write in a natural, narrative tone. Keep each section concise and scannable.`;
   return content;
 }
 
-const PR_DIFF_CHARS = 6000;
-
 function getPrBodyBlock(template) {
   if (!template) {
     return `Write the body in Markdown with these sections:
@@ -1221,7 +1231,7 @@ function getPrBodyBlock(template) {
 - Replace placeholder text (italic prompts, "...", example lines) with real content based on the changes.
 - HTML comments are instructions for the author: follow them, then leave them out of the body.
 - Tick a checkbox ("- [x]") only when the changes clearly show it applies (e.g. the type of change). Leave checkboxes unticked when they claim something you cannot verify from the diff (tests passing, manual testing, reviews).
-- Never invent issue numbers, links or test results. When a section has nothing to report, write "N/A".
+- Never invent issue numbers, links or test results; only reference issues named in this prompt or in the commits. When a section has nothing to report, write "N/A".
 
 Template:
 """
@@ -1276,9 +1286,13 @@ async function generatePullRequest({
   base = "",
   template = null,
   instruction = null,
+  issue = null,
 } = {}) {
   const config = getConfig();
   const activeInstruction = instruction || config.aiInstruction;
+  const issueText = issue
+    ? `\nThis branch addresses issue #${issue.number}: "${issue.title}". Link it with "Closes #${issue.number}"${template ? " where the template asks for a related issue" : " on its own line at the end of the body"}.\n`
+    : "";
   const instructionText = activeInstruction
     ? `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`
     : "";
@@ -1290,7 +1304,7 @@ async function generatePullRequest({
   const commitLines = commits.map((c) => `- ${c.message.split("\n")[0]}`);
 
   const prompt = `You are writing a pull request that merges the branch "${branch}" into "${base}".
-${instructionText}${localeText}
+${instructionText}${localeText}${issueText}
 Commits (newest first):
 ${commitLines.join("\n")}
 
@@ -1298,7 +1312,7 @@ Changed files:
 ${stat}
 
 Diff:
-${formatDiffForPrompt(diff, PR_DIFF_CHARS)}
+${formatDiffForPrompt(diff)}
 
 Title: one line, max 72 characters, imperative mood, describing the whole pull request. If the commits follow the conventional commits style (feat:, fix:, ...), the title does too.
 
@@ -1325,7 +1339,159 @@ BODY:
   return parsePullRequestResponse(content);
 }
 
+// Bigger conflicts than this don't fit a prompt with room left to answer.
+const MAX_CONFLICT_CHARS = 12000;
+
+/**
+ * Split an AI answer into { explanation, resolutions[] }. Resolutions are
+ * returned in order; `expected` guards against a model that skipped or
+ * invented one.
+ */
+function parseConflictResponse(content, expected) {
+  const text = String(content || "");
+  const resolutions = [];
+  const blockRe =
+    /^=== RESOLUTION (\d+) ===[ \t]*\r?\n([\s\S]*?)\r?\n?^=== END ===[ \t]*$/gm;
+  let m;
+  while ((m = blockRe.exec(text))) {
+    // Models like to fence code even when told not to.
+    const fenced = m[2].match(/^```[\w-]*\r?\n([\s\S]*?)\r?\n?```$/);
+    resolutions[parseInt(m[1], 10) - 1] = fenced ? fenced[1] : m[2];
+  }
+
+  const complete =
+    resolutions.length === expected &&
+    Array.from({ length: expected }, (_, i) => resolutions[i]).every(
+      (resolution) => typeof resolution === "string"
+    );
+  if (!complete) {
+    throw new Error(
+      `AI did not return a resolution for each of the ${expected} conflict(s).`
+    );
+  }
+
+  const explanation = (text.match(
+    /^=== EXPLANATION ===[ \t]*\r?\n([\s\S]*?)(?=^=== |$(?![\s\S]))/m
+  ) || [])[1];
+  return { explanation: (explanation || "").trim(), resolutions };
+}
+
+/**
+ * Ask the AI how to resolve a file's merge conflicts. `description` comes
+ * from describeConflicts(); `count` is how many conflicts it holds.
+ * Returns { explanation, resolutions[] } — a suggestion to review, never
+ * applied on its own.
+ */
+async function generateConflictResolution({ file, description, count }) {
+  if (description.length > MAX_CONFLICT_CHARS) {
+    throw new Error(
+      "These conflicts are too large to send to the AI; resolve them manually."
+    );
+  }
+
+  const config = getConfig();
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the explanation in the "${config.locale}" language.\n`
+      : "";
+
+  const prompt = `You are resolving git merge conflicts in the file "${file}". It has ${count} conflict(s), shown below with a few lines of the surrounding code. OURS is the current branch, THEIRS is the branch being merged in.
+${localeText}
+${description}
+
+For each conflict, write the lines that should replace the whole conflict (markers included) so that the intent of BOTH sides is kept wherever they are compatible. When they truly contradict each other, pick the side that fits the surrounding code and say so in the explanation. Keep the file's indentation and style. Do not repeat the "Code before" / "Code after" lines and do not add anything that neither side contains.
+
+Respond in exactly this format, with no code fences:
+=== EXPLANATION ===
+One or two sentences per conflict on what you kept and why. Flag anything the user should double-check.
+=== RESOLUTION 1 ===
+<replacement lines for conflict 1>
+=== END ===
+(one RESOLUTION block per conflict, numbered in order)`;
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a careful software engineer resolving merge conflicts. You never leave conflict markers in your output and you follow the requested format precisely.",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+
+  const content = await callProvider(config.aiProvider, messages, 0.2, 2500);
+  return parseConflictResponse(content, count);
+}
+
+/**
+ * Write release notes for a version from its commits ({ hash, subject,
+ * body }). Returns a Markdown body without a title, since the tag or the
+ * changelog heading is the title.
+ */
+async function generateReleaseNotes({
+  version,
+  commits = [],
+  previousTag = null,
+  instruction = null,
+} = {}) {
+  const config = getConfig();
+  const activeInstruction = instruction || config.aiInstruction;
+  const instructionText = activeInstruction
+    ? `\nIMPORTANT USER INSTRUCTION: ${activeInstruction}\n`
+    : "";
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the notes in the "${config.locale}" language (keep the section headings in English).\n`
+      : "";
+
+  const commitLines = commits.map((c) => {
+    const body = (c.body || "").trim().replace(/\s*\n\s*/g, " ");
+    return `- ${c.subject}${body ? ` — ${body.substring(0, 200)}` : ""}`;
+  });
+
+  const prompt = `You are writing the release notes for version ${version} of a software project${previousTag ? ` (the previous release was ${previousTag})` : ""}. They are for the people who use the project, not for its maintainers.
+${instructionText}${localeText}
+Commits in this release (newest first):
+${commitLines.join("\n")}
+
+Write the notes as Markdown in this shape:
+- One or two sentences summarizing what this release is about.
+- Then these sections, each only when it has something to list: "### Breaking Changes", "### Features", "### Fixes", "### Other Changes".
+- One "- " bullet per user-visible change, in plain language. Merge commits that belong to the same change into one bullet, and leave out changes users won't notice (refactors, tests, CI, dependency bumps) unless nothing else is left.
+
+Rules:
+- Only describe what the commits say; never invent features, numbers or links.
+- No title or version heading, no code fences, no closing remarks.`;
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a technical writer who turns commit histories into clear, accurate release notes. Follow the requested format precisely.",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+
+  const content = await callProvider(config.aiProvider, messages, 0.3, 1500);
+  const notes = String(content || "")
+    .trim()
+    .replace(/^```[a-z]*\n([\s\S]*?)\n?```$/i, "$1")
+    // A title slipped in anyway: the tag is the title.
+    .replace(/^#{1,2} .*\n+/, "")
+    .trim();
+  if (!notes) throw new Error("AI returned empty release notes.");
+  return notes;
+}
+
 module.exports = {
+  generateReleaseNotes,
+  generateConflictResolution,
+  parseConflictResponse,
   generatePullRequest,
   parsePullRequestResponse,
   COMMIT_FORMATS,

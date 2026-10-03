@@ -9,6 +9,8 @@ jest.mock("../src/helpers/ai");
 jest.mock("../src/helpers/clipboard");
 jest.mock("../src/ui/screen", () => ({
   open: jest.fn(),
+  backItem: (label, value = "back") => ({ name: label, value }),
+  sep: () => ({ type: "separator" }),
   prompt: jest.fn(),
   spinner: () => ({ start: jest.fn(), stop: jest.fn() }),
   done: jest.fn(),
@@ -150,6 +152,21 @@ describe("Commit flow (aicommits-style)", () => {
     expect(git.createCommit).toHaveBeenCalledWith("fix: two", {
       noVerify: false,
     });
+  });
+
+  test("cancelling the suggestion picker commits nothing", async () => {
+    ai.generateCommitSuggestions.mockResolvedValue(["feat: one", "fix: two"]);
+    screen.prompt.mockResolvedValueOnce({ selected: null });
+
+    await doCommit(null, { generate: 2 });
+
+    const { choices } = screen.prompt.mock.calls[0][0][0];
+    expect(choices[choices.length - 1]).toEqual({
+      name: "Cancel",
+      value: null,
+    });
+    expect(screen.prompt).toHaveBeenCalledTimes(1);
+    expect(git.createCommit).not.toHaveBeenCalled();
   });
 
   test("noCommit only shows the message and never commits", async () => {

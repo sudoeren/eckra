@@ -148,13 +148,13 @@ async function getRemotes() {
 }
 
 /**
- * Stash changes
+ * Stash changes. Untracked files are only stashed with `includeUntracked`.
  */
-async function stashChanges(message = null) {
-  if (message) {
-    return await getGit().stash(["push", "-m", message]);
-  }
-  return await getGit().stash();
+async function stashChanges(message = null, { includeUntracked = false } = {}) {
+  const args = ["push"];
+  if (includeUntracked) args.push("--include-untracked");
+  if (message) args.push("-m", message);
+  return await getGit().stash(args);
 }
 
 /**
@@ -417,6 +417,36 @@ async function acceptOurs(file) {
 async function acceptTheirs(file) {
   await getGit().checkout(["--theirs", file]);
   await getGit().add(file);
+}
+
+async function repoPath(file) {
+  const root = (await getGit().revparse(["--show-toplevel"])).trim();
+  return path.join(root, file);
+}
+
+/**
+ * Read a conflicted file from the working tree (with its conflict
+ * markers). Returns null when it isn't there or isn't text, as with
+ * delete/modify and binary conflicts.
+ */
+async function readConflictedFile(file) {
+  const fs = require("fs");
+  try {
+    const buffer = fs.readFileSync(await repoPath(file));
+    return buffer.includes(0) ? null : buffer.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write the resolved content of a conflicted file and stage it.
+ */
+async function writeResolvedFile(file, content) {
+  const fs = require("fs");
+  const target = await repoPath(file);
+  fs.writeFileSync(target, content);
+  await getGit().add(target);
 }
 
 /**
@@ -720,6 +750,8 @@ module.exports = {
   acceptOurs,
   acceptTheirs,
   acceptBoth,
+  readConflictedFile,
+  writeResolvedFile,
   abortMerge,
   getBlame,
   getTrackedFiles,

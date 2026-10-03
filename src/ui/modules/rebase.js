@@ -72,10 +72,11 @@ async function doRebaseOnto() {
       type: "list",
       name: "target",
       message: `Rebase ${s.primary(current)} onto:`,
-      choices: otherBranches,
+      choices: [...otherBranches, sep(), backItem("Back", null)],
       pageSize: 15,
     },
   ]);
+  if (!target) return;
 
   const ok = await confirmAction(`Rebase ${current} onto ${target}?`);
   if (!ok) {

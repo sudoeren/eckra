@@ -8,7 +8,15 @@ const { generateCommitSuggestions } = require("../../helpers/ai");
 const { copyToClipboard } = require("../../helpers/clipboard");
 const { filterDiff, filterFilesList } = require("../../helpers/patch");
 const { s, pause } = require("../common");
-const { open, prompt, spinner, done, fail } = require("../screen");
+const {
+  open,
+  backItem,
+  sep,
+  prompt,
+  spinner,
+  done,
+  fail,
+} = require("../screen");
 
 async function pickSuggestion(suggestions) {
   console.log(s.muted("\n  AI Suggestions:\n"));
@@ -19,10 +27,14 @@ async function pickSuggestion(suggestions) {
       type: "list",
       name: "selected",
       message: s.muted("Pick one:"),
-      choices: suggestions.map((msg, i) => ({
-        name: `  ${i + 1}. ${s.text(getSubject(msg))}`,
-        value: msg,
-      })),
+      choices: [
+        ...suggestions.map((msg, i) => ({
+          name: `  ${i + 1}. ${s.text(getSubject(msg))}`,
+          value: msg,
+        })),
+        sep(),
+        backItem("Cancel", null),
+      ],
       pageSize: 15,
     },
   ]);
@@ -127,6 +139,7 @@ async function doCommit(info, opts = {}) {
       );
       spin.stop();
       message = await pickSuggestion(suggestions);
+      if (!message) return;
     } else {
       const [suggestion] = await generateCommitSuggestions(
         diffForAI,

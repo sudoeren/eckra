@@ -86,10 +86,10 @@ async function newTag() {
     {
       type: "input",
       name: "name",
-      message: s.muted("Tag name (e.g. v1.2.0):"),
-      validate: (v) => v.length > 0,
+      message: s.muted("Tag name (e.g. v1.2.0, empty to cancel):"),
     },
   ]);
+  if (!name.trim()) return;
   const spin = spinner("Creating tag...");
   spin.start();
   try {

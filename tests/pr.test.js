@@ -9,9 +9,24 @@ const {
   findPrTemplates,
   parseRemoteUrl,
   buildCompareUrl,
+  compareUrlHasBody,
+  detectForge,
+  resolvePrRemotes,
   fallbackPrContent,
+  extractIssueNumber,
+  ensureIssueReference,
+  parseList,
+  getOpenIssue,
+  listLabels,
+  suggestBranchName,
   createPullRequest,
+  updatePullRequest,
   findExistingPr,
+  listPullRequests,
+  summarizeChecks,
+  mergePullRequest,
+  checkoutPullRequest,
+
   isGhAvailable,
 } = require("../src/helpers/pr");
 const { parsePullRequestResponse } = require("../src/helpers/ai");
@@ -74,6 +89,17 @@ describe("PR template discovery", () => {
     ]);
   });
 
+  test("finds GitLab merge request templates, Default.md first", () => {
+    write(".gitlab/merge_request_templates/Bug.md", "bug");
+    write(".gitlab/merge_request_templates/Default.md", "default");
+    write(".gitlab/merge_request_templates/notes.txt", "no");
+
+    expect(findPrTemplates(root).map((t) => t.name)).toEqual([
+      ".gitlab/merge_request_templates/Default.md",
+      ".gitlab/merge_request_templates/Bug.md",
+    ]);
+  });
+
   test("skips empty templates", () => {
     write(".github/pull_request_template.md", "  \n");
 
@@ -125,12 +151,100 @@ describe("buildCompareUrl", () => {
     expect(url).not.toContain("&body=");
   });
 
-  test("returns null for non-GitHub hosts", () => {
+  test("returns null for hosts that are neither GitHub nor GitLab", () => {
     expect(
-      buildCompareUrl({ host: "gitlab.com", owner: "a", repo: "b" }, "m", "x")
+      buildCompareUrl(
+        { host: "git.example.com", owner: "a", repo: "b" },
+        "m",
+        "x"
+      )
     ).toBeNull();
     expect(buildCompareUrl(null, "m", "x")).toBeNull();
   });
+
+  test("names the fork owner in the head on GitHub", () => {
+    const fork = { host: "github.com", owner: "me", repo: "eckra" };
+
+    expect(buildCompareUrl(remote, "main", "fix", {}, fork)).toBe(
+      "https://github.com/sudoeren/eckra/compare/main...me%3Afix?expand=1"
+    );
+    expect(buildCompareUrl(remote, "main", "fix", {}, remote)).toBe(
+      "https://github.com/sudoeren/eckra/compare/main...fix?expand=1"
+    );
+  });
+
+  test("builds a GitLab merge request link", () => {
+    const gitlab = { host: "gitlab.com", owner: "group/sub", repo: "app" };
+    const url = buildCompareUrl(gitlab, "main", "feat/x", {
+      title: "feat: x",
+      body: "## What",
+    });
+
+    expect(url).toBe(
+      "https://gitlab.com/group/sub/app/-/merge_requests/new" +
+        "?merge_request%5Bsource_branch%5D=feat%2Fx" +
+        "&merge_request%5Btarget_branch%5D=main" +
+        "&merge_request%5Btitle%5D=feat%3A%20x" +
+        "&merge_request%5Bdescription%5D=%23%23%20What"
+    );
+    expect(compareUrlHasBody(url)).toBe(true);
+  });
+
+  test("opens GitLab fork merge requests from the fork's project", () => {
+    const gitlab = { host: "gitlab.com", owner: "group", repo: "app" };
+    const fork = { host: "gitlab.com", owner: "me", repo: "app" };
+
+    expect(buildCompareUrl(gitlab, "main", "x", {}, fork)).toContain(
+      "https://gitlab.com/me/app/-/merge_requests/new?"
+    );
+  });
+
+  test("compareUrlHasBody tells whether the body made it into the link", () => {
+    expect(
+      compareUrlHasBody(
+        buildCompareUrl(remote, "m", "x", { title: "t", body: "b" })
+      )
+    ).toBe(true);
+    expect(
+      compareUrlHasBody(
+        buildCompareUrl(remote, "m", "x", {
+          title: "t",
+          body: "a".repeat(10000),
+        })
+      )
+    ).toBe(false);
+  });
+});
+
+describe("remote resolution", () => {
+  test("detectForge", () => {
+    expect(detectForge("github.com")).toBe("github");
+    expect(detectForge("github.mycorp.com")).toBe("github");
+    expect(detectForge("gitlab.com")).toBe("gitlab");
+    expect(detectForge("gitlab.internal")).toBe("gitlab");
+    expect(detectForge("git.example.com")).toBeNull();
+    expect(detectForge(undefined)).toBeNull();
+  });
+
+  test.each([
+    [["origin"], null, "origin", "origin"],
+    [["origin", "upstream"], null, "origin", "upstream"],
+    [["github"], null, "github", "github"],
+    [["origin", "mine"], "mine", "mine", "mine"],
+    [["origin", "mine", "upstream"], "mine", "mine", "upstream"],
+    [["origin", "upstream"], "upstream", "upstream", "upstream"],
+    [["origin"], "gone", "origin", "origin"],
+    [["work", "home"], null, null, null],
+    [[], null, null, null],
+  ])(
+    "resolvePrRemotes(%j, %s) -> push %s, base %s",
+    (names, cfg, push, base) => {
+      expect(resolvePrRemotes(names, cfg)).toEqual({
+        pushRemote: push,
+        baseRemote: base,
+      });
+    }
+  );
 });
 
 describe("fallbackPrContent", () => {
@@ -153,6 +267,87 @@ describe("fallbackPrContent", () => {
     expect(
       fallbackPrContent([{ message: "feat: a" }], "x", "## Description\n").body
     ).toBe("## Description");
+  });
+});
+
+describe("issue linking", () => {
+  test.each([
+    ["fix/123-crash", 123],
+    ["123-foo", 123],
+    ["feature/issue-45", 45],
+    ["gh-7-typo", 7],
+    ["user/fix_88_bug", 88],
+    ["feat/v2-api", null],
+    ["feat/pull-request", null],
+    ["fix/1234567-too-long", null],
+  ])("extractIssueNumber(%s) -> %s", (branch, expected) => {
+    expect(extractIssueNumber(branch)).toBe(expected);
+  });
+
+  test("fills in a template's empty Closes placeholder", () => {
+    expect(
+      ensureIssueReference("## Related Issue\n\n_Closes #_\n", { number: 12 })
+    ).toBe("## Related Issue\n\n_Closes #12_\n");
+  });
+
+  test("appends the reference when there is no placeholder", () => {
+    expect(ensureIssueReference("body\n", { number: 12 })).toBe(
+      "body\n\nCloses #12"
+    );
+    expect(ensureIssueReference("", { number: 12 })).toBe("Closes #12");
+  });
+
+  test("leaves a body that already links the issue alone", () => {
+    expect(ensureIssueReference("Fixes #12.", { number: 12 })).toBe(
+      "Fixes #12."
+    );
+    // #123 is a different issue
+    expect(ensureIssueReference("see #123", { number: 12 })).toBe(
+      "see #123\n\nCloses #12"
+    );
+  });
+
+  test("does nothing without an issue", () => {
+    expect(ensureIssueReference("_Closes #_", null)).toBe("_Closes #_");
+  });
+});
+
+describe("parseList", () => {
+  test("splits comma-separated names and drops @ and blanks", () => {
+    expect(parseList("@alice, bob ,,org/team")).toEqual([
+      "alice",
+      "bob",
+      "org/team",
+    ]);
+    expect(parseList(null)).toEqual([]);
+    expect(parseList(["x"])).toEqual(["x"]);
+  });
+});
+
+describe("suggestBranchName", () => {
+  test("turns a conventional subject into type/slug", () => {
+    expect(suggestBranchName([{ message: "feat(pr): add PR command" }])).toBe(
+      "feat/add-pr-command"
+    );
+  });
+
+  test("uses the oldest commit and strips accents", () => {
+    const commits = [
+      { message: "later tweak" },
+      { message: "fix: çökme düzeltildi, Menü!\n\nbody" },
+    ];
+
+    expect(suggestBranchName(commits)).toBe("fix/cokme-duzeltildi-menu");
+  });
+
+  test("falls back to feature/ and keeps the slug short", () => {
+    expect(suggestBranchName([{ message: "Update the readme" }])).toBe(
+      "feature/update-the-readme"
+    );
+    expect(suggestBranchName([{ message: "!!!" }])).toBe("feature/changes");
+    expect(
+      suggestBranchName([{ message: `feat: ${"word ".repeat(30)}` }]).length
+    ).toBeLessThanOrEqual(45);
   });
 });
 
@@ -225,6 +420,112 @@ describe("GitHub CLI calls", () => {
     ]);
   });
 
+  test("updatePullRequest edits the title and body of that PR", async () => {
+    let bodySeen = null;
+    mockGh((args) => {
+      bodySeen = fs.readFileSync(args[args.indexOf("--body-file") + 1], "utf8");
+      return "https://github.com/o/r/pull/7\n";
+    });
+
+    const url = await updatePullRequest({
+      number: 7,
+      title: "feat: y",
+      body: "new body",
+    });
+
+    expect(url).toBe("https://github.com/o/r/pull/7");
+    expect(bodySeen).toBe("new body");
+    expect(childProcess.execFile.mock.calls[0][1].slice(0, 5)).toEqual([
+      "pr",
+      "edit",
+      "7",
+      "--title",
+      "feat: y",
+    ]);
+  });
+
+  test("reviewers and labels are passed to create and added on update", async () => {
+    mockGh(() => "https://github.com/o/r/pull/7\n");
+
+    await createPullRequest({
+      title: "t",
+      body: "b",
+      reviewers: ["alice", "org/team"],
+      labels: ["bug"],
+    });
+    await updatePullRequest({
+      number: 7,
+      title: "t",
+      body: "b",
+      reviewers: ["alice"],
+      labels: ["bug", "ui"],
+    });
+
+    const [create, update] = childProcess.execFile.mock.calls.map((c) => c[1]);
+    expect(create.slice(6)).toEqual([
+      "--reviewer",
+      "alice",
+      "--reviewer",
+      "org/team",
+      "--label",
+      "bug",
+    ]);
+    expect(update.slice(7)).toEqual([
+      "--add-reviewer",
+      "alice",
+      "--add-label",
+      "bug",
+      "--add-label",
+      "ui",
+    ]);
+  });
+
+  test("getOpenIssue only returns issues that exist and are open", async () => {
+    mockGh(() => JSON.stringify({ number: 12, title: "Crash", state: "OPEN" }));
+    expect(await getOpenIssue(12)).toEqual({ number: 12, title: "Crash" });
+
+    mockGh(() =>
+      JSON.stringify({ number: 12, title: "Crash", state: "CLOSED" })
+    );
+    expect(await getOpenIssue(12)).toBeNull();
+
+    mockGh(() => new Error("not found"));
+    expect(await getOpenIssue(12)).toBeNull();
+
+    childProcess.execFile.mockClear();
+    expect(await getOpenIssue(null)).toBeNull();
+    expect(childProcess.execFile).not.toHaveBeenCalled();
+  });
+
+  test("listLabels returns sorted names, or nothing on failure", async () => {
+    mockGh(() => JSON.stringify([{ name: "ui" }, { name: "bug" }]));
+    expect(await listLabels()).toEqual(["bug", "ui"]);
+
+    mockGh(() => new Error("boom"));
+    expect(await listLabels()).toEqual([]);
+  });
+
+  test("createPullRequest names the repo and head for forks", async () => {
+    mockGh(() => "https://github.com/o/r/pull/7\n");
+
+    await createPullRequest({
+      title: "t",
+      body: "b",
+      base: "main",
+      repo: "sudoeren/eckra",
+      head: "me:feat/x",
+    });
+
+    expect(childProcess.execFile.mock.calls[0][1].slice(6)).toEqual([
+      "--base",
+      "main",
+      "--repo",
+      "sudoeren/eckra",
+      "--head",
+      "me:feat/x",
+    ]);
+  });
+
   test("createPullRequest surfaces gh's stderr", async () => {
     const error = new Error("Command failed");
     error.stderr = "a pull request already exists\n";
@@ -255,5 +556,108 @@ describe("GitHub CLI calls", () => {
 
     mockGh(() => new Error("no pull requests found"));
     expect(await findExistingPr()).toBeNull();
+  });
+});
+
+describe("pull request list helpers", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("summarizeChecks counts check runs and commit statuses", () => {
+    const summary = summarizeChecks([
+      {
+        __typename: "CheckRun",
+        name: "lint",
+        status: "COMPLETED",
+        conclusion: "SUCCESS",
+      },
+      {
+        __typename: "CheckRun",
+        name: "skip",
+        status: "COMPLETED",
+        conclusion: "SKIPPED",
+      },
+      {
+        __typename: "CheckRun",
+        name: "test (24)",
+        status: "COMPLETED",
+        conclusion: "FAILURE",
+      },
+      {
+        __typename: "CheckRun",
+        name: "test (22)",
+        status: "COMPLETED",
+        conclusion: "CANCELLED",
+      },
+      {
+        __typename: "CheckRun",
+        name: "build",
+        status: "IN_PROGRESS",
+        conclusion: "",
+      },
+      { __typename: "StatusContext", context: "deploy", state: "PENDING" },
+      { __typename: "StatusContext", context: "cla", state: "ERROR" },
+    ]);
+
+    expect(summary).toEqual({
+      passed: 2,
+      failed: 3,
+      pending: 2,
+      total: 7,
+      failing: ["test (24)", "test (22)", "cla"],
+      state: "failed",
+    });
+  });
+
+  test("summarizeChecks overall state", () => {
+    const run = (status, conclusion) => ({
+      __typename: "CheckRun",
+      status,
+      conclusion,
+    });
+
+    expect(summarizeChecks([]).state).toBe("none");
+    expect(summarizeChecks(null).state).toBe("none");
+    expect(summarizeChecks([run("COMPLETED", "SUCCESS")]).state).toBe("passed");
+    expect(
+      summarizeChecks([run("COMPLETED", "SUCCESS"), run("QUEUED", "")]).state
+    ).toBe("pending");
+  });
+
+  test("listPullRequests parses gh's JSON and explains failures", async () => {
+    mockGh(() => JSON.stringify([{ number: 1 }]));
+    expect(await listPullRequests()).toEqual([{ number: 1 }]);
+    expect(childProcess.execFile.mock.calls[0][1].slice(0, 3)).toEqual([
+      "pr",
+      "list",
+      "--json",
+    ]);
+
+    const error = new Error("Command failed");
+    error.stderr = "no git remotes found\n";
+    mockGh(() => error);
+    await expect(listPullRequests()).rejects.toThrow("no git remotes found");
+  });
+
+  test("mergePullRequest maps the method to a gh flag", async () => {
+    mockGh(() => "");
+
+    await mergePullRequest(7, "squash", { deleteBranch: true });
+    await mergePullRequest(8, "rebase");
+    await checkoutPullRequest(9);
+
+    expect(childProcess.execFile.mock.calls.map((c) => c[1])).toEqual([
+      ["pr", "merge", "7", "--squash", "--delete-branch"],
+      ["pr", "merge", "8", "--rebase"],
+      ["pr", "checkout", "9"],
+    ]);
+  });
+
+  test("mergePullRequest rejects unknown methods without calling gh", async () => {
+    await expect(mergePullRequest(7, "--admin")).rejects.toThrow(
+      /Unknown merge method/
+    );
+    expect(childProcess.execFile).not.toHaveBeenCalled();
   });
 });

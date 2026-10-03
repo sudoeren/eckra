@@ -128,8 +128,10 @@ Or jump straight into action:
 | `eckra commit`  | `c`   | AI-assisted commit flow       |
 | `eckra status`  | `st`  | Status and staged files       |
 | `eckra push`    | `p`   | Push to remote                |
-| `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template) |
+| `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template); `eckra pr list` browses the open ones |
 | `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
+| `eckra release` | `rel` | Publish a release: notes, changelog, version bump, tag, push, GitHub release |
+| `eckra changelog` | `cl` | Print release notes since the last tag (non-interactive) |
 | `eckra story`   | `t`   | AI project timeline           |
 | `eckra graph`   | `g`   | Interactive commit graph      |
 | `eckra start`   | `s`   | Interactive dashboard         |
@@ -143,7 +145,7 @@ Or jump straight into action:
 | `eckra model`   | `m`   | Show current AI settings & switch/manage providers |
 
 > [!TIP]
-> `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
+> `eckra e` stages everything, generates an AI message, and asks you before committing and pushing. `eckra e --pr` ends with the pull request flow instead of a plain push: it pushes the branch for you and, if you committed on the base branch, first offers to move the commit to a new branch.
 
 From the dashboard you can also open **Git Graph** (under Branch) to see your full commit topology across all branches, page through history, and inspect commits for cherry-picking.
 
@@ -201,7 +203,11 @@ eckra lazygit remove     # Remove it (alias: uninstall)
 | `--instruction <text>` |       | Extra instruction for the AI           |
 | `--no-commit`          |       | Only generate and show the message     |
 
-`eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. Without `gh`, eckra prints a prefilled GitHub link instead.
+`eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. When the branch name carries the number of an open issue (`fix/123-crash`, `issue-45`), the body links it with `Closes #123`. Reviewers and labels can be set from the review menu or with flags. If the branch already has an open pull request, eckra offers to rewrite its title and description from the current commits (`--update` does it without asking). Without `gh`, eckra prints a prefilled GitHub link instead.
+
+The branch is pushed to its configured push remote, falling back to `origin` (or the only remote). When an `upstream` remote exists, eckra treats the setup as a fork: it pushes to your remote and opens the pull request against `upstream`. On GitLab remotes eckra fills in the merge request template (`.gitlab/merge_request_templates/`) the same way and prints a prefilled "new merge request" link, since it does not create merge requests itself. Committed straight onto the base branch by mistake? `eckra pr` offers to move those commits to a new branch (suggested from the commit message) and puts the base branch back in line with the remote; uncommitted changes are left alone.
+
+`eckra pr list` (also under **Branch > Pull Request**) shows the repository's open pull requests with their CI and review status. Pick one to check it out, merge it (merge commit, squash or rebase, after a confirmation) or open it in the browser.
 
 | Flag | Description |
 | --- | --- |
@@ -209,8 +215,32 @@ eckra lazygit remove     # Remove it (alias: uninstall)
 | `-t, --title <title>` | Use this title instead of the AI one |
 | `-d, --draft` | Create the pull request as a draft |
 | `-y, --yes` | Skip the review menu and the push confirmation |
+| `-u, --update` | Rewrite the title and description of the branch's open pull request |
+| `-r, --reviewer <users>` | Request reviews (comma-separated logins) |
+| `-l, --label <labels>` | Apply labels (comma-separated) |
 | `--no-ai` | Skip the AI; use the template or the commit list as the body |
 | `--instruction <text>` | Optional instruction for the AI |
+
+`eckra release` (also under **More > Release**) publishes a release from the current branch. It collects the commits since the last tag, suggests the next version from them (breaking change → major, `feat` → minor, otherwise patch), and writes the notes — by AI, or grouped by commit type with `--no-ai`. You review everything first: edit or regenerate the notes, change the version, and choose whether to update `CHANGELOG.md` and the version in `package.json`. After a confirmation eckra commits those files as `chore(release): vX.Y.Z`, creates the tag, pushes the branch and tag, and publishes the GitHub release through `gh` (without `gh`, or on GitLab, it stops after the push and prints the link to the new-release page).
+
+| Flag | Description |
+| --- | --- |
+| `-b, --bump <kind>` | `patch`, `minor` or `major` instead of choosing in the menu |
+| `-r, --release <version>` | Exact version to release |
+| `-d, --draft` / `-p, --prerelease` | Publish the GitHub release as a draft / mark it as a pre-release |
+| `--no-changelog` | Don't write `CHANGELOG.md` |
+| `--no-bump` | Don't change the version in `package.json` |
+| `--no-ai` | Group commits by type instead of AI-written notes |
+| `-y, --yes` | Skip the review menu and the confirmation |
+
+`eckra changelog` only prints the notes, for scripts and CI:
+
+```bash
+eckra changelog                            # commits since the last tag, grouped by type
+eckra changelog --ai                       # AI-written notes
+eckra changelog --from v1.4.0 --to v1.5.0  # any range
+eckra changelog -r 1.6.0 --write           # add the section to CHANGELOG.md
+```
 
 #### Commit message formats
 
@@ -235,6 +265,8 @@ eckra commit --type gitmoji                            # gitmoji-style message
 eckra commit --clipboard                               # copy the message, don't commit
 eckra commit -x "*.lock,config.local.js"              # ignore files in AI analysis
 ```
+
+When a merge leaves conflicts, **Resolve Conflict** appears on the dashboard. Per file you can take ours, theirs, both, edit manually, or pick **Suggest a resolution with AI**: the AI gets each conflict with its surrounding code, proposes merged lines that keep both sides' intent, and explains what it did. The suggestion is shown next to both sides and is only written and staged after you accept it.
 
 Risky operations ask for confirmation before running: **push**, **pull**, **push tags**, **delete tag**, **drop stash**, **amend**, **rebase** and **squash**. Pass `-y/--yes` on `eckra push` to skip it.
 
@@ -304,7 +336,7 @@ eckra config path               # Config file path
 > [!NOTE]
 > Add `--local` to target the project's `.eckrarc` instead. This file is gitignored as it can hold API keys.
 
-A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `maxDiffChars` (how much of the diff the AI sees, default 6000; larger diffs are shortened per file and lock files are summarized), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
 
 ### Theme
 

@@ -6,7 +6,14 @@ const {
   getBranches,
 } = require("../../helpers/git");
 const { s, sleep, pause } = require("../common");
-const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+} = require("../screen");
 
 async function doWorktree() {
   let inMenu = true;
@@ -50,10 +57,10 @@ async function doWorktree() {
           {
             type: "input",
             name: "path",
-            message: s.muted("Worktree path:"),
-            validate: (v) => v.length > 0,
+            message: s.muted("Worktree path (empty to cancel):"),
           },
         ]);
+        if (!wtPath.trim()) break;
 
         const { type } = await prompt([
           {
@@ -63,10 +70,12 @@ async function doWorktree() {
             choices: [
               menuItem("Existing Branch", "text", "existing"),
               menuItem("New Branch", "primary", "new"),
+              backItem(),
             ],
             pageSize: 15,
           },
         ]);
+        if (type === "back") break;
 
         if (type === "existing") {
           const branches = await getBranches();
@@ -76,10 +85,11 @@ async function doWorktree() {
               type: "list",
               name: "branch",
               message: s.muted("Select branch:"),
-              choices: locals,
+              choices: [...locals, sep(), backItem("Back", null)],
               pageSize: 15,
             },
           ]);
+          if (!branch) break;
           try {
             await addWorktree(wtPath, branch);
             console.log(s.success(`\n  ✓ Worktree added at ${wtPath}`));
@@ -93,10 +103,10 @@ async function doWorktree() {
             {
               type: "input",
               name: "newBranch",
-              message: s.muted("New branch name:"),
-              validate: (v) => v.length > 0,
+              message: s.muted("New branch name (empty to cancel):"),
             },
           ]);
+          if (!newBranch.trim()) break;
           try {
             await addWorktreeNewBranch(wtPath, newBranch);
             console.log(
@@ -121,10 +131,15 @@ async function doWorktree() {
               type: "list",
               name: "toRemove",
               message: s.muted("Select worktree to remove:"),
-              choices: worktrees.map((wt) => wt.path),
+              choices: [
+                ...worktrees.map((wt) => wt.path),
+                sep(),
+                backItem("Back", null),
+              ],
               pageSize: 15,
             },
           ]);
+          if (!toRemove) break;
           try {
             await removeWorktree(toRemove);
             console.log(s.success("\n  ✓ Worktree removed!"));

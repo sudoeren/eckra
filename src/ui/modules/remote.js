@@ -1,6 +1,13 @@
 const { getRemotes, addRemote, removeRemote } = require("../../helpers/git");
 const { s, sleep } = require("../common");
-const { open, emptyState, menuItem, backItem, prompt } = require("../screen");
+const {
+  open,
+  emptyState,
+  menuItem,
+  backItem,
+  sep,
+  prompt,
+} = require("../screen");
 
 async function doRemote() {
   open("Remote");
@@ -45,10 +52,10 @@ async function doRemote() {
       {
         type: "input",
         name: "url",
-        message: s.muted("URL:"),
-        validate: (v) => v.length > 0,
+        message: s.muted("URL (empty to cancel):"),
       },
     ]);
+    if (!url.trim()) return;
     await addRemote(name, url);
     console.log(s.success(`\n  ✓ ${name} added!`));
     await sleep(600);
@@ -60,10 +67,11 @@ async function doRemote() {
         type: "list",
         name: "toRemove",
         message: s.muted("Which remote to remove?"),
-        choices: remotes.map((r) => r.name),
+        choices: [...remotes.map((r) => r.name), sep(), backItem("Back", null)],
         pageSize: 15,
       },
     ]);
+    if (!toRemove) return;
     await removeRemote(toRemove);
     console.log(s.success(`\n  ✓ ${toRemove} removed!`));
     await sleep(600);

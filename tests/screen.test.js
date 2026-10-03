@@ -6,6 +6,7 @@ const {
   tone,
   strWidth,
   confirmAction,
+  showPages,
   withSyncUpdate,
 } = require("../src/ui/screen");
 
@@ -20,8 +21,11 @@ jest.mock("../src/ui/common", () => ({
     }
   ),
   cols: () => 80,
+  // showPages: rows - 14 = 10 lines per page
+  rows: () => 24,
   clear: jest.fn(),
   header: jest.fn(),
+  pause: jest.fn(),
 }));
 
 describe("Screen helpers", () => {
@@ -39,6 +43,7 @@ describe("Screen helpers", () => {
   test("backItem returns a back choice", () => {
     expect(backItem()).toEqual({ name: "  Back", value: "back" });
     expect(backItem("Go Back")).toEqual({ name: "  Go Back", value: "back" });
+    expect(backItem("Back", null)).toEqual({ name: "  Back", value: null });
   });
 
   test("sep returns an inquirer separator", () => {
@@ -108,5 +113,70 @@ describe("Screen helpers", () => {
         configurable: true,
       });
     }
+  });
+});
+
+describe("showPages", () => {
+  const common = require("../src/ui/common");
+  let logSpy;
+
+  const printed = () => logSpy.mock.calls.map((call) => call[0]);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+  });
+
+  test("output that fits is printed at once and waits for Enter", async () => {
+    await showPages("Title", "sub", ["a", "b"]);
+
+    expect(printed()).toEqual(expect.arrayContaining(["  sub", "a", "b"]));
+    expect(common.pause).toHaveBeenCalledTimes(1);
+    expect(inquirer.prompt).not.toHaveBeenCalled();
+  });
+
+  test("longer output is paged, forward and back", async () => {
+    const lines = Array.from({ length: 25 }, (_, i) => `line ${i + 1}`);
+    inquirer.prompt
+      .mockResolvedValueOnce({ action: "next" })
+      .mockResolvedValueOnce({ action: "next" })
+      .mockResolvedValueOnce({ action: "prev" })
+      .mockResolvedValueOnce({ action: "back" });
+
+    await showPages("Title", "sub", lines);
+
+    const values = inquirer.prompt.mock.calls.map((call) =>
+      call[0][0].choices.map((choice) => choice.value)
+    );
+    expect(values).toEqual([
+      ["next", "back"],
+      ["next", "prev", "back"],
+      ["prev", "back"],
+      ["next", "prev", "back"],
+    ]);
+    expect(printed()).toContain("  sub  ·  page 3 of 3");
+    expect(printed()).toContain("line 25");
+    expect(common.pause).not.toHaveBeenCalled();
+  });
+
+  test("pages never start on a blank line", async () => {
+    const lines = [
+      ...Array.from({ length: 10 }, (_, i) => `a${i}`),
+      "",
+      "",
+      "b0",
+    ];
+    inquirer.prompt
+      .mockResolvedValueOnce({ action: "next" })
+      .mockResolvedValueOnce({ action: "back" });
+
+    await showPages("Title", null, lines);
+
+    const out = printed();
+    expect(out[out.indexOf("  page 2 of 2") + 3]).toBe("b0");
   });
 });

@@ -12,6 +12,7 @@ const {
   emptyState,
   menuItem,
   backItem,
+  sep,
   prompt,
   spinner,
   done,
@@ -146,10 +147,15 @@ async function doPartialStage(status) {
       type: "list",
       name: "file",
       message: s.muted("Select file to split:"),
-      choices: status.modified.map((f) => ({ name: f, value: f })),
+      choices: [
+        ...status.modified.map((f) => ({ name: f, value: f })),
+        sep(),
+        backItem("Back", null),
+      ],
       pageSize: 20,
     },
   ]);
+  if (!file) return;
 
   const diff = await getFileDiff(file);
   const parsedFiles = parseDiff(diff);
