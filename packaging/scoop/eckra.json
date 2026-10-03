@@ -1,13 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
-  "version": "1.5.7",
+  "version": "1.6.0",
   "description": "AI-powered Git management CLI",
   "homepage": "https://github.com/sudoeren/eckra",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/sudoeren/eckra/releases/download/v1.5.7/eckra-win-x64.exe#/eckra.exe",
-      "hash": "6bf94b55dd042ab37ac7443e19ba15b705fc978c5418859f2d760752471bcd9e"
+      "url": "https://github.com/sudoeren/eckra/releases/download/v1.6.0/eckra-win-x64.exe#/eckra.exe",
+      "hash": "74e93a0973edbc412e3555f57062655dce6b9ca57e74e838d16c178bfdb4ee72"
     }
   },
   "bin": "eckra.exe",
