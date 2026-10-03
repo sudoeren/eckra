@@ -344,7 +344,12 @@ async function isGhAvailable() {
 async function findExistingPr() {
   try {
     const pr = JSON.parse(
-      await runGh(["pr", "view", "--json", "url,state,title,number"])
+      await runGh([
+        "pr",
+        "view",
+        "--json",
+        "url,state,title,number,baseRefName",
+      ])
     );
     return pr && pr.state === "OPEN" ? pr : null;
   } catch {
@@ -353,28 +358,19 @@ async function findExistingPr() {
 }
 
 /**
- * Create the pull request with the GitHub CLI and return its URL.
- * The body goes through a temp file so its size and content never hit
- * command-line limits or quoting issues.
+ * Run a gh command whose body comes from a temp file, so its size and
+ * content never hit command-line limits or quoting issues. `buildArgs`
+ * receives the file path and returns the gh arguments.
  */
-async function createPullRequest({ title, body, base, draft = false }) {
+async function runGhWithBody(body, buildArgs) {
   const bodyFile = path.join(
     os.tmpdir(),
     `eckra_pr_${process.pid}_${Date.now()}.md`
   );
-  const args = ["pr", "create", "--title", title, "--body-file", bodyFile];
-  if (base) args.push("--base", base);
-  if (draft) args.push("--draft");
 
   try {
     fs.writeFileSync(bodyFile, body || "", { mode: 0o600 });
-    const stdout = await runGh(args);
-    const url = stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .reverse()
-      .find((line) => /^https?:\/\//.test(line));
-    return url || stdout.trim();
+    return await runGh(buildArgs(bodyFile));
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error("GitHub CLI (gh) is not installed.");
@@ -383,6 +379,44 @@ async function createPullRequest({ title, body, base, draft = false }) {
   } finally {
     if (fs.existsSync(bodyFile)) fs.unlinkSync(bodyFile);
   }
+}
+
+function lastUrl(stdout) {
+  const url = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .reverse()
+    .find((line) => /^https?:\/\//.test(line));
+  return url || stdout.trim();
+}
+
+/**
+ * Create the pull request with the GitHub CLI and return its URL.
+ */
+async function createPullRequest({ title, body, base, draft = false }) {
+  const stdout = await runGhWithBody(body, (bodyFile) => {
+    const args = ["pr", "create", "--title", title, "--body-file", bodyFile];
+    if (base) args.push("--base", base);
+    if (draft) args.push("--draft");
+    return args;
+  });
+  return lastUrl(stdout);
+}
+
+/**
+ * Replace the title and body of an open pull request; returns its URL.
+ */
+async function updatePullRequest({ number, title, body }) {
+  const stdout = await runGhWithBody(body, (bodyFile) => [
+    "pr",
+    "edit",
+    String(number),
+    "--title",
+    title,
+    "--body-file",
+    bodyFile,
+  ]);
+  return lastUrl(stdout);
 }
 
 module.exports = {
@@ -405,4 +439,5 @@ module.exports = {
   isGhAvailable,
   findExistingPr,
   createPullRequest,
+  updatePullRequest,
 };

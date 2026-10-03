@@ -194,6 +194,10 @@ program
   .option("-t, --title <title>", "Use this title instead of the AI one")
   .option("-d, --draft", "Create the pull request as a draft")
   .option("-y, --yes", "Skip the review menu and push confirmation")
+  .option(
+    "-u, --update",
+    "Rewrite the title and description of the branch's open pull request"
+  )
   .option("--no-ai", "Skip the AI; use the template or commit list as the body")
   .option("--instruction <text>", "Optional instruction for the AI")
   .action(async (options) => {
@@ -204,6 +208,7 @@ program
         title: options.title,
         draft: options.draft,
         yes: options.yes,
+        update: options.update,
         noAi: options.ai === false,
         instruction: options.instruction,
       });

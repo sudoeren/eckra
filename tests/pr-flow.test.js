@@ -262,17 +262,101 @@ describe("Pull request flow", () => {
     expect(pr.createPullRequest).not.toHaveBeenCalled();
   });
 
-  test("stops when a pull request is already open", async () => {
-    pr.findExistingPr.mockResolvedValue({
+  describe("when the branch already has an open pull request", () => {
+    const existing = {
       number: 9,
-      title: "t",
+      title: "old title",
       url: "https://github.com/o/r/pull/9",
+      baseRefName: "develop",
+    };
+
+    beforeEach(() => {
+      pr.findExistingPr.mockResolvedValue(existing);
+      pr.resolveBaseRef.mockResolvedValue("origin/develop");
+      pr.updatePullRequest.mockResolvedValue(existing.url);
     });
 
-    await doPullRequest(null);
+    test("Back leaves it untouched", async () => {
+      screen.prompt.mockResolvedValueOnce({ action: "back" });
+
+      await doPullRequest(null);
+
+      expect(ai.generatePullRequest).not.toHaveBeenCalled();
+      expect(pr.updatePullRequest).not.toHaveBeenCalled();
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+    });
+
+    test("rewrites the title and description against the PR's own base", async () => {
+      screen.prompt
+        .mockResolvedValueOnce({ action: "update" })
+        .mockResolvedValueOnce({ action: "create" });
+
+      await doPullRequest(null);
+
+      expect(pr.getDefaultBranch).not.toHaveBeenCalled();
+      expect(pr.resolveBaseRef).toHaveBeenCalledWith("develop", "origin");
+      expect(ai.generatePullRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ base: "develop" })
+      );
+      expect(pr.updatePullRequest).toHaveBeenCalledWith({
+        number: 9,
+        title: "feat: add pr command",
+        body: "## Description\n\nAdds `eckra pr`.",
+      });
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+
+      const review = screen.prompt.mock.calls[1][0][0].choices;
+      expect(review[0]).toEqual({
+        name: "Update pull request #9",
+        value: "create",
+      });
+      expect(review.map((c) => c.value)).not.toContain("draft");
+    });
+
+    test("pushes new commits before updating", async () => {
+      pr.getPushState.mockResolvedValue({ upstream: "origin/x", unpushed: 1 });
+      screen.prompt
+        .mockResolvedValueOnce({ action: "update" })
+        .mockResolvedValueOnce({ action: "create" })
+        .mockResolvedValueOnce({ push: true });
+
+      await doPullRequest(null);
+
+      expect(pr.pushBranch).toHaveBeenCalledWith("feat/pr", "origin");
+      expect(pr.updatePullRequest).toHaveBeenCalled();
+    });
+
+    test("--update skips the question; with --yes also the review", async () => {
+      await doPullRequest(null, { update: true, yes: true });
+
+      expect(screen.prompt).not.toHaveBeenCalled();
+      expect(pr.updatePullRequest).toHaveBeenCalled();
+    });
+
+    test("--yes alone never rewrites an existing pull request", async () => {
+      await doPullRequest(null, { yes: true });
+
+      expect(ai.generatePullRequest).not.toHaveBeenCalled();
+      expect(pr.updatePullRequest).not.toHaveBeenCalled();
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+    });
+
+    test("does not offer to move commits when the PR is from the base branch", async () => {
+      git.getCurrentBranch.mockResolvedValue("develop");
+      screen.prompt.mockResolvedValueOnce({ action: "back" });
+
+      await doPullRequest(null);
+
+      expect(pr.moveCommitsToNewBranch).not.toHaveBeenCalled();
+    });
+  });
+
+  test("--update without an open pull request stops", async () => {
+    await doPullRequest(null, { update: true });
 
     expect(ai.generatePullRequest).not.toHaveBeenCalled();
     expect(pr.createPullRequest).not.toHaveBeenCalled();
+    expect(pr.updatePullRequest).not.toHaveBeenCalled();
   });
 
   test("stops when there are no commits to open a pull request for", async () => {
@@ -310,7 +394,6 @@ describe("Pull request flow", () => {
         "master",
         "origin/master"
       );
-      expect(pr.findExistingPr).not.toHaveBeenCalled();
       expect(ai.generatePullRequest).toHaveBeenCalledWith(
         expect.objectContaining({ branch: "feat/my-branch", base: "master" })
       );

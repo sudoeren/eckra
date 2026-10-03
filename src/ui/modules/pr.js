@@ -21,6 +21,7 @@ const {
   isGhAvailable,
   findExistingPr,
   createPullRequest,
+  updatePullRequest,
 } = require("../../helpers/pr");
 const { s, pause, link } = require("../common");
 const {
@@ -200,7 +201,9 @@ async function showBrowserFallback(content, { remote, base, branch }) {
 /**
  * Open a pull request for the current branch: AI writes the title and body
  * (filling in the repo's PR template when there is one), the user reviews,
- * and the GitHub CLI creates it.
+ * and the GitHub CLI creates it. When the branch already has an open pull
+ * request, its title and description can be rewritten from the current
+ * commits instead.
  *
  * Options:
  * - base: target branch (default: the remote's default branch)
@@ -209,6 +212,7 @@ async function showBrowserFallback(content, { remote, base, branch }) {
  * - yes: skip the review menu and the push confirmation
  * - noAi: don't call the AI; use the template / commit list as the body
  * - instruction: optional direction for the AI
+ * - update: rewrite the branch's open pull request without asking
  */
 async function doPullRequest(_info, opts = {}) {
   const {
@@ -218,6 +222,7 @@ async function doPullRequest(_info, opts = {}) {
     yes = false,
     noAi = false,
     instruction = null,
+    update = false,
   } = opts;
 
   open("Pull Request");
@@ -237,7 +242,15 @@ async function doPullRequest(_info, opts = {}) {
   let branch = await getCurrentBranch();
   if (!branch) return stop("Detached HEAD. Switch to a branch first.");
 
-  const base = baseOpt || (await getDefaultBranch(REMOTE));
+  const hasGh = await isGhAvailable();
+  const existing = hasGh ? await findExistingPr() : null;
+  if (update && !existing) {
+    return stop(`No open pull request for ${branch} to update.`);
+  }
+
+  // An open pull request keeps the base it was opened against.
+  const base =
+    baseOpt || existing?.baseRefName || (await getDefaultBranch(REMOTE));
   if (!base) {
     return stop(
       "Could not detect the base branch. Pass it with --base <branch>."
@@ -255,22 +268,31 @@ async function doPullRequest(_info, opts = {}) {
     );
   }
 
-  const onBase = branch === base;
-  if (onBase) {
+  if (existing) {
+    console.log(s.muted(`  A pull request is already open for ${branch}:\n`));
+    console.log(s.text(`    #${existing.number} ${existing.title}`));
+    console.log("    " + s.primary(link(existing.url)) + "\n");
+
+    if (!update) {
+      // Without --update, --yes must not rewrite someone's description.
+      if (yes) return;
+      const { action } = await prompt([
+        {
+          type: "list",
+          name: "action",
+          message: s.muted("What would you like to do?"),
+          choices: [
+            menuItem("Update its title and description", "primary", "update"),
+            backItem(),
+          ],
+          pageSize: 5,
+        },
+      ]);
+      if (action === "back") return;
+    }
+  } else if (branch === base) {
     branch = await moveOffBaseBranch({ commits, base, baseRef, yes });
     if (!branch) return;
-  }
-
-  const hasGh = await isGhAvailable();
-  if (hasGh && !onBase) {
-    const existing = await findExistingPr();
-    if (existing) {
-      console.log(s.muted(`  A pull request is already open for ${branch}:\n`));
-      console.log(s.text(`    #${existing.number} ${existing.title}`));
-      console.log("    " + s.primary(link(existing.url)) + "\n");
-      await pause();
-      return;
-    }
   }
 
   const template = await pickTemplate(findPrTemplates(await getRepoRoot()));
@@ -321,11 +343,17 @@ async function doPullRequest(_info, opts = {}) {
         message: s.muted("What would you like to do?"),
         choices: [
           menuItem(
-            draft ? "Create draft pull request" : "Create pull request",
+            existing
+              ? `Update pull request #${existing.number}`
+              : draft
+                ? "Create draft pull request"
+                : "Create pull request",
             "success",
             "create"
           ),
-          ...(draft ? [] : [menuItem("Create as draft", "primary", "draft")]),
+          ...(draft || existing
+            ? []
+            : [menuItem("Create as draft", "primary", "draft")]),
           sep(),
           menuItem("Edit title", "text", "title"),
           menuItem("Edit body (opens your editor)", "text", "body"),
@@ -379,6 +407,24 @@ async function doPullRequest(_info, opts = {}) {
 
   if (!hasGh) {
     await showBrowserFallback(content, context);
+    await pause();
+    return;
+  }
+
+  if (existing) {
+    const spinUpdate = spinner(`Updating pull request #${existing.number}...`);
+    spinUpdate.start();
+    try {
+      const url = await updatePullRequest({
+        number: existing.number,
+        title: content.title,
+        body: content.body,
+      });
+      done(spinUpdate, "Pull request updated!");
+      console.log("\n  " + s.primary(link(url || existing.url)) + "\n");
+    } catch (err) {
+      fail(spinUpdate, `Update failed: ${err.message}`);
+    }
     await pause();
     return;
   }

@@ -12,6 +12,7 @@ const {
   fallbackPrContent,
   suggestBranchName,
   createPullRequest,
+  updatePullRequest,
   findExistingPr,
   isGhAvailable,
 } = require("../src/helpers/pr");
@@ -250,6 +251,30 @@ describe("GitHub CLI calls", () => {
       "--base",
       "main",
       "--draft",
+    ]);
+  });
+
+  test("updatePullRequest edits the title and body of that PR", async () => {
+    let bodySeen = null;
+    mockGh((args) => {
+      bodySeen = fs.readFileSync(args[args.indexOf("--body-file") + 1], "utf8");
+      return "https://github.com/o/r/pull/7\n";
+    });
+
+    const url = await updatePullRequest({
+      number: 7,
+      title: "feat: y",
+      body: "new body",
+    });
+
+    expect(url).toBe("https://github.com/o/r/pull/7");
+    expect(bodySeen).toBe("new body");
+    expect(childProcess.execFile.mock.calls[0][1].slice(0, 5)).toEqual([
+      "pr",
+      "edit",
+      "7",
+      "--title",
+      "feat: y",
     ]);
   });
 
