@@ -1,8 +1,7 @@
 const axios = require("axios");
 const { getConfig, DEFAULT_CONFIG, normalizeUrl } = require("./config");
 const { MODEL_KEY_BY_PROVIDER } = require("./providers");
-
-const MAX_DIFF_CHARS = 2000;
+const { compactDiff } = require("./patch");
 
 const COMMIT_FORMATS = [
   "plain",
@@ -111,11 +110,20 @@ feat: add autocomplete search for providers
   }
 }
 
-function formatDiffForPrompt(diff, maxChars = MAX_DIFF_CHARS) {
-  if (!diff || diff.length <= maxChars) return diff || "";
+/**
+ * The diff as it goes into a prompt, shortened to the `maxDiffChars`
+ * config value (or `maxChars`) when it is larger than that.
+ */
+function formatDiffForPrompt(diff, maxChars = null) {
+  if (maxChars) return compactDiff(diff, maxChars);
 
-  const omittedChars = diff.length - maxChars;
-  return `${diff.substring(0, maxChars)}\n\n[Diff truncated: ${omittedChars} characters omitted. Review the changed files list for the full scope.]`;
+  const configured = Number(getConfig().maxDiffChars);
+  return compactDiff(
+    diff,
+    Number.isFinite(configured) && configured > 0
+      ? configured
+      : DEFAULT_CONFIG.maxDiffChars
+  );
 }
 
 /**
@@ -1204,8 +1212,6 @@ Write in a natural, narrative tone. Keep each section concise and scannable.`;
   return content;
 }
 
-const PR_DIFF_CHARS = 6000;
-
 function getPrBodyBlock(template) {
   if (!template) {
     return `Write the body in Markdown with these sections:
@@ -1298,7 +1304,7 @@ Changed files:
 ${stat}
 
 Diff:
-${formatDiffForPrompt(diff, PR_DIFF_CHARS)}
+${formatDiffForPrompt(diff)}
 
 Title: one line, max 72 characters, imperative mood, describing the whole pull request. If the commits follow the conventional commits style (feat:, fix:, ...), the title does too.
 

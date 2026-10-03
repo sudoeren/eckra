@@ -39,6 +39,7 @@ const DEFAULT_CONFIG = {
   onboarded: false,
   commitType: "conventional+body",
   subjectMaxLength: 50,
+  maxDiffChars: 6000,
   locale: "en",
   timeout: 30000,
   aiInstruction:

@@ -144,7 +144,91 @@ function filterDiff(diffOutput, excludedPatterns) {
   return kept.map((file) => generatePatch(file, allHunks(file))).join("\n");
 }
 
+// Generated files whose diffs are long and say nothing about intent.
+const NOISE_FILE_RE =
+  /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|Gemfile\.lock|composer\.lock|poetry\.lock|Pipfile\.lock|uv\.lock|flake\.lock|go\.sum)$|\.(min\.js|min\.css|map|snap)$/i;
+
+function splitDiffByFile(diffOutput) {
+  const sections = [];
+  for (const line of diffOutput.split("\n")) {
+    if (line.startsWith("diff --git") || sections.length === 0) {
+      const matches = line.match(/^diff --git a\/(.*) b\/(.*)$/);
+      sections.push({ name: matches ? matches[2] : null, lines: [line] });
+    } else {
+      sections[sections.length - 1].lines.push(line);
+    }
+  }
+  return sections;
+}
+
+const isChangeLine = (line) =>
+  (line.startsWith("+") && !line.startsWith("+++")) ||
+  (line.startsWith("-") && !line.startsWith("---"));
+
+/**
+ * Shrink a diff to roughly `maxChars` for an AI prompt without losing sight
+ * of any file. A diff that already fits is returned unchanged. Otherwise:
+ * - lock files, minified bundles, source maps, snapshots and binaries are
+ *   reduced to a one-line note;
+ * - the budget is shared between the remaining files, small files first, so
+ *   one huge file can't push every other file out of the prompt;
+ * - files that don't fit are cut at a line boundary with a note saying how
+ *   much is missing.
+ */
+function compactDiff(diffOutput, maxChars) {
+  const diff = diffOutput || "";
+  if (diff.length <= maxChars) return diff;
+
+  const sections = splitDiffByFile(diff);
+  if (!sections.some((section) => section.name)) {
+    return `${diff.substring(0, maxChars)}\n\n[Diff truncated: ${diff.length - maxChars} characters omitted. Review the changed files list for the full scope.]`;
+  }
+
+  const rendered = sections.map((section) => {
+    const text = section.lines.join("\n");
+    const changed = section.lines.filter(isChangeLine).length;
+    if (section.name && NOISE_FILE_RE.test(section.name)) {
+      return {
+        fixed: `${section.lines[0]}\n[generated file: ${changed} changed lines omitted]`,
+      };
+    }
+    if (section.lines.some((line) => line.startsWith("Binary files "))) {
+      return { fixed: `${section.lines[0]}\n[binary file changed]` };
+    }
+    return { section, text };
+  });
+
+  // Share the budget smallest-first: whatever a small file leaves unused
+  // goes to the bigger ones.
+  const open = rendered.filter((r) => !r.fixed);
+  let budget =
+    maxChars -
+    rendered.reduce((sum, r) => sum + (r.fixed ? r.fixed.length : 0), 0);
+  const bySize = [...open].sort((a, b) => a.text.length - b.text.length);
+  bySize.forEach((entry, i) => {
+    const share = Math.max(0, Math.floor(budget / (bySize.length - i)));
+    if (entry.text.length <= share) {
+      entry.fixed = entry.text;
+    } else {
+      const kept = [];
+      let used = 0;
+      for (const line of entry.section.lines) {
+        // The "diff --git" line always stays so the file is still named.
+        if (kept.length > 0 && used + line.length + 1 > share) break;
+        kept.push(line);
+        used += line.length + 1;
+      }
+      const omitted = entry.section.lines.length - kept.length;
+      entry.fixed = `${kept.join("\n")}\n[... ${omitted} more lines of this file omitted]`;
+    }
+    budget -= entry.fixed.length;
+  });
+
+  return rendered.map((r) => r.fixed).join("\n");
+}
+
 module.exports = {
+  compactDiff,
   parseDiff,
   generatePatch,
   filterFilesList,

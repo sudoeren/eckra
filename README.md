@@ -304,7 +304,7 @@ eckra config path               # Config file path
 > [!NOTE]
 > Add `--local` to target the project's `.eckrarc` instead. This file is gitignored as it can hold API keys.
 
-A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
+A few useful keys: `commitType` (commit message format), `subjectMaxLength` (max subject characters, default 50), `maxDiffChars` (how much of the diff the AI sees, default 6000; larger diffs are shortened per file and lock files are summarized), `locale` (language for messages, default `en`), `timeout` (AI request timeout in ms, default 30000), and `activeAiConnection` (the saved connection in use). Provider credentials and models live inside named connections. Manage them with `eckra provider` / `eckra model`, not `eckra config set` (which now rejects those keys with guidance). If you are upgrading from an older version, existing flat settings are migrated automatically into a `default` connection on first run and the old keys are kept for downgrade safety.
 
 ### Theme
 

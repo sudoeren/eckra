@@ -1,4 +1,5 @@
 const {
+  compactDiff,
   parseDiff,
   generatePatch,
   filterFilesList,
@@ -119,6 +120,67 @@ index 333..444 100644
     test("filterDiff returns the original diff when nothing matches", () => {
       expect(filterDiff(twoFileDiff, ["nope.js"])).toBe(twoFileDiff);
       expect(filterDiff(twoFileDiff, [])).toBe(twoFileDiff);
+    });
+  });
+  describe("compactDiff", () => {
+    const file = (name, lines) =>
+      `diff --git a/${name} b/${name}\n--- a/${name}\n+++ b/${name}\n@@ -1 +1 @@\n${lines}`;
+    const small = file("small.js", "+const a = 1;");
+    const big = file("big.js", "+const filler = true;\n".repeat(400).trim());
+    const lock = file("package-lock.json", '+  "x": "1"\n'.repeat(300).trim());
+
+    test("returns a diff that already fits unchanged", () => {
+      const diff = `${small}\n${lock}`;
+
+      expect(compactDiff(diff, diff.length)).toBe(diff);
+      expect(compactDiff("", 100)).toBe("");
+      expect(compactDiff(null, 100)).toBe("");
+    });
+
+    test("keeps small files whole when a big one comes first", () => {
+      const compact = compactDiff(`${big}\n${small}`, 600);
+
+      expect(compact).toContain(small);
+      expect(compact).toContain("diff --git a/big.js b/big.js");
+      expect(compact).toMatch(/\[\.\.\. \d+ more lines of this file omitted\]/);
+      expect(compact.length).toBeLessThan(700);
+    });
+
+    test("summarizes lock files instead of spending the budget on them", () => {
+      const compact = compactDiff(`${lock}\n${small}`, 500);
+
+      expect(compact).toContain(
+        "diff --git a/package-lock.json b/package-lock.json\n[generated file: 300 changed lines omitted]"
+      );
+      expect(compact).not.toContain('"x": "1"');
+      expect(compact).toContain(small);
+    });
+
+    test("notes binary files", () => {
+      const binary =
+        "diff --git a/logo.png b/logo.png\nBinary files a/logo.png and b/logo.png differ";
+
+      expect(compactDiff(`${binary}\n${big}`, 400)).toContain(
+        "diff --git a/logo.png b/logo.png\n[binary file changed]"
+      );
+    });
+
+    test("names every file even when the budget is tiny", () => {
+      const diff = ["a.js", "b.js", "c.js"]
+        .map((name) => file(name, "+x\n".repeat(100).trim()))
+        .join("\n");
+      const compact = compactDiff(diff, 60);
+
+      for (const name of ["a.js", "b.js", "c.js"]) {
+        expect(compact).toContain(`diff --git a/${name} b/${name}`);
+      }
+    });
+
+    test("plainly truncates text that is not a git diff", () => {
+      const compact = compactDiff("abcdef", 3);
+
+      expect(compact).toContain("abc");
+      expect(compact).toContain("Diff truncated: 3 characters omitted");
     });
   });
 });
