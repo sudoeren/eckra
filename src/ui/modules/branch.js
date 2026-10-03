@@ -19,6 +19,15 @@ const {
 } = require("../screen");
 
 async function doBranch() {
+  // Stay inside Branch until the user explicitly goes back, like More
+  // Options does, so each action returns here with a fresh branch list.
+  let running = true;
+  while (running) {
+    running = await branchMenu();
+  }
+}
+
+async function branchMenu() {
   open("Branch");
 
   const branches = await getBranches();
@@ -56,7 +65,7 @@ async function doBranch() {
     },
   ]);
 
-  if (action === "back") return;
+  if (action === "back") return false;
 
   switch (action) {
     case "pr":
@@ -260,6 +269,8 @@ async function doBranch() {
       break;
     }
   }
+
+  return true;
 }
 
 module.exports = { doBranch };

@@ -36,6 +36,8 @@ jest.mock("../src/ui/screen", () => ({
 describe("Branch UI module", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Every flow ends by choosing Back in the Branch menu it returns to.
+    screen.prompt.mockResolvedValue({ action: "back" });
     git.getBranches.mockResolvedValue({ current: "main", all: ["main"] });
   });
 
@@ -54,6 +56,21 @@ describe("Branch UI module", () => {
     await doBranch();
 
     expect(git.createBranch).toHaveBeenCalledWith("feature");
+  });
+
+  test("stays in the Branch menu until Back is chosen", async () => {
+    screen.prompt
+      .mockResolvedValueOnce({ action: "new" })
+      .mockResolvedValueOnce({ name: "one" })
+      .mockResolvedValueOnce({ action: "new" })
+      .mockResolvedValueOnce({ name: "two" })
+      .mockResolvedValueOnce({ action: "back" });
+
+    await doBranch();
+
+    expect(git.createBranch).toHaveBeenCalledTimes(2);
+    expect(git.getBranches).toHaveBeenCalledTimes(3);
+    expect(screen.prompt).toHaveBeenCalledTimes(5);
   });
 
   test("Pull Request opens the pull request flow", async () => {
@@ -102,7 +119,7 @@ describe("Branch UI module", () => {
         name: "Back",
         value: null,
       });
-      expect(screen.prompt).toHaveBeenCalledTimes(2);
+      expect(screen.prompt).toHaveBeenCalledTimes(3);
       expect(git[fn]).not.toHaveBeenCalled();
     }
   );
