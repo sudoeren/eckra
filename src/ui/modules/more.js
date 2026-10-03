@@ -6,7 +6,6 @@ const { doDiff } = require("./diff");
 const { doStash } = require("./stash");
 const { doTag } = require("./tag");
 const { doRemote } = require("./remote");
-const { doPullRequest } = require("./pr");
 const { doStats } = require("./stats");
 const { doSearch } = require("./search");
 const { doGraph } = require("./graph");
@@ -44,7 +43,6 @@ async function moreMenu() {
         menuItem("Stash", "text", "stash"),
         menuItem("Tag", "text", "tag"),
         menuItem("Remote", "text", "remote"),
-        menuItem("Pull Request", "text", "pr"),
         sep(),
         menuItem("Statistics", "text", "stats"),
         menuItem("Git Graph", "text", "graph"),
@@ -87,9 +85,6 @@ async function moreMenu() {
       break;
     case "remote":
       await doRemote();
-      break;
-    case "pr":
-      await doPullRequest();
       break;
     case "stats":
       await doStats();

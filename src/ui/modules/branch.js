@@ -6,6 +6,7 @@ const {
   deleteBranch,
   compareBranches,
 } = require("../../helpers/git");
+const { doPullRequest } = require("./pr");
 const { s, sleep, pause } = require("../common");
 const {
   open,
@@ -46,6 +47,7 @@ async function doBranch() {
         menuItem("Merge", "text", "merge"),
         menuItem("Compare Branches", "text", "compare"),
         menuItem("Remote Branches", "text", "remote"),
+        menuItem("Pull Request", "primary", "pr"),
         menuItem("Delete Branch", "danger", "delete"),
         sep(),
         backItem(),
@@ -57,6 +59,10 @@ async function doBranch() {
   if (action === "back") return;
 
   switch (action) {
+    case "pr":
+      await doPullRequest();
+      break;
+
     case "new": {
       const { name } = await prompt([
         {

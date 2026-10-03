@@ -3,6 +3,7 @@ const screen = require("../src/ui/screen");
 const { doBranch } = require("../src/ui/modules/branch");
 
 jest.mock("../src/helpers/git");
+jest.mock("../src/ui/modules/pr", () => ({ doPullRequest: jest.fn() }));
 jest.mock("../src/ui/common", () => ({
   s: new Proxy(
     {},
@@ -53,6 +54,17 @@ describe("Branch UI module", () => {
     await doBranch();
 
     expect(git.createBranch).toHaveBeenCalledWith("feature");
+  });
+
+  test("Pull Request opens the pull request flow", async () => {
+    const { doPullRequest } = require("../src/ui/modules/pr");
+    screen.prompt.mockResolvedValueOnce({ action: "pr" });
+
+    await doBranch();
+
+    const { choices } = screen.prompt.mock.calls[0][0][0];
+    expect(choices).toContainEqual({ name: "Pull Request", value: "pr" });
+    expect(doPullRequest).toHaveBeenCalled();
   });
 
   test("New Branch flow is cancelled by an empty name", async () => {
