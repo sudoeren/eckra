@@ -27,10 +27,17 @@ const {
   findExistingPr,
   createPullRequest,
   updatePullRequest,
+  listPullRequests,
+  summarizeChecks,
+  checkoutPullRequest,
+  mergePullRequest,
+  openPullRequestInBrowser,
 } = require("../../helpers/pr");
-const { s, pause, link } = require("../common");
+const { s, pause, link, truncate, cols, timeAgo } = require("../common");
 const {
   open,
+  emptyState,
+  confirmAction,
   menuItem,
   backItem,
   sep,
@@ -549,4 +556,251 @@ async function doPullRequest(_info, opts = {}) {
   await pause();
 }
 
-module.exports = { doPullRequest };
+const CHECK_TONES = {
+  passed: "success",
+  failed: "error",
+  pending: "warning",
+  none: "dim",
+};
+
+function checksLabel(checks) {
+  if (checks.state === "none") return "no checks";
+  if (checks.state === "failed") {
+    return `${checks.failed}/${checks.total} checks failed`;
+  }
+  if (checks.state === "pending") {
+    return `${checks.pending}/${checks.total} checks running`;
+  }
+  return `${checks.total} checks passed`;
+}
+
+const REVIEW_LABELS = {
+  APPROVED: ["approved", "success"],
+  CHANGES_REQUESTED: ["changes requested", "error"],
+  REVIEW_REQUIRED: ["review required", "warning"],
+};
+
+function reviewLabel(pr) {
+  const [text, tone] = REVIEW_LABELS[pr.reviewDecision] || ["no review", "dim"];
+  return s[tone](text);
+}
+
+function prChoice(pr) {
+  const checks = summarizeChecks(pr.statusCheckRollup);
+  const mark =
+    { passed: "✓", failed: "✗", pending: "●", none: "·" }[checks.state] || "·";
+  const title = truncate(pr.title, Math.max(20, cols() - 40));
+  return {
+    name:
+      `  ${s[CHECK_TONES[checks.state]](mark)} ` +
+      s.primary(`#${pr.number}`) +
+      ` ${s.text(title)}` +
+      (pr.isDraft ? s.dim(" (draft)") : "") +
+      s.dim(`  ${pr.author?.login || ""}`),
+    value: pr,
+    short: `#${pr.number}`,
+  };
+}
+
+function updatedAgo(date) {
+  const ago = timeAgo(date);
+  return ago === "now" ? "just now" : `${ago} ago`;
+}
+
+function showPullRequest(pr) {
+  const checks = summarizeChecks(pr.statusCheckRollup);
+
+  open(`#${pr.number} ${pr.title}`, `${pr.headRefName} → ${pr.baseRefName}`);
+  console.log(
+    s.muted("  Author:   ") +
+      s.text(pr.author?.login || "unknown") +
+      s.dim(`  · updated ${updatedAgo(pr.updatedAt)}`)
+  );
+  console.log(
+    s.muted("  State:    ") + s.text(pr.isDraft ? "draft" : "ready for review")
+  );
+  console.log(
+    s.muted("  Checks:   ") + s[CHECK_TONES[checks.state]](checksLabel(checks))
+  );
+  checks.failing.forEach((name) =>
+    console.log(s.error(`              ✗ ${name}`))
+  );
+  console.log(s.muted("  Review:   ") + reviewLabel(pr));
+  if (pr.mergeable === "CONFLICTING") {
+    console.log(s.muted("  Merge:    ") + s.error("has conflicts"));
+  }
+  console.log(s.muted("  Link:     ") + s.primary(link(pr.url)));
+  console.log();
+}
+
+/**
+ * Ask how to merge and confirm. Returns true once the pull request is
+ * merged (the list is stale then), false otherwise.
+ */
+async function mergeFlow(pr) {
+  const { method } = await prompt([
+    {
+      type: "list",
+      name: "method",
+      message: s.muted("How should it be merged?"),
+      choices: [
+        menuItem("Merge commit", "text", "merge"),
+        menuItem("Squash and merge", "text", "squash"),
+        menuItem("Rebase and merge", "text", "rebase"),
+        backItem(),
+      ],
+      pageSize: 6,
+    },
+  ]);
+  if (method === "back") return false;
+
+  const checks = summarizeChecks(pr.statusCheckRollup);
+  if (checks.state === "failed" || checks.state === "pending") {
+    console.log(s.warning(`\n  ⚠ ${checksLabel(checks)}.`));
+  }
+  const ok = await confirmAction(
+    `Merge #${pr.number} into ${pr.baseRefName} (${method})? This cannot be undone.`,
+    { tone: "error" }
+  );
+  if (!ok) return false;
+
+  const { deleteBranch } = await prompt([
+    {
+      type: "confirm",
+      name: "deleteBranch",
+      message: s.muted(`Delete the ${pr.headRefName} branch afterwards?`),
+      default: false,
+    },
+  ]);
+
+  const spin = spinner(`Merging #${pr.number}...`);
+  spin.start();
+  try {
+    await mergePullRequest(pr.number, method, { deleteBranch });
+    done(spin, `#${pr.number} merged into ${pr.baseRefName}`);
+    await pause();
+    return true;
+  } catch (err) {
+    fail(spin, `Merge failed: ${err.message}`);
+    await pause();
+    return false;
+  }
+}
+
+/**
+ * One pull request: status and what can be done with it. Returns true when
+ * the list should be reloaded.
+ */
+async function pullRequestDetails(pr) {
+  for (;;) {
+    showPullRequest(pr);
+
+    const { action } = await prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("What would you like to do?"),
+        choices: [
+          menuItem("Checkout", "primary", "checkout"),
+          menuItem("Merge", "warning", "merge"),
+          menuItem("Open in browser", "text", "web"),
+          backItem(),
+        ],
+        pageSize: 6,
+      },
+    ]);
+
+    if (action === "back") return false;
+    if (action === "merge") {
+      if (await mergeFlow(pr)) return true;
+      continue;
+    }
+
+    const spin = spinner(
+      action === "checkout" ? `Checking out #${pr.number}...` : "Opening..."
+    );
+    spin.start();
+    try {
+      if (action === "checkout") {
+        await checkoutPullRequest(pr.number);
+        done(spin, `Switched to ${pr.headRefName}`);
+      } else {
+        await openPullRequestInBrowser(pr.number);
+        done(spin, "Opened in your browser");
+      }
+    } catch (err) {
+      fail(spin, err.message);
+    }
+    await pause();
+  }
+}
+
+/**
+ * Browse the repository's open pull requests: CI status and reviews at a
+ * glance, then checkout, merge or open one.
+ */
+async function doPullRequestList() {
+  for (;;) {
+    open("Pull Requests");
+
+    const spin = spinner("Loading pull requests...");
+    spin.start();
+    let prs;
+    try {
+      prs = await listPullRequests();
+      spin.stop();
+    } catch (err) {
+      fail(spin, err.message);
+      await pause();
+      return;
+    }
+
+    if (prs.length === 0) {
+      emptyState("No open pull requests.");
+      await pause();
+      return;
+    }
+
+    const { selected } = await prompt([
+      {
+        type: "list",
+        name: "selected",
+        message: s.muted("Open pull requests:"),
+        choices: [...prs.map(prChoice), sep(), backItem("Back", null)],
+        pageSize: 15,
+      },
+    ]);
+    if (!selected) return;
+
+    await pullRequestDetails(selected);
+  }
+}
+
+/**
+ * Pull request hub shown from the Branch menu.
+ */
+async function doPullRequestMenu() {
+  for (;;) {
+    open("Pull Request");
+
+    const { action } = await prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("What would you like to do?"),
+        choices: [
+          menuItem("Open or update for this branch", "primary", "create"),
+          menuItem("Browse open pull requests", "text", "list"),
+          backItem(),
+        ],
+        pageSize: 6,
+      },
+    ]);
+
+    if (action === "back") return;
+    if (action === "create") await doPullRequest();
+    else await doPullRequestList();
+  }
+}
+
+module.exports = { doPullRequest, doPullRequestList, doPullRequestMenu };

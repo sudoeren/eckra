@@ -6,7 +6,7 @@ const {
   deleteBranch,
   compareBranches,
 } = require("../../helpers/git");
-const { doPullRequest } = require("./pr");
+const { doPullRequestMenu } = require("./pr");
 const { s, sleep, pause } = require("../common");
 const {
   open,
@@ -69,7 +69,7 @@ async function branchMenu() {
 
   switch (action) {
     case "pr":
-      await doPullRequest();
+      await doPullRequestMenu();
       break;
 
     case "new": {

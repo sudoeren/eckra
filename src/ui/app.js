@@ -231,6 +231,10 @@ async function quickPr(opts) {
   await pr().doPullRequest(null, opts);
 }
 
+async function quickPrList() {
+  await pr().doPullRequestList();
+}
+
 async function quickGraph() {
   await graph().doGraph();
 }
@@ -383,6 +387,7 @@ module.exports = {
   quickCommit,
   quickPush,
   quickPr,
+  quickPrList,
   quickGraph,
   quickTimeline,
   easyWorkflow,

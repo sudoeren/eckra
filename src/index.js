@@ -188,8 +188,9 @@ program
 program
   .command("pr")
   .description(
-    "Open a pull request with an AI-written title and body (uses the repo's PR template)"
+    "Open a pull request with an AI-written title and body (uses the repo's PR template), or browse the open ones"
   )
+  .argument("[action]", "create (default) or list")
   .option("-b, --base <branch>", "Target branch (default: remote default)")
   .option("-t, --title <title>", "Use this title instead of the AI one")
   .option("-d, --draft", "Create the pull request as a draft")
@@ -202,7 +203,17 @@ program
   .option("-l, --label <labels>", "Apply labels (comma-separated)")
   .option("--no-ai", "Skip the AI; use the template or commit list as the body")
   .option("--instruction <text>", "Optional instruction for the AI")
-  .action(async (options) => {
+  .action(async (action, options) => {
+    if (action === "list" || action === "ls") {
+      if (await checkGitRepo()) await app().quickPrList();
+      return;
+    }
+    if (action && action !== "create") {
+      console.log(s.error(`  ✗ Unknown pr action: "${action}"`));
+      console.log(s.muted("  Usage: eckra pr [create|list] [options]"));
+      process.exitCode = 1;
+      return;
+    }
     if (options.ai !== false && !(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
       await app().quickPr({

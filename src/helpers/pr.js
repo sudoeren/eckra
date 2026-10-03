@@ -437,6 +437,111 @@ async function listLabels() {
 }
 
 /**
+ * runGh, with failures turned into a message worth showing: gh's own
+ * stderr, or a hint when gh is missing.
+ */
+async function runGhOrExplain(args) {
+  try {
+    return await runGh(args);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error("GitHub CLI (gh) is not installed.");
+    }
+    throw new Error((error.stderr || error.message || "").trim());
+  }
+}
+
+const PR_LIST_FIELDS =
+  "number,title,headRefName,baseRefName,author,isDraft,reviewDecision,statusCheckRollup,mergeable,url,updatedAt";
+
+/**
+ * The repository's open pull requests, most recently created first.
+ */
+async function listPullRequests(limit = 30) {
+  return JSON.parse(
+    await runGhOrExplain([
+      "pr",
+      "list",
+      "--json",
+      PR_LIST_FIELDS,
+      "--limit",
+      String(limit),
+    ])
+  );
+}
+
+const PASSED_CONCLUSIONS = ["SUCCESS", "NEUTRAL", "SKIPPED"];
+
+/**
+ * Collapse gh's statusCheckRollup (check runs and commit statuses) into
+ * counts plus an overall state: "failed" if anything failed, else
+ * "pending" if anything is still running, else "passed"; "none" without
+ * checks. `failing` lists the names of the failed checks.
+ */
+function summarizeChecks(rollup) {
+  const summary = { passed: 0, failed: 0, pending: 0, total: 0, failing: [] };
+
+  for (const check of rollup || []) {
+    summary.total += 1;
+    let outcome;
+    if (check.__typename === "StatusContext") {
+      outcome =
+        check.state === "SUCCESS"
+          ? "passed"
+          : ["PENDING", "EXPECTED"].includes(check.state)
+            ? "pending"
+            : "failed";
+    } else if (check.status !== "COMPLETED") {
+      outcome = "pending";
+    } else {
+      outcome = PASSED_CONCLUSIONS.includes(check.conclusion)
+        ? "passed"
+        : "failed";
+    }
+    summary[outcome] += 1;
+    if (outcome === "failed") {
+      summary.failing.push(check.name || check.context || "unknown");
+    }
+  }
+
+  summary.state =
+    summary.total === 0
+      ? "none"
+      : summary.failed > 0
+        ? "failed"
+        : summary.pending > 0
+          ? "pending"
+          : "passed";
+  return summary;
+}
+
+/**
+ * Check out a pull request's branch locally.
+ */
+async function checkoutPullRequest(number) {
+  await runGhOrExplain(["pr", "checkout", String(number)]);
+}
+
+const MERGE_METHODS = ["merge", "squash", "rebase"];
+
+/**
+ * Merge a pull request with the given method ("merge", "squash" or
+ * "rebase"), optionally deleting its branch afterwards.
+ */
+async function mergePullRequest(number, method, { deleteBranch = false } = {}) {
+  if (!MERGE_METHODS.includes(method)) {
+    throw new Error(`Unknown merge method: "${method}"`);
+  }
+  const args = ["pr", "merge", String(number), `--${method}`];
+  if (deleteBranch) args.push("--delete-branch");
+  await runGhOrExplain(args);
+}
+
+async function openPullRequestInBrowser(number) {
+  await runGhOrExplain(["pr", "view", String(number), "--web"]);
+}
+
+/**
  * Run a gh command whose body comes from a temp file, so its size and
  * content never hit command-line limits or quoting issues. `buildArgs`
  * receives the file path and returns the gh arguments.
@@ -449,12 +554,7 @@ async function runGhWithBody(body, buildArgs) {
 
   try {
     fs.writeFileSync(bodyFile, body || "", { mode: 0o600 });
-    return await runGh(buildArgs(bodyFile));
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error("GitHub CLI (gh) is not installed.");
-    }
-    throw new Error((error.stderr || error.message || "").trim());
+    return await runGhOrExplain(buildArgs(bodyFile));
   } finally {
     if (fs.existsSync(bodyFile)) fs.unlinkSync(bodyFile);
   }
@@ -538,4 +638,9 @@ module.exports = {
   findExistingPr,
   createPullRequest,
   updatePullRequest,
+  listPullRequests,
+  summarizeChecks,
+  checkoutPullRequest,
+  mergePullRequest,
+  openPullRequestInBrowser,
 };

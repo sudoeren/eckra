@@ -128,7 +128,7 @@ Or jump straight into action:
 | `eckra commit`  | `c`   | AI-assisted commit flow       |
 | `eckra status`  | `st`  | Status and staged files       |
 | `eckra push`    | `p`   | Push to remote                |
-| `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template) |
+| `eckra pr`      |       | Open a pull request (AI title/body, fills the repo's PR template); `eckra pr list` browses the open ones |
 | `eckra easy`    | `e`   | Stage all, AI commit, push (confirms each step) |
 | `eckra story`   | `t`   | AI project timeline           |
 | `eckra graph`   | `g`   | Interactive commit graph      |
@@ -202,6 +202,8 @@ eckra lazygit remove     # Remove it (alias: uninstall)
 | `--no-commit`          |       | Only generate and show the message     |
 
 `eckra pr` opens a pull request for the current branch through the [GitHub CLI](https://cli.github.com) (`gh`). The AI writes the title and body from the branch's commits and diff. If the repository has a pull request template (`.github/PULL_REQUEST_TEMPLATE.md`, `pull_request_template.md` in the root or `docs/`, or several files in a `PULL_REQUEST_TEMPLATE/` directory), the body is that template filled in; with several templates you pick one. You review, edit, or regenerate before anything is created, and eckra offers to push the branch first when needed. When the branch name carries the number of an open issue (`fix/123-crash`, `issue-45`), the body links it with `Closes #123`. Reviewers and labels can be set from the review menu or with flags. If the branch already has an open pull request, eckra offers to rewrite its title and description from the current commits (`--update` does it without asking). Without `gh`, eckra prints a prefilled GitHub link instead. Committed straight onto the base branch by mistake? `eckra pr` offers to move those commits to a new branch (suggested from the commit message) and puts the base branch back in line with the remote; uncommitted changes are left alone.
+
+`eckra pr list` (also under **Branch > Pull Request**) shows the repository's open pull requests with their CI and review status. Pick one to check it out, merge it (merge commit, squash or rebase, after a confirmation) or open it in the browser.
 
 | Flag | Description |
 | --- | --- |

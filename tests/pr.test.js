@@ -19,6 +19,11 @@ const {
   createPullRequest,
   updatePullRequest,
   findExistingPr,
+  listPullRequests,
+  summarizeChecks,
+  mergePullRequest,
+  checkoutPullRequest,
+
   isGhAvailable,
 } = require("../src/helpers/pr");
 const { parsePullRequestResponse } = require("../src/helpers/ai");
@@ -428,5 +433,108 @@ describe("GitHub CLI calls", () => {
 
     mockGh(() => new Error("no pull requests found"));
     expect(await findExistingPr()).toBeNull();
+  });
+});
+
+describe("pull request list helpers", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("summarizeChecks counts check runs and commit statuses", () => {
+    const summary = summarizeChecks([
+      {
+        __typename: "CheckRun",
+        name: "lint",
+        status: "COMPLETED",
+        conclusion: "SUCCESS",
+      },
+      {
+        __typename: "CheckRun",
+        name: "skip",
+        status: "COMPLETED",
+        conclusion: "SKIPPED",
+      },
+      {
+        __typename: "CheckRun",
+        name: "test (24)",
+        status: "COMPLETED",
+        conclusion: "FAILURE",
+      },
+      {
+        __typename: "CheckRun",
+        name: "test (22)",
+        status: "COMPLETED",
+        conclusion: "CANCELLED",
+      },
+      {
+        __typename: "CheckRun",
+        name: "build",
+        status: "IN_PROGRESS",
+        conclusion: "",
+      },
+      { __typename: "StatusContext", context: "deploy", state: "PENDING" },
+      { __typename: "StatusContext", context: "cla", state: "ERROR" },
+    ]);
+
+    expect(summary).toEqual({
+      passed: 2,
+      failed: 3,
+      pending: 2,
+      total: 7,
+      failing: ["test (24)", "test (22)", "cla"],
+      state: "failed",
+    });
+  });
+
+  test("summarizeChecks overall state", () => {
+    const run = (status, conclusion) => ({
+      __typename: "CheckRun",
+      status,
+      conclusion,
+    });
+
+    expect(summarizeChecks([]).state).toBe("none");
+    expect(summarizeChecks(null).state).toBe("none");
+    expect(summarizeChecks([run("COMPLETED", "SUCCESS")]).state).toBe("passed");
+    expect(
+      summarizeChecks([run("COMPLETED", "SUCCESS"), run("QUEUED", "")]).state
+    ).toBe("pending");
+  });
+
+  test("listPullRequests parses gh's JSON and explains failures", async () => {
+    mockGh(() => JSON.stringify([{ number: 1 }]));
+    expect(await listPullRequests()).toEqual([{ number: 1 }]);
+    expect(childProcess.execFile.mock.calls[0][1].slice(0, 3)).toEqual([
+      "pr",
+      "list",
+      "--json",
+    ]);
+
+    const error = new Error("Command failed");
+    error.stderr = "no git remotes found\n";
+    mockGh(() => error);
+    await expect(listPullRequests()).rejects.toThrow("no git remotes found");
+  });
+
+  test("mergePullRequest maps the method to a gh flag", async () => {
+    mockGh(() => "");
+
+    await mergePullRequest(7, "squash", { deleteBranch: true });
+    await mergePullRequest(8, "rebase");
+    await checkoutPullRequest(9);
+
+    expect(childProcess.execFile.mock.calls.map((c) => c[1])).toEqual([
+      ["pr", "merge", "7", "--squash", "--delete-branch"],
+      ["pr", "merge", "8", "--rebase"],
+      ["pr", "checkout", "9"],
+    ]);
+  });
+
+  test("mergePullRequest rejects unknown methods without calling gh", async () => {
+    await expect(mergePullRequest(7, "--admin")).rejects.toThrow(
+      /Unknown merge method/
+    );
+    expect(childProcess.execFile).not.toHaveBeenCalled();
   });
 });
