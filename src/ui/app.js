@@ -115,7 +115,6 @@ async function startApp() {
 
       choices.push(menuItem("Push", "primary", "push"));
       choices.push(menuItem("Pull", "primary", "pull"));
-      choices.push(menuItem("Pull Request", "primary", "pr"));
 
       choices.push(sep());
 
@@ -158,9 +157,6 @@ async function startApp() {
         break;
       case "pull":
         await sync().doPull();
-        break;
-      case "pr":
-        await pr().doPullRequest(info);
         break;
       case "status":
         await status().doStatus();
