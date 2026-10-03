@@ -43,7 +43,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.7.9",
-    "boxen": "^4.2.0",
+    "boxen": "^9.0.0",
     "chalk": "^4.1.2",
     "commander": "15.0.0",
     "diff": "^7.0.0",
