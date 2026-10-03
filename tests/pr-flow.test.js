@@ -50,11 +50,18 @@ describe("Pull request flow", () => {
     ]);
     git.getCurrentBranch.mockResolvedValue("feat/pr");
 
-    pr.parseRemoteUrl.mockReturnValue({
-      host: "github.com",
-      owner: "sudoeren",
-      repo: "eckra",
-    });
+    // Pure helpers run for real; only git, gh and the AI are faked.
+    const actual = jest.requireActual("../src/helpers/pr");
+    for (const name of [
+      "parseRemoteUrl",
+      "resolvePrRemotes",
+      "detectForge",
+      "buildCompareUrl",
+      "compareUrlHasBody",
+    ]) {
+      pr[name].mockImplementation(actual[name]);
+    }
+    pr.getBranchPushRemote.mockResolvedValue(null);
     pr.getDefaultBranch.mockResolvedValue("master");
     pr.resolveBaseRef.mockResolvedValue("origin/master");
     pr.getPrCommits.mockResolvedValue(commits);
@@ -517,18 +524,145 @@ describe("Pull request flow", () => {
 
   test("prints a prefilled link when gh is not installed", async () => {
     pr.isGhAvailable.mockResolvedValue(false);
-    pr.buildCompareUrl.mockReturnValue("https://github.com/o/r/compare/x");
     screen.prompt.mockResolvedValueOnce({ action: "create" });
 
     await doPullRequest(null);
 
     expect(pr.findExistingPr).not.toHaveBeenCalled();
     expect(pr.createPullRequest).not.toHaveBeenCalled();
-    expect(clipboard.copyToClipboard).toHaveBeenCalledWith(
-      "## Description\n\nAdds `eckra pr`."
-    );
+    expect(clipboard.copyToClipboard).not.toHaveBeenCalled();
     expect(logSpy.mock.calls.flat().join("\n")).toContain(
-      "https://github.com/o/r/compare/x"
+      "https://github.com/sudoeren/eckra/compare/master...feat%2Fpr?expand=1&title=feat%3A%20add%20pr%20command&body="
     );
+
+    const review = screen.prompt.mock.calls[0][0][0].choices;
+    expect(review[0].name).toBe("Push and get the link to create it");
+    expect(review.map((c) => c.value)).not.toContain("draft");
+    expect(review.map((c) => c.value)).not.toContain("labels");
+  });
+
+  test("copies a body that is too long for the link", async () => {
+    pr.isGhAvailable.mockResolvedValue(false);
+    ai.generatePullRequest.mockResolvedValue({
+      title: "feat: big",
+      body: "x".repeat(8000),
+    });
+    screen.prompt.mockResolvedValueOnce({ action: "create" });
+
+    await doPullRequest(null);
+
+    expect(clipboard.copyToClipboard).toHaveBeenCalledWith("x".repeat(8000));
+  });
+
+  describe("remotes", () => {
+    const remote = (name, url) => ({ name, refs: { fetch: url, push: url } });
+
+    test("a fork pushes to origin and targets upstream", async () => {
+      git.getRemotes.mockResolvedValue([
+        remote("origin", "git@github.com:me/eckra.git"),
+        remote("upstream", "https://github.com/sudoeren/eckra.git"),
+      ]);
+      pr.getPushState.mockResolvedValue({ upstream: null, unpushed: null });
+      pr.resolveBaseRef.mockResolvedValue("upstream/master");
+      screen.prompt
+        .mockResolvedValueOnce({ action: "create" })
+        .mockResolvedValueOnce({ push: true });
+
+      await doPullRequest(null);
+
+      expect(pr.getDefaultBranch).toHaveBeenCalledWith("upstream");
+      expect(pr.resolveBaseRef).toHaveBeenCalledWith("master", "upstream");
+      expect(pr.pushBranch).toHaveBeenCalledWith("feat/pr", "origin");
+      expect(pr.createPullRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repo: "sudoeren/eckra",
+          head: "me:feat/pr",
+        })
+      );
+    });
+
+    test("a single repository passes no repo or head to gh", async () => {
+      screen.prompt.mockResolvedValueOnce({ action: "create" });
+
+      await doPullRequest(null);
+
+      const args = pr.createPullRequest.mock.calls[0][0];
+      expect(args).not.toHaveProperty("repo");
+      expect(args).not.toHaveProperty("head");
+    });
+
+    test("uses the only remote when it is not called origin", async () => {
+      git.getRemotes.mockResolvedValue([
+        remote("github", "git@github.com:sudoeren/eckra.git"),
+      ]);
+      pr.getPushState.mockResolvedValue({ upstream: null, unpushed: null });
+      screen.prompt
+        .mockResolvedValueOnce({ action: "create" })
+        .mockResolvedValueOnce({ push: true });
+
+      await doPullRequest(null);
+
+      expect(pr.getDefaultBranch).toHaveBeenCalledWith("github");
+      expect(pr.pushBranch).toHaveBeenCalledWith("feat/pr", "github");
+    });
+
+    test("asks which remote when it can't tell, and Back stops", async () => {
+      git.getRemotes.mockResolvedValue([
+        remote("work", "git@github.com:a/eckra.git"),
+        remote("home", "git@github.com:b/eckra.git"),
+      ]);
+      screen.prompt.mockResolvedValueOnce({ remote: null });
+
+      await doPullRequest(null);
+
+      const { choices } = screen.prompt.mock.calls[0][0][0];
+      expect(choices.slice(0, 2)).toEqual(["work", "home"]);
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+
+      screen.prompt
+        .mockResolvedValueOnce({ remote: "home" })
+        .mockResolvedValueOnce({ action: "back" });
+      await doPullRequest(null);
+      expect(pr.getDefaultBranch).toHaveBeenCalledWith("home");
+    });
+
+    test("the branch's configured push remote wins", async () => {
+      git.getRemotes.mockResolvedValue([
+        remote("origin", "git@github.com:sudoeren/eckra.git"),
+        remote("mine", "git@github.com:me/eckra.git"),
+      ]);
+      pr.getBranchPushRemote.mockResolvedValue("mine");
+      pr.getPushState.mockResolvedValue({ upstream: null, unpushed: null });
+
+      await doPullRequest(null, { yes: true });
+
+      expect(pr.pushBranch).toHaveBeenCalledWith("feat/pr", "mine");
+    });
+
+    test("no remotes at all stops", async () => {
+      git.getRemotes.mockResolvedValue([]);
+
+      await doPullRequest(null);
+
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+    });
+
+    test("GitLab gets a merge request link and never calls gh", async () => {
+      git.getRemotes.mockResolvedValue([
+        remote("origin", "git@gitlab.com:group/sub/app.git"),
+      ]);
+      screen.prompt.mockResolvedValueOnce({ action: "create" });
+
+      await doPullRequest(null);
+
+      expect(pr.isGhAvailable).not.toHaveBeenCalled();
+      expect(pr.findExistingPr).not.toHaveBeenCalled();
+      expect(pr.createPullRequest).not.toHaveBeenCalled();
+      const out = logSpy.mock.calls.flat().join("\n");
+      expect(out).toContain("Open this link to create the merge request");
+      expect(out).toContain(
+        "https://gitlab.com/group/sub/app/-/merge_requests/new?merge_request%5Bsource_branch%5D=feat%2Fpr&merge_request%5Btarget_branch%5D=master"
+      );
+    });
   });
 });

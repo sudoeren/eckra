@@ -11,6 +11,9 @@ const TEMPLATE_DIRS = [".github", "", "docs"];
 const TEMPLATE_FILE_RE = /^pull_request_template(\.(md|txt))?$/i;
 const TEMPLATE_DIR_RE = /^pull_request_template$/i;
 const TEMPLATE_EXT_RE = /\.(md|txt)$/i;
+// GitLab keeps merge request templates here; "Default.md" is applied
+// automatically, so it is listed first.
+const GITLAB_TEMPLATE_DIR = path.join(".gitlab", "merge_request_templates");
 
 // Browsers and GitHub reject very long URLs, so the body is only prefilled
 // through the compare link when it fits.
@@ -67,6 +70,19 @@ function findPrTemplates(repoRoot) {
     }
   }
 
+  const gitlabFiles = readDirSafe(path.join(repoRoot, GITLAB_TEMPLATE_DIR))
+    .filter((f) => f.isFile() && /\.md$/i.test(f.name))
+    .map((f) => f.name)
+    .sort(
+      (a, b) =>
+        /^default\.md$/i.test(b) - /^default\.md$/i.test(a) ||
+        a.localeCompare(b)
+    );
+  for (const file of gitlabFiles) {
+    const tpl = readTemplate(repoRoot, path.join(GITLAB_TEMPLATE_DIR, file));
+    if (tpl) templates.push(tpl);
+  }
+
   return templates;
 }
 
@@ -111,21 +127,96 @@ function parseRemoteUrl(url) {
 }
 
 /**
- * Build a GitHub "open a pull request" link with the title/body prefilled.
- * Used when the GitHub CLI is unavailable. Returns null for non-GitHub hosts.
+ * Which hosting service a remote host is: "github", "gitlab" or null.
  */
-function buildCompareUrl(remote, base, head, { title = "", body = "" } = {}) {
-  if (!remote || !/github/i.test(remote.host)) return null;
+function detectForge(host) {
+  if (/github/i.test(host || "")) return "github";
+  if (/gitlab/i.test(host || "")) return "gitlab";
+  return null;
+}
 
-  const root =
-    `https://${remote.host}/${remote.owner}/${remote.repo}/compare/` +
-    `${encodeURIComponent(base)}...${encodeURIComponent(head)}?expand=1`;
-  const withTitle = title ? `${root}&title=${encodeURIComponent(title)}` : root;
-  const withBody = body
-    ? `${withTitle}&body=${encodeURIComponent(body)}`
-    : withTitle;
+/**
+ * Pick the remotes a pull request involves:
+ * - pushRemote: where the branch goes. The branch's configured push remote
+ *   wins, then "origin", then the only remote there is; null when it can't
+ *   be decided.
+ * - baseRemote: the repository the pull request targets. In a fork setup
+ *   that is "upstream"; otherwise the push remote itself.
+ */
+function resolvePrRemotes(remoteNames, configuredPushRemote = null) {
+  const names = remoteNames || [];
+  let pushRemote = null;
+  if (configuredPushRemote && names.includes(configuredPushRemote)) {
+    pushRemote = configuredPushRemote;
+  } else if (names.includes("origin")) {
+    pushRemote = "origin";
+  } else if (names.length === 1) {
+    pushRemote = names[0];
+  }
+
+  const baseRemote =
+    names.includes("upstream") && pushRemote !== "upstream"
+      ? "upstream"
+      : pushRemote;
+  return { pushRemote, baseRemote };
+}
+
+/**
+ * Build a link that opens the "new pull request" page (GitHub) or the
+ * "new merge request" page (GitLab) with the title/body prefilled. Used
+ * when the pull request can't be created from the command line. `head` is
+ * the branch; pass `headRemote` (parsed like `remote`) when it lives in a
+ * fork. Returns null for hosts that are neither.
+ */
+function buildCompareUrl(
+  remote,
+  base,
+  head,
+  { title = "", body = "" } = {},
+  headRemote = null
+) {
+  const forge = remote ? detectForge(remote.host) : null;
+  const enc = encodeURIComponent;
+  const fork =
+    headRemote &&
+    (headRemote.owner !== remote.owner || headRemote.repo !== remote.repo);
+  let root;
+  let titleParam;
+  let bodyParam;
+
+  if (forge === "github") {
+    const source = fork ? `${headRemote.owner}:${head}` : head;
+    root =
+      `https://${remote.host}/${remote.owner}/${remote.repo}/compare/` +
+      `${enc(base)}...${enc(source)}?expand=1`;
+    titleParam = "title";
+    bodyParam = "body";
+  } else if (forge === "gitlab") {
+    // Merge requests from a fork are opened on the fork's project page;
+    // GitLab targets the upstream project by default.
+    const project = fork ? headRemote : remote;
+    root =
+      `https://${project.host}/${project.owner}/${project.repo}/-/merge_requests/new` +
+      `?${enc("merge_request[source_branch]")}=${enc(head)}` +
+      `&${enc("merge_request[target_branch]")}=${enc(base)}`;
+    titleParam = enc("merge_request[title]");
+    bodyParam = enc("merge_request[description]");
+  } else {
+    return null;
+  }
+
+  const withTitle = title ? `${root}&${titleParam}=${enc(title)}` : root;
+  const withBody = body ? `${withTitle}&${bodyParam}=${enc(body)}` : withTitle;
 
   return withBody.length <= MAX_COMPARE_URL_LENGTH ? withBody : withTitle;
+}
+
+/**
+ * Whether a link from buildCompareUrl carries the body (it is dropped
+ * when the link would get too long).
+ */
+function compareUrlHasBody(url) {
+  return /&(body|merge_request%5Bdescription%5D)=/.test(url || "");
 }
 
 /**
@@ -346,6 +437,34 @@ async function getPushState() {
 
   const count = await getGit().raw(["rev-list", "--count", "@{u}..HEAD"]);
   return { upstream, unpushed: parseInt(count.trim(), 10) || 0 };
+}
+
+async function getGitConfig(key) {
+  try {
+    return (await getGit().raw(["config", "--get", key])).trim();
+  } catch {
+    // Unset keys make git exit non-zero.
+    return "";
+  }
+}
+
+/**
+ * The remote this branch is set up to push to, or null: its `pushRemote`,
+ * the repo-wide `remote.pushDefault`, then the remote it was already pushed
+ * to. A branch that merely tracks another branch (say `upstream/main`, as
+ * forks often do) doesn't count: that is where it pulls from.
+ */
+async function getBranchPushRemote(branch) {
+  const explicit =
+    (await getGitConfig(`branch.${branch}.pushRemote`)) ||
+    (await getGitConfig("remote.pushDefault"));
+  if (explicit) return explicit;
+
+  const tracked = await getGitConfig(`branch.${branch}.remote`);
+  const merge = await getGitConfig(`branch.${branch}.merge`);
+  return tracked && tracked !== "." && merge === `refs/heads/${branch}`
+    ? tracked
+    : null;
 }
 
 async function pushBranch(branch, remote = "origin") {
@@ -571,6 +690,8 @@ function lastUrl(stdout) {
 
 /**
  * Create the pull request with the GitHub CLI and return its URL.
+ * `repo` ("[host/]owner/repo") and `head` ("owner:branch") are only needed
+ * when the branch lives in a fork of the repository being targeted.
  */
 async function createPullRequest({
   title,
@@ -579,10 +700,16 @@ async function createPullRequest({
   draft = false,
   reviewers = [],
   labels = [],
+  repo = null,
+  head = null,
 }) {
   const stdout = await runGhWithBody(body, (bodyFile) => {
     const args = ["pr", "create", "--title", title, "--body-file", bodyFile];
     if (base) args.push("--base", base);
+    // Fork setups: name the target repository and "owner:branch" explicitly
+    // instead of leaving gh to guess between the remotes.
+    if (repo) args.push("--repo", repo);
+    if (head) args.push("--head", head);
     if (draft) args.push("--draft");
     for (const reviewer of reviewers) args.push("--reviewer", reviewer);
     for (const label of labels) args.push("--label", label);
@@ -616,6 +743,10 @@ module.exports = {
   findPrTemplates,
   parseRemoteUrl,
   buildCompareUrl,
+  compareUrlHasBody,
+  detectForge,
+  resolvePrRemotes,
+  getBranchPushRemote,
   fallbackPrContent,
   extractIssueNumber,
   ensureIssueReference,

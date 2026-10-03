@@ -9,6 +9,9 @@ const {
   findPrTemplates,
   parseRemoteUrl,
   buildCompareUrl,
+  compareUrlHasBody,
+  detectForge,
+  resolvePrRemotes,
   fallbackPrContent,
   extractIssueNumber,
   ensureIssueReference,
@@ -86,6 +89,17 @@ describe("PR template discovery", () => {
     ]);
   });
 
+  test("finds GitLab merge request templates, Default.md first", () => {
+    write(".gitlab/merge_request_templates/Bug.md", "bug");
+    write(".gitlab/merge_request_templates/Default.md", "default");
+    write(".gitlab/merge_request_templates/notes.txt", "no");
+
+    expect(findPrTemplates(root).map((t) => t.name)).toEqual([
+      ".gitlab/merge_request_templates/Default.md",
+      ".gitlab/merge_request_templates/Bug.md",
+    ]);
+  });
+
   test("skips empty templates", () => {
     write(".github/pull_request_template.md", "  \n");
 
@@ -137,12 +151,100 @@ describe("buildCompareUrl", () => {
     expect(url).not.toContain("&body=");
   });
 
-  test("returns null for non-GitHub hosts", () => {
+  test("returns null for hosts that are neither GitHub nor GitLab", () => {
     expect(
-      buildCompareUrl({ host: "gitlab.com", owner: "a", repo: "b" }, "m", "x")
+      buildCompareUrl(
+        { host: "git.example.com", owner: "a", repo: "b" },
+        "m",
+        "x"
+      )
     ).toBeNull();
     expect(buildCompareUrl(null, "m", "x")).toBeNull();
   });
+
+  test("names the fork owner in the head on GitHub", () => {
+    const fork = { host: "github.com", owner: "me", repo: "eckra" };
+
+    expect(buildCompareUrl(remote, "main", "fix", {}, fork)).toBe(
+      "https://github.com/sudoeren/eckra/compare/main...me%3Afix?expand=1"
+    );
+    expect(buildCompareUrl(remote, "main", "fix", {}, remote)).toBe(
+      "https://github.com/sudoeren/eckra/compare/main...fix?expand=1"
+    );
+  });
+
+  test("builds a GitLab merge request link", () => {
+    const gitlab = { host: "gitlab.com", owner: "group/sub", repo: "app" };
+    const url = buildCompareUrl(gitlab, "main", "feat/x", {
+      title: "feat: x",
+      body: "## What",
+    });
+
+    expect(url).toBe(
+      "https://gitlab.com/group/sub/app/-/merge_requests/new" +
+        "?merge_request%5Bsource_branch%5D=feat%2Fx" +
+        "&merge_request%5Btarget_branch%5D=main" +
+        "&merge_request%5Btitle%5D=feat%3A%20x" +
+        "&merge_request%5Bdescription%5D=%23%23%20What"
+    );
+    expect(compareUrlHasBody(url)).toBe(true);
+  });
+
+  test("opens GitLab fork merge requests from the fork's project", () => {
+    const gitlab = { host: "gitlab.com", owner: "group", repo: "app" };
+    const fork = { host: "gitlab.com", owner: "me", repo: "app" };
+
+    expect(buildCompareUrl(gitlab, "main", "x", {}, fork)).toContain(
+      "https://gitlab.com/me/app/-/merge_requests/new?"
+    );
+  });
+
+  test("compareUrlHasBody tells whether the body made it into the link", () => {
+    expect(
+      compareUrlHasBody(
+        buildCompareUrl(remote, "m", "x", { title: "t", body: "b" })
+      )
+    ).toBe(true);
+    expect(
+      compareUrlHasBody(
+        buildCompareUrl(remote, "m", "x", {
+          title: "t",
+          body: "a".repeat(10000),
+        })
+      )
+    ).toBe(false);
+  });
+});
+
+describe("remote resolution", () => {
+  test("detectForge", () => {
+    expect(detectForge("github.com")).toBe("github");
+    expect(detectForge("github.mycorp.com")).toBe("github");
+    expect(detectForge("gitlab.com")).toBe("gitlab");
+    expect(detectForge("gitlab.internal")).toBe("gitlab");
+    expect(detectForge("git.example.com")).toBeNull();
+    expect(detectForge(undefined)).toBeNull();
+  });
+
+  test.each([
+    [["origin"], null, "origin", "origin"],
+    [["origin", "upstream"], null, "origin", "upstream"],
+    [["github"], null, "github", "github"],
+    [["origin", "mine"], "mine", "mine", "mine"],
+    [["origin", "mine", "upstream"], "mine", "mine", "upstream"],
+    [["origin", "upstream"], "upstream", "upstream", "upstream"],
+    [["origin"], "gone", "origin", "origin"],
+    [["work", "home"], null, null, null],
+    [[], null, null, null],
+  ])(
+    "resolvePrRemotes(%j, %s) -> push %s, base %s",
+    (names, cfg, push, base) => {
+      expect(resolvePrRemotes(names, cfg)).toEqual({
+        pushRemote: push,
+        baseRemote: base,
+      });
+    }
+  );
 });
 
 describe("fallbackPrContent", () => {
@@ -401,6 +503,27 @@ describe("GitHub CLI calls", () => {
 
     mockGh(() => new Error("boom"));
     expect(await listLabels()).toEqual([]);
+  });
+
+  test("createPullRequest names the repo and head for forks", async () => {
+    mockGh(() => "https://github.com/o/r/pull/7\n");
+
+    await createPullRequest({
+      title: "t",
+      body: "b",
+      base: "main",
+      repo: "sudoeren/eckra",
+      head: "me:feat/x",
+    });
+
+    expect(childProcess.execFile.mock.calls[0][1].slice(6)).toEqual([
+      "--base",
+      "main",
+      "--repo",
+      "sudoeren/eckra",
+      "--head",
+      "me:feat/x",
+    ]);
   });
 
   test("createPullRequest surfaces gh's stderr", async () => {

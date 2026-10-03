@@ -5,6 +5,10 @@ const {
   findPrTemplates,
   parseRemoteUrl,
   buildCompareUrl,
+  compareUrlHasBody,
+  detectForge,
+  resolvePrRemotes,
+  getBranchPushRemote,
   fallbackPrContent,
   extractIssueNumber,
   ensureIssueReference,
@@ -46,8 +50,6 @@ const {
   done,
   fail,
 } = require("../screen");
-
-const REMOTE = "origin";
 
 /**
  * The template to fill in: the only one, the picked one, or null for none.
@@ -208,7 +210,7 @@ async function askLabels(current) {
  * Make sure the branch (with all its commits) is on the remote before the
  * pull request is opened. Returns false when the user declines or it fails.
  */
-async function ensurePushed(branch, yes) {
+async function ensurePushed(branch, remote, yes) {
   const { upstream, unpushed } = await getPushState();
   if (upstream && unpushed === 0) return true;
 
@@ -219,8 +221,8 @@ async function ensurePushed(branch, yes) {
         name: "push",
         message: s.warning(
           upstream
-            ? `${unpushed} unpushed commit(s). Push ${branch} to ${REMOTE}?`
-            : `${branch} is not on ${REMOTE} yet. Push it?`
+            ? `${unpushed} unpushed commit(s). Push ${branch} to ${remote}?`
+            : `${branch} is not on ${remote} yet. Push it?`
         ),
         default: true,
       },
@@ -231,7 +233,7 @@ async function ensurePushed(branch, yes) {
   const spin = spinner("Pushing...");
   spin.start();
   try {
-    await pushBranch(branch, REMOTE);
+    await pushBranch(branch, remote);
     done(spin, "Push successful!");
     return true;
   } catch (err) {
@@ -241,11 +243,15 @@ async function ensurePushed(branch, yes) {
 }
 
 /**
- * Without the GitHub CLI the pull request can't be created from here, so
- * hand over a prefilled "compare" link instead.
+ * When the pull request can't be created from here (no GitHub CLI, or a
+ * GitLab repository), hand over a prefilled "new pull/merge request" link
+ * instead.
  */
-async function showBrowserFallback(content, { remote, base, branch }) {
-  const url = buildCompareUrl(remote, base, branch, content);
+async function showBrowserFallback(
+  content,
+  { remote, headRemote, base, branch }
+) {
+  const url = buildCompareUrl(remote, base, branch, content, headRemote);
   if (!url) {
     console.log(
       s.warning(
@@ -255,9 +261,11 @@ async function showBrowserFallback(content, { remote, base, branch }) {
     return;
   }
 
-  console.log(s.muted("\n  Open this link to create the pull request:\n"));
+  const kind =
+    detectForge(remote.host) === "gitlab" ? "merge request" : "pull request";
+  console.log(s.muted(`\n  Open this link to create the ${kind}:\n`));
   console.log("  " + s.primary(link(url)));
-  if (content.body && !url.includes("&body=")) {
+  if (content.body && !compareUrlHasBody(url)) {
     const copied = await copyToClipboard(content.body);
     console.log(
       copied
@@ -306,16 +314,53 @@ async function doPullRequest(_info, opts = {}) {
   };
 
   const remotes = await getRemotes();
-  const origin = remotes.find((r) => r.name === REMOTE);
-  if (!origin) {
-    return stop(`No "${REMOTE}" remote. Add one from More > Remote.`);
+  if (remotes.length === 0) {
+    return stop("No remote. Add one from More > Remote.");
   }
-  const remote = parseRemoteUrl(origin.refs.push || origin.refs.fetch);
 
   let branch = await getCurrentBranch();
   if (!branch) return stop("Detached HEAD. Switch to a branch first.");
 
-  const hasGh = await isGhAvailable();
+  // pushRemote is where the branch goes; baseRemote is the repository the
+  // pull request targets (they differ when working from a fork).
+  let { pushRemote, baseRemote } = resolvePrRemotes(
+    remotes.map((r) => r.name),
+    await getBranchPushRemote(branch)
+  );
+  if (!pushRemote) {
+    if (yes) {
+      return stop(
+        `Several remotes and no "origin". Set one with: git config branch.${branch}.pushRemote <name>`
+      );
+    }
+    const answer = await prompt([
+      {
+        type: "list",
+        name: "remote",
+        message: s.muted("Which remote should the branch be pushed to?"),
+        choices: [...remotes.map((r) => r.name), sep(), backItem("Back", null)],
+        pageSize: 10,
+      },
+    ]);
+    if (!answer.remote) return;
+    pushRemote = answer.remote;
+    baseRemote = baseRemote || pushRemote;
+  }
+
+  const parsed = (name) => {
+    const entry = remotes.find((r) => r.name === name);
+    return parseRemoteUrl(entry.refs.push || entry.refs.fetch);
+  };
+  const remote = parsed(baseRemote);
+  const headRemote = parsed(pushRemote);
+  const fromFork =
+    remote &&
+    headRemote &&
+    (remote.owner !== headRemote.owner || remote.repo !== headRemote.repo);
+  const forge = detectForge(remote?.host);
+
+  // GitLab repositories get a prefilled merge request link instead.
+  const hasGh = forge !== "gitlab" && (await isGhAvailable());
   const existing = hasGh ? await findExistingPr() : null;
   if (update && !existing) {
     return stop(`No open pull request for ${branch} to update.`);
@@ -323,13 +368,13 @@ async function doPullRequest(_info, opts = {}) {
 
   // An open pull request keeps the base it was opened against.
   const base =
-    baseOpt || existing?.baseRefName || (await getDefaultBranch(REMOTE));
+    baseOpt || existing?.baseRefName || (await getDefaultBranch(baseRemote));
   if (!base) {
     return stop(
       "Could not detect the base branch. Pass it with --base <branch>."
     );
   }
-  const baseRef = await resolveBaseRef(base, REMOTE);
+  const baseRef = await resolveBaseRef(base, baseRemote);
   if (!baseRef) return stop(`Base branch "${base}" not found.`, "error");
 
   const commits = await getPrCommits(baseRef);
@@ -373,7 +418,7 @@ async function doPullRequest(_info, opts = {}) {
 
   // A number in the branch name only counts when it is a real open issue.
   const issue = hasGh ? await getOpenIssue(extractIssueNumber(branch)) : null;
-  const context = { base, branch, template, remote, issue };
+  const context = { base, branch, template, remote, headRemote, issue };
 
   const withIssue = (generated) => ({
     ...generated,
@@ -433,13 +478,15 @@ async function doPullRequest(_info, opts = {}) {
           menuItem(
             existing
               ? `Update pull request #${existing.number}`
-              : draft
-                ? "Create draft pull request"
-                : "Create pull request",
+              : !hasGh
+                ? "Push and get the link to create it"
+                : draft
+                  ? "Create draft pull request"
+                  : "Create pull request",
             "success",
             "create"
           ),
-          ...(draft || existing
+          ...(draft || existing || !hasGh
             ? []
             : [menuItem("Create as draft", "primary", "draft")]),
           sep(),
@@ -502,7 +549,7 @@ async function doPullRequest(_info, opts = {}) {
   }
   if (yes) showPreview(content, context);
 
-  if (!(await ensurePushed(branch, yes))) {
+  if (!(await ensurePushed(branch, pushRemote, yes))) {
     await pause();
     return;
   }
@@ -543,6 +590,14 @@ async function doPullRequest(_info, opts = {}) {
       draft: asDraft,
       reviewers: content.reviewers,
       labels: content.labels,
+      ...(fromFork
+        ? {
+            repo:
+              (remote.host === "github.com" ? "" : `${remote.host}/`) +
+              `${remote.owner}/${remote.repo}`,
+            head: `${headRemote.owner}:${branch}`,
+          }
+        : {}),
     });
     done(
       spin,
