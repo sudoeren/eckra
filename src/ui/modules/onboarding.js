@@ -1,6 +1,8 @@
 const autocomplete = require("inquirer-autocomplete-prompt");
 const inquirer = require("inquirer");
-const boxen = require("boxen");
+// boxen is ESM-only since v6: require() hands back the module namespace.
+const boxenModule = require("boxen");
+const boxen = boxenModule.default || boxenModule;
 const {
   saveConfig,
   saveAIConnection,
