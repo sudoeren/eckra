@@ -1,12 +1,15 @@
 const { renderMarkdown, parseBlocks } = require("../src/ui/markdown");
 
+// With this on, styles become visible tags so a test can see which were
+// applied; off, text passes through untouched for layout assertions.
+let mockShowStyles = false;
+
 jest.mock("../src/ui/common", () => ({
-  // Styles become visible tags so the tests can see what was applied.
   s: new Proxy(
     {},
     {
       get: (_target, name) => (value) =>
-        ["bold", "primary", "success", "ai"].includes(name)
+        mockShowStyles && ["bold", "primary", "success", "ai"].includes(name)
           ? `<${name}>${value}</${name}>`
           : value,
     }
@@ -18,8 +21,16 @@ jest.mock("../src/ui/screen", () => ({
   strWidth: (value) => String(value).length,
 }));
 
-const plain = (text, options) =>
-  renderMarkdown(text, options).map((line) => line.replace(/<\/?\w+>/g, ""));
+const plain = (text, options) => renderMarkdown(text, options);
+
+const styled = (text, options) => {
+  mockShowStyles = true;
+  try {
+    return renderMarkdown(text, options);
+  } finally {
+    mockShowStyles = false;
+  }
+};
 
 describe("renderMarkdown", () => {
   test("headings lose their markers, even when wrapped in bold", () => {
@@ -33,7 +44,7 @@ describe("renderMarkdown", () => {
   });
 
   test("top-level headings take their tone from headingTone", () => {
-    const [title] = renderMarkdown("## Contributors", {
+    const [title] = styled("## Contributors", {
       headingTone: () => "ai",
     });
 
@@ -41,9 +52,7 @@ describe("renderMarkdown", () => {
   });
 
   test("inline bold, code and links are styled and their markers removed", () => {
-    const [line] = renderMarkdown(
-      "Use **bold**, `code` and [docs](https://x.y)."
-    );
+    const [line] = styled("Use **bold**, `code` and [docs](https://x.y).");
 
     expect(line).toBe(
       "    Use <bold>bold</bold>, <primary>code</primary> and <primary>docs</primary>{https://x.y}."
