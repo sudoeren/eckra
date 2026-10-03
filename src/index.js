@@ -79,10 +79,14 @@ program
   .command("easy")
   .alias("e")
   .description("Full workflow: Stage all, AI commit, and Push")
-  .action(async () => {
+  .option(
+    "--pr",
+    "Open a pull request after committing instead of only pushing"
+  )
+  .action(async (options) => {
     if (!(await app().ensureOnboarding())) return;
     if (await checkGitRepo()) {
-      await app().easyWorkflow();
+      await app().easyWorkflow({ pr: options.pr });
     }
   });
 

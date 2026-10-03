@@ -143,7 +143,7 @@ Or jump straight into action:
 | `eckra model`   | `m`   | Show current AI settings & switch/manage providers |
 
 > [!TIP]
-> `eckra e` stages everything, generates an AI message, and asks you before committing and pushing.
+> `eckra e` stages everything, generates an AI message, and asks you before committing and pushing. `eckra e --pr` ends with the pull request flow instead of a plain push: it pushes the branch for you and, if you committed on the base branch, first offers to move the commit to a new branch.
 
 From the dashboard you can also open **Git Graph** (under Branch) to see your full commit topology across all branches, page through history, and inspect commits for cherry-picking.
 

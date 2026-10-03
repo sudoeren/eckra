@@ -239,7 +239,12 @@ async function quickGraph() {
   await graph().doGraph();
 }
 
-async function easyWorkflow() {
+/**
+ * Stage everything, commit with an AI message and push. With `pr`, the
+ * last step opens a pull request instead: that flow pushes the branch
+ * itself, and first moves the commit off the base branch when needed.
+ */
+async function easyWorkflow({ pr: openPr = false } = {}) {
   const info = await getGitStatus();
 
   // 1. Stage all
@@ -253,6 +258,8 @@ async function easyWorkflow() {
     await stageAll();
     done(spin, "All files staged!");
   } else if (info.staged.length === 0) {
+    // Nothing to commit, but earlier commits may still need their PR.
+    if (openPr) return await pr().doPullRequest();
     console.log(s.warning("\n  No changes to commit."));
     return;
   }
@@ -315,6 +322,8 @@ async function easyWorkflow() {
     spinCommit.start();
     const result = await createCommit(message);
     done(spinCommit, `Commit: ${result.commit.substring(0, 7)}`);
+
+    if (openPr) return await pr().doPullRequest();
 
     // 5. Confirm push
     const { pushNow } = await prompt([
