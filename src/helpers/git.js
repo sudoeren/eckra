@@ -419,6 +419,36 @@ async function acceptTheirs(file) {
   await getGit().add(file);
 }
 
+async function repoPath(file) {
+  const root = (await getGit().revparse(["--show-toplevel"])).trim();
+  return path.join(root, file);
+}
+
+/**
+ * Read a conflicted file from the working tree (with its conflict
+ * markers). Returns null when it isn't there or isn't text, as with
+ * delete/modify and binary conflicts.
+ */
+async function readConflictedFile(file) {
+  const fs = require("fs");
+  try {
+    const buffer = fs.readFileSync(await repoPath(file));
+    return buffer.includes(0) ? null : buffer.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write the resolved content of a conflicted file and stage it.
+ */
+async function writeResolvedFile(file, content) {
+  const fs = require("fs");
+  const target = await repoPath(file);
+  fs.writeFileSync(target, content);
+  await getGit().add(target);
+}
+
 /**
  * Abort merge
  */
@@ -720,6 +750,8 @@ module.exports = {
   acceptOurs,
   acceptTheirs,
   acceptBoth,
+  readConflictedFile,
+  writeResolvedFile,
   abortMerge,
   getBlame,
   getTrackedFiles,

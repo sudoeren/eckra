@@ -1339,7 +1339,95 @@ BODY:
   return parsePullRequestResponse(content);
 }
 
+// Bigger conflicts than this don't fit a prompt with room left to answer.
+const MAX_CONFLICT_CHARS = 12000;
+
+/**
+ * Split an AI answer into { explanation, resolutions[] }. Resolutions are
+ * returned in order; `expected` guards against a model that skipped or
+ * invented one.
+ */
+function parseConflictResponse(content, expected) {
+  const text = String(content || "");
+  const resolutions = [];
+  const blockRe =
+    /^=== RESOLUTION (\d+) ===[ \t]*\r?\n([\s\S]*?)\r?\n?^=== END ===[ \t]*$/gm;
+  let m;
+  while ((m = blockRe.exec(text))) {
+    // Models like to fence code even when told not to.
+    const fenced = m[2].match(/^```[\w-]*\r?\n([\s\S]*?)\r?\n?```$/);
+    resolutions[parseInt(m[1], 10) - 1] = fenced ? fenced[1] : m[2];
+  }
+
+  const complete =
+    resolutions.length === expected &&
+    Array.from({ length: expected }, (_, i) => resolutions[i]).every(
+      (resolution) => typeof resolution === "string"
+    );
+  if (!complete) {
+    throw new Error(
+      `AI did not return a resolution for each of the ${expected} conflict(s).`
+    );
+  }
+
+  const explanation = (text.match(
+    /^=== EXPLANATION ===[ \t]*\r?\n([\s\S]*?)(?=^=== |$(?![\s\S]))/m
+  ) || [])[1];
+  return { explanation: (explanation || "").trim(), resolutions };
+}
+
+/**
+ * Ask the AI how to resolve a file's merge conflicts. `description` comes
+ * from describeConflicts(); `count` is how many conflicts it holds.
+ * Returns { explanation, resolutions[] } — a suggestion to review, never
+ * applied on its own.
+ */
+async function generateConflictResolution({ file, description, count }) {
+  if (description.length > MAX_CONFLICT_CHARS) {
+    throw new Error(
+      "These conflicts are too large to send to the AI; resolve them manually."
+    );
+  }
+
+  const config = getConfig();
+  const localeText =
+    config.locale && config.locale !== "en"
+      ? `\nWrite the explanation in the "${config.locale}" language.\n`
+      : "";
+
+  const prompt = `You are resolving git merge conflicts in the file "${file}". It has ${count} conflict(s), shown below with a few lines of the surrounding code. OURS is the current branch, THEIRS is the branch being merged in.
+${localeText}
+${description}
+
+For each conflict, write the lines that should replace the whole conflict (markers included) so that the intent of BOTH sides is kept wherever they are compatible. When they truly contradict each other, pick the side that fits the surrounding code and say so in the explanation. Keep the file's indentation and style. Do not repeat the "Code before" / "Code after" lines and do not add anything that neither side contains.
+
+Respond in exactly this format, with no code fences:
+=== EXPLANATION ===
+One or two sentences per conflict on what you kept and why. Flag anything the user should double-check.
+=== RESOLUTION 1 ===
+<replacement lines for conflict 1>
+=== END ===
+(one RESOLUTION block per conflict, numbered in order)`;
+
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a careful software engineer resolving merge conflicts. You never leave conflict markers in your output and you follow the requested format precisely.",
+    },
+    {
+      role: "user",
+      content: prompt,
+    },
+  ];
+
+  const content = await callProvider(config.aiProvider, messages, 0.2, 2500);
+  return parseConflictResponse(content, count);
+}
+
 module.exports = {
+  generateConflictResolution,
+  parseConflictResponse,
   generatePullRequest,
   parsePullRequestResponse,
   COMMIT_FORMATS,

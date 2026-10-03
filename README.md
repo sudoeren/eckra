@@ -243,6 +243,8 @@ eckra commit --clipboard                               # copy the message, don't
 eckra commit -x "*.lock,config.local.js"              # ignore files in AI analysis
 ```
 
+When a merge leaves conflicts, **Resolve Conflict** appears on the dashboard. Per file you can take ours, theirs, both, edit manually, or pick **Suggest a resolution with AI**: the AI gets each conflict with its surrounding code, proposes merged lines that keep both sides' intent, and explains what it did. The suggestion is shown next to both sides and is only written and staged after you accept it.
+
 Risky operations ask for confirmation before running: **push**, **pull**, **push tags**, **delete tag**, **drop stash**, **amend**, **rebase** and **squash**. Pass `-y/--yes` on `eckra push` to skip it.
 
 ## AI Configuration
