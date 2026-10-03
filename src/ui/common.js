@@ -1,4 +1,6 @@
-const chalk = require("chalk");
+// chalk is ESM-only since v5: require() hands back the module namespace.
+const chalkModule = require("chalk");
+const chalk = chalkModule.default || chalkModule;
 const inquirer = require("inquirer");
 const { getThemeName, resetThemeCache } = require("../helpers/theme");
 

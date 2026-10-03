@@ -21,7 +21,14 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "verbose": true
+    "verbose": true,
+    "transform": {
+      "/node_modules/(chalk)/.+\\.js$": "<rootDir>/scripts/jest-esm-transform.js",
+      "\\.[jt]sx?$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(chalk)/)"
+    ]
   },
   "keywords": [
     "git",
@@ -44,7 +51,7 @@
   "dependencies": {
     "axios": "^1.7.9",
     "boxen": "^9.0.0",
-    "chalk": "^4.1.2",
+    "chalk": "^6.0.1",
     "commander": "15.0.0",
     "diff": "^7.0.0",
     "eastasianwidth": "^0.3.0",
