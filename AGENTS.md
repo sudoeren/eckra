@@ -1,6 +1,6 @@
 # AGENTS.md
 
-AI-powered Git management CLI (Node.js, CommonJS). Zero config required: run `eckra` in any git repo for the interactive dashboard. Node >= 22.12.
+AI-powered Git management CLI (Node.js, CommonJS). Zero config required: run `eckra` in any git repo for the interactive dashboard. Node >= 22.13.
 
 ## Commands
 
@@ -20,7 +20,7 @@ Verification order: `npm run lint` then `npm test`.
 
 - `src/index.js` — single entrypoint. `commander` CLI, defines subcommands + aliases (`c`=commit, `e`=easy, `st`=status, `p`=push, `t`=story, `s`=start, `pv`=provider, `m`=model). UI modules are **lazy-loaded** via `app()`/`require()` to keep startup fast — don't eagerly require UI modules at the top of index.js.
 - `src/helpers/` — pure logic: `git.js` (wraps `simple-git`), `ai.js` (provider HTTP via axios), `config.js` (config + saved AI connections + legacy migration), `providers.js` (single provider registry: labels, credential fields, model keys, defaults, model-fetch dispatch), `patch.js`.
-- `src/ui/` — all interaction: `app.js` (main menu loop), `common.js` (styles `s.*`, `clear`, `header`), `screen.js` (inquirer prompts, `spinner`/`done`/`fail`), `diff-view.js`.
+- `src/ui/` — all interaction: `app.js` (main menu loop), `common.js` (styles `s.*`, `clear`, `header`), `screen.js` (prompts, `spinner`/`done`/`fail`), `inquirer.js` (the only module that loads inquirer; translates the inquirer-8 style questions the UI writes — `list`, `autocomplete`, `{ type: "separator", line }` — for the current inquirer), `diff-view.js`.
 - Pull requests: `helpers/pr.js` (PR template discovery, base-branch/commit/diff lookups, `gh` CLI calls via `execFile`) + `generatePullRequest` in `helpers/ai.js` + `ui/modules/pr.js` (`eckra pr`, Branch > "Pull Request"). `gh` is an optional runtime dependency; without it (and always on GitLab remotes) the flow falls back to a prefilled compare / new-merge-request URL. Remotes are resolved by `resolvePrRemotes` (push remote vs. `upstream` base for forks) — don't hardcode `origin` in PR code.
 - AI output is Markdown: print it through `renderMarkdown` (`ui/markdown.js`) and page long output with `showPages` (`ui/screen.js`) — the dashboard runs in the alternate screen, so there is no scrollback.
 - Conflict resolution: `helpers/conflict.js` parses conflict markers and rebuilds the file (`applyResolutions` refuses leftover markers); `generateConflictResolution` in `helpers/ai.js` only suggests — the UI applies after confirmation.
@@ -35,6 +35,8 @@ Verification order: `npm run lint` then `npm test`.
 - **Provider URLs**: `lmStudioUrl` / `ollamaUrl` are normalized (trailing slashes stripped) in `getConfig` so downstream path concatenation doesn't double up `/`.
 - **Conventional commits**: AI-generated messages follow `type: subject` style; keep new commit messages consistent with the repo history (`feat:`, `fix:`, `refactor:`, `docs:`…).
 - `.eckrarc`, `.eckra/`, `docs/`, `*.log` are gitignored.
+
+- **ESM-only dependencies** (chalk, boxen, ora, inquirer): `require()` returns the module namespace, so unwrap `.default`. Jest cannot `require()` ESM; packages that tests load for real must be listed in the `jest.transform` / `transformIgnorePatterns` entries in `package.json` (converted by `scripts/jest-esm-transform.js`), the rest are loaded lazily and mocked.
 
 ## Style
 

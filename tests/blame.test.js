@@ -2,8 +2,6 @@ const git = require("../src/helpers/git");
 const screen = require("../src/ui/screen");
 const { doBlame } = require("../src/ui/modules/blame");
 
-jest.mock("inquirer", () => ({ registerPrompt: jest.fn() }));
-jest.mock("inquirer-autocomplete-prompt", () => ({}));
 jest.mock("../src/helpers/git");
 jest.mock("../src/ui/common", () => ({
   s: new Proxy(

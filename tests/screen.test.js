@@ -10,8 +10,8 @@ const {
   withSyncUpdate,
 } = require("../src/ui/screen");
 
-jest.mock("inquirer", () => ({ prompt: jest.fn() }));
-const inquirer = require("inquirer");
+jest.mock("../src/ui/inquirer", () => ({ ask: jest.fn() }));
+const inquirer = require("../src/ui/inquirer");
 
 jest.mock("../src/ui/common", () => ({
   s: new Proxy(
@@ -71,19 +71,19 @@ describe("Screen helpers", () => {
   });
 
   test("confirmAction asks a confirm prompt defaulting to no", async () => {
-    inquirer.prompt.mockResolvedValue({ confirmed: true });
+    inquirer.ask.mockResolvedValue({ confirmed: true });
 
     const result = await confirmAction("Are you sure?");
 
     expect(result).toBe(true);
-    const question = inquirer.prompt.mock.calls[0][0][0];
+    const question = inquirer.ask.mock.calls[0][0][0];
     expect(question.type).toBe("confirm");
     expect(question.default).toBe(false);
     expect(question.message).toContain("Are you sure?");
   });
 
   test("confirmAction returns false when declined", async () => {
-    inquirer.prompt.mockResolvedValue({ confirmed: false });
+    inquirer.ask.mockResolvedValue({ confirmed: false });
 
     const result = await confirmAction("Are you sure?");
 
@@ -136,12 +136,12 @@ describe("showPages", () => {
 
     expect(printed()).toEqual(expect.arrayContaining(["  sub", "a", "b"]));
     expect(common.pause).toHaveBeenCalledTimes(1);
-    expect(inquirer.prompt).not.toHaveBeenCalled();
+    expect(inquirer.ask).not.toHaveBeenCalled();
   });
 
   test("longer output is paged, forward and back", async () => {
     const lines = Array.from({ length: 25 }, (_, i) => `line ${i + 1}`);
-    inquirer.prompt
+    inquirer.ask
       .mockResolvedValueOnce({ action: "next" })
       .mockResolvedValueOnce({ action: "next" })
       .mockResolvedValueOnce({ action: "prev" })
@@ -149,7 +149,7 @@ describe("showPages", () => {
 
     await showPages("Title", "sub", lines);
 
-    const values = inquirer.prompt.mock.calls.map((call) =>
+    const values = inquirer.ask.mock.calls.map((call) =>
       call[0][0].choices.map((choice) => choice.value)
     );
     expect(values).toEqual([
@@ -170,7 +170,7 @@ describe("showPages", () => {
       "",
       "b0",
     ];
-    inquirer.prompt
+    inquirer.ask
       .mockResolvedValueOnce({ action: "next" })
       .mockResolvedValueOnce({ action: "back" });
 

@@ -1,4 +1,4 @@
-const inquirer = require("inquirer");
+const inquirer = require("../src/ui/inquirer");
 const git = require("../src/helpers/git");
 const clipboard = require("../src/helpers/clipboard");
 const ai = require("../src/helpers/ai");
@@ -6,6 +6,7 @@ const { doPullRequest } = require("../src/ui/modules/pr");
 const { quickCommit, easyWorkflow } = require("../src/ui/app");
 
 jest.mock("../src/helpers/git");
+jest.mock("../src/ui/inquirer", () => ({ ask: jest.fn() }));
 jest.mock("../src/helpers/ai");
 jest.mock("../src/helpers/clipboard");
 jest.mock("../src/ui/modules/pr", () => ({ doPullRequest: jest.fn() }));
@@ -27,7 +28,7 @@ describe("quickCommit with an explicit message", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
-    jest.spyOn(inquirer, "prompt").mockResolvedValue({});
+    inquirer.ask.mockResolvedValue({});
     git.getGitStatus.mockResolvedValue({ staged: ["a.js"] });
     clipboard.copyToClipboard.mockResolvedValue(true);
   });
@@ -79,8 +80,7 @@ describe("easyWorkflow", () => {
 
   test("commits and pushes after confirmation", async () => {
     git.getGitStatus.mockResolvedValue(dirty);
-    jest
-      .spyOn(inquirer, "prompt")
+    inquirer.ask
       .mockResolvedValueOnce({ confirmCommit: true })
       .mockResolvedValueOnce({ pushNow: true });
 
@@ -93,14 +93,12 @@ describe("easyWorkflow", () => {
 
   test("--pr hands over to the pull request flow instead of pushing", async () => {
     git.getGitStatus.mockResolvedValue(dirty);
-    const promptSpy = jest
-      .spyOn(inquirer, "prompt")
-      .mockResolvedValueOnce({ confirmCommit: true });
+    inquirer.ask.mockResolvedValueOnce({ confirmCommit: true });
 
     await easyWorkflow({ pr: true });
 
     expect(git.createCommit).toHaveBeenCalledWith("feat: x");
-    expect(promptSpy).toHaveBeenCalledTimes(1);
+    expect(inquirer.ask).toHaveBeenCalledTimes(1);
     expect(doPush).not.toHaveBeenCalled();
     expect(doPullRequest).toHaveBeenCalledTimes(1);
   });

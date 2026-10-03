@@ -7,16 +7,6 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - dependencies
-    ignore:
-      # chalk >= 5 is ESM-only: Jest cannot require() it, so every test that
-      # loads the UI fails. Revisit when the test setup can load ESM.
-      - dependency-name: chalk
-        update-types: ["version-update:semver-major"]
-      # inquirer >= 9 is a rewrite. The UI patches inquirer 8 internals
-      # (paginator, screen manager) and uses inquirer-autocomplete-prompt,
-      # which only exists for 8.x; upgrading means replacing the prompt layer.
-      - dependency-name: inquirer
-        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
