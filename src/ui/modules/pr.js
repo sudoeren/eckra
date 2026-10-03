@@ -38,6 +38,7 @@ const {
   openPullRequestInBrowser,
 } = require("../../helpers/pr");
 const { s, pause, link, truncate, cols, timeAgo } = require("../common");
+const { renderMarkdown } = require("../markdown");
 const {
   open,
   emptyState,
@@ -89,9 +90,7 @@ function showPreview(
   console.log(s.muted("\n  Title:\n"));
   console.log(s.text("    " + title));
   console.log(s.muted("\n  Body:\n"));
-  (body || "(empty)")
-    .split("\n")
-    .forEach((line) => console.log(s.text("    " + line)));
+  renderMarkdown(body || "(empty)").forEach((line) => console.log(line));
   console.log();
 }
 

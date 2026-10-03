@@ -1176,10 +1176,10 @@ async function generateTimeline(commits) {
 
   const prompt = `You are a software historian. Below is the git commit history of a project in chronological order (most recent first). Analyze these commits and craft an engaging, human-readable timeline that tells the story of this project.
 
-Format your response in these sections:
+Format your response in exactly these four sections, each starting with the "## " heading shown:
 
 ## Timeline
-A chronological narrative (oldest to newest) that groups related commits into logical phases or milestones. Tell the story naturally — as if explaining the project's evolution to a new team member. For example: "The project started with basic authentication and user management. Then, the team focused on fixing critical bugs in the login flow before shipping the CI/CD pipeline..."
+A chronological narrative (oldest to newest) that groups related commits into logical phases or milestones, one bullet per phase in the form "- **Phase name (date range)**: two or three sentences". Tell the story naturally — as if explaining the project's evolution to a new team member.
 
 ## Key Milestones
 - Brief bullet points of the most significant turning points
@@ -1194,7 +1194,11 @@ Commit history (${commits.length} commits):
 
 ${commitLines.join("\n")}
 
-Write in a natural, narrative tone. Keep each section concise and scannable.`;
+Write in a natural, narrative tone. Keep each section concise and scannable.
+
+Rules:
+- Only use dates that appear in the commit list above; never guess at earlier history that is not shown.
+- Plain Markdown only: "## " headings exactly as above (not bold), "- " bullets, no horizontal rules, no tables, no code blocks.`;
 
   const messages = [
     {

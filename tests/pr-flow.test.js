@@ -19,6 +19,9 @@ jest.mock("../src/ui/screen", () => ({
   done: jest.fn(),
   fail: jest.fn(),
 }));
+jest.mock("../src/ui/markdown", () => ({
+  renderMarkdown: (text) => text.split("\n"),
+}));
 jest.mock("../src/ui/common", () => ({
   s: new Proxy(
     {},

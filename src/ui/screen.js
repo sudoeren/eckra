@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const eaw = require("eastasianwidth");
-const { s, cols, clear, header } = require("./common");
+const { s, cols, rows, clear, header, pause } = require("./common");
 
 // inquirer's `loop` option couples two behaviors: the selection cursor
 // wrapping around (wanted) and the list text being duplicated into an
@@ -206,6 +206,66 @@ function fail(spin, text) {
 }
 
 /**
+ * Show long output one screenful at a time. Inside the interactive
+ * dashboard (alternate screen) there is no scrollback, so anything longer
+ * than the screen would otherwise lose its top. Output that fits is shown
+ * at once and waits for Enter.
+ */
+async function showPages(title, subtitle, lines) {
+  // Header, title, subtitle, rule and the action menu take the rest.
+  const size = Math.max(5, rows() - 14);
+
+  // Never start a page on a blank line or end it on a lonely heading.
+  const pages = [];
+  let rest = [...lines];
+  while (rest.length) {
+    while (rest.length && rest[0] === "") rest.shift();
+    pages.push(rest.slice(0, size));
+    rest = rest.slice(size);
+  }
+
+  if (pages.length <= 1) {
+    open(title, subtitle);
+    (pages[0] || []).forEach((line) => console.log(line));
+    console.log();
+    await pause();
+    return;
+  }
+
+  let page = 0;
+  for (;;) {
+    const position = `page ${page + 1} of ${pages.length}`;
+    withSyncUpdate(() => {
+      open(title, subtitle ? `${subtitle}  ·  ${position}` : position);
+      pages[page].forEach((line) => console.log(line));
+      console.log();
+    });
+
+    const choices = [];
+    if (page < pages.length - 1) {
+      choices.push(menuItem("Next Page", "primary", "next"));
+    }
+    if (page > 0) choices.push(menuItem("Previous Page", "primary", "prev"));
+    choices.push(backItem());
+
+    const { action } = await prompt([
+      {
+        type: "list",
+        name: "action",
+        message: s.muted("Actions:"),
+        choices,
+        pageSize: 5,
+        loop: true,
+      },
+    ]);
+
+    if (action === "next") page++;
+    else if (action === "prev") page--;
+    else return;
+  }
+}
+
+/**
  * Confirm a risky operation before it runs. Returns true only when the
  * user explicitly confirms (default is no).
  */
@@ -234,6 +294,7 @@ module.exports = {
   done,
   fail,
   confirmAction,
+  showPages,
   withSyncUpdate,
   tone,
   strWidth,
