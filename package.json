@@ -52,7 +52,7 @@
     "axios": "^1.7.9",
     "boxen": "^9.0.0",
     "chalk": "^6.0.1",
-    "commander": "15.0.0",
+    "commander": "15.1.0",
     "diff": "^7.0.0",
     "eastasianwidth": "^0.3.0",
     "inquirer": "^13.4.3",
